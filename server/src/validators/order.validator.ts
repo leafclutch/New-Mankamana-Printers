@@ -1,0 +1,28 @@
+import { z } from "zod";
+
+const orderConfigDetailSchema = z.object({
+  groupName: z.string().min(1),
+  groupLabel: z.string().min(1),
+  selectedCode: z.string().min(1),
+  selectedLabel: z.string().min(1),
+});
+
+export const createProductOrderSchema = z.object({
+  variantId: z.string().min(1, "variantId is required"),
+  quantity: z.coerce.number().int().positive("quantity must be greater than 0"),
+  options: z.object({
+    configDetails: z.array(orderConfigDetailSchema).optional(),
+  }).catchall(z.string().min(1)),
+  notes: z.string().max(1000).optional(),
+  designCode: z.string().max(50).optional(),
+});
+
+export const updateOrderStatusSchema = z.object({
+  status: z.enum([
+    "ORDER_PROCESSING",
+    "ORDER_PREPARED",
+    "ORDER_DISPATCHED",
+    "ORDER_DELIVERED",
+    "ORDER_CANCELLED",
+  ]),
+});

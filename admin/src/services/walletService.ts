@@ -1,0 +1,336 @@
+export type WalletTopupStatus = "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+
+export interface WalletTopupClient {
+  id: string;
+  name: string;
+  phone?: string | null;
+}
+
+export interface WalletTopupListItemApi {
+  requestId: string;
+  client: WalletTopupClient | null;
+  submittedAmount: number;
+  paymentMethod: string;
+  status: WalletTopupStatus;
+  submittedAt: string;
+}
+
+export interface WalletTopupDetailApi {
+  requestId: string;
+  client: WalletTopupClient | null;
+  submittedAmount: number;
+  approvedAmount?: number | null;
+  paymentMethod: string;
+  transferReference?: string | null;
+  note?: string | null;
+  proofFileUrl?: string | null;
+  status: WalletTopupStatus;
+  rejectionReason?: string | null;
+  submittedAt: string;
+  reviewedAt?: string | null;
+}
+
+export interface WalletTopupListResponseApi {
+  items: WalletTopupListItemApi[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+export interface WalletTransactionApi {
+  transactionId: string;
+  client: { id: string; name: string } | null;
+  type: string;
+  source: string;
+  sourceId?: string | null;
+  amount: number;
+  currency: string;
+  balanceBefore: number;
+  balanceAfter: number;
+  description?: string | null;
+  createdAt: string;
+}
+
+export interface WalletTransactionResponseApi {
+  items: WalletTransactionApi[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+export interface WalletNotificationApi {
+  notificationId: string;
+  type: string;
+  title: string;
+  message: string;
+  referenceId?: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface WalletNotificationResponseApi {
+  items: WalletNotificationApi[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+export interface WalletClientSummaryApi {
+  client: { id: string; name: string; phone?: string | null };
+  currency: string;
+  availableBalance: number;
+  totalCredits: number;
+  totalDebits: number;
+}
+
+const safeJson = async (response: Response) => {
+  const raw = await response.text();
+  if (!raw || raw.trim().length === 0) {
+    return {};
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { message: raw };
+  }
+};
+
+export const fetchAdminTopupRequests = async (params?: {
+  status?: string;
+  clientId?: string;
+  paymentMethod?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const query = new URLSearchParams();
+  if (params?.status) query.set("status", params.status);
+  if (params?.clientId) query.set("clientId", params.clientId);
+  if (params?.paymentMethod) query.set("paymentMethod", params.paymentMethod);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const response = await fetch(
+    `/api/admin/wallet/topup-requests${query.toString() ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to load top-up requests.");
+  }
+
+  return data as { success: boolean; data: WalletTopupListResponseApi };
+};
+
+export const fetchAdminTopupRequestById = async (requestId: string) => {
+  const response = await fetch(`/api/admin/wallet/topup-requests/${requestId}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to load top-up request.");
+  }
+
+  return data as { success: boolean; data: WalletTopupDetailApi };
+};
+
+export const approveAdminTopupRequest = async (params: {
+  requestId: string;
+  approvedAmount: number;
+  note?: string;
+}) => {
+  const response = await fetch(
+    `/api/admin/wallet/topup-requests/${params.requestId}/approve`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        approvedAmount: params.approvedAmount,
+        note: params.note,
+      }),
+    }
+  );
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to approve top-up request.");
+  }
+
+  return data as {
+    success: boolean;
+    message: string;
+    data?: {
+      requestId: string;
+      status: string;
+      submittedAmount: number;
+      approvedAmount: number;
+      walletTransactionId: string;
+      newWalletBalance: number;
+      approvedAt: string;
+    };
+  };
+};
+
+export const rejectAdminTopupRequest = async (params: {
+  requestId: string;
+  reason: string;
+  reasonCode?: string;
+}) => {
+  const response = await fetch(
+    `/api/admin/wallet/topup-requests/${params.requestId}/reject`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        reason: params.reason,
+        reasonCode: params.reasonCode,
+      }),
+    }
+  );
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to reject top-up request.");
+  }
+
+  return data as {
+    success: boolean;
+    message: string;
+    data?: { requestId: string; status: string; reason: string; reviewedAt: string };
+  };
+};
+
+export const fetchAdminWalletTransactions = async (params?: {
+  clientId?: string;
+  type?: string;
+  source?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const query = new URLSearchParams();
+  if (params?.clientId) query.set("clientId", params.clientId);
+  if (params?.type) query.set("type", params.type);
+  if (params?.source) query.set("source", params.source);
+  if (params?.dateFrom) query.set("dateFrom", params.dateFrom);
+  if (params?.dateTo) query.set("dateTo", params.dateTo);
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const response = await fetch(
+    `/api/admin/wallet/transactions${query.toString() ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to load wallet transactions.");
+  }
+
+  return data as { success: boolean; data: WalletTransactionResponseApi };
+};
+
+export const createAdminPaymentDetails = async (payload: {
+  companyName: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  branch?: string;
+  paymentId?: string;
+  qrImageUrl?: string;
+  note?: string;
+  isActive?: boolean;
+}) => {
+  const response = await fetch(`/api/admin/wallet/payment-details`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to save payment details.");
+  }
+
+  return data as { success: boolean; message: string; data?: unknown };
+};
+
+export const fetchAdminWalletNotifications = async (params?: {
+  isRead?: boolean;
+  page?: number;
+  limit?: number;
+}) => {
+  const query = new URLSearchParams();
+  if (params?.isRead !== undefined) query.set("isRead", String(params.isRead));
+  if (params?.page) query.set("page", String(params.page));
+  if (params?.limit) query.set("limit", String(params.limit));
+
+  const response = await fetch(
+    `/api/admin/wallet/notifications${query.toString() ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to load notifications.");
+  }
+
+  return data as { success: boolean; data: WalletNotificationResponseApi };
+};
+
+export const markAdminWalletNotificationRead = async (notificationId: string) => {
+  const response = await fetch(
+    `/api/admin/wallet/notifications/${notificationId}/read`,
+    {
+      method: "PATCH",
+    }
+  );
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to mark notification as read.");
+  }
+
+  return data as { success: boolean; message: string };
+};
+
+export const fetchAdminClientWalletSummary = async (clientId: string) => {
+  const response = await fetch(`/api/admin/wallet/clients/${clientId}`, {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to load client wallet summary.");
+  }
+
+  return data as { success: boolean; data: WalletClientSummaryApi };
+};

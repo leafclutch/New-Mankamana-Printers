@@ -1,0 +1,441 @@
+﻿"use client";
+
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Check,
+  X,
+  Eye,
+  Clock,
+  User,
+  CheckCircle,
+  XCircle,
+  Hourglass,
+} from "lucide-react";
+import {
+  approveDesignSubmission,
+  fetchApprovedDesigns,
+  fetchPendingDesignSubmissions,
+  rejectDesignSubmission,
+  type DesignListItem,
+} from "@/services/designApprovalService";
+
+const STATUS_CONFIG = {
+  Pending: {
+    label: "Pending",
+    bg: "bg-amber-50 dark:bg-amber-900/20",
+    text: "text-amber-700 dark:text-amber-400",
+    ring: "ring-1 ring-amber-200/60",
+    dot: "bg-amber-500",
+    icon: Hourglass,
+  },
+  Approved: {
+    label: "Approved",
+    bg: "bg-emerald-50 dark:bg-emerald-900/20",
+    text: "text-emerald-700 dark:text-emerald-400",
+    ring: "ring-1 ring-emerald-200/60",
+    dot: "bg-emerald-500",
+    icon: CheckCircle,
+  },
+  Rejected: {
+    label: "Rejected",
+    bg: "bg-red-50 dark:bg-red-900/20",
+    text: "text-red-700 dark:text-red-400",
+    ring: "ring-1 ring-red-200/60",
+    dot: "bg-red-500",
+    icon: XCircle,
+  },
+};
+
+export default function DesignApprovalPage() {
+  const { toast } = useToast();
+  const [designs, setDesigns] = useState<DesignListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedDesign, setSelectedDesign] = useState<DesignListItem | null>(null);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [actionId, setActionId] = useState<string | null>(null);
+  const [isRejectOpen, setIsRejectOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+
+  const loadDesigns = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const [pending, approved] = await Promise.all([
+        fetchPendingDesignSubmissions(),
+        fetchApprovedDesigns(),
+      ]);
+      setDesigns([...pending, ...approved]);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to load designs.";
+      setLoadError(message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDesigns();
+  }, []);
+
+  const handleApprove = async (id: string) => {
+    setActionId(id);
+    try {
+      await approveDesignSubmission(id);
+      await loadDesigns();
+      toast({
+        title: "Design Approved",
+        description: "The design has been approved for printing.",
+        variant: "success",
+      });
+      setIsViewOpen(false);
+      window.dispatchEvent(new Event("stats-updated"));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to approve design.";
+      toast({
+        title: "Approval Failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleReject = async (id: string, reason: string) => {
+    setActionId(id);
+    try {
+      await rejectDesignSubmission(id, reason);
+      setDesigns((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, status: "Rejected" } : d))
+      );
+      toast({
+        title: "Design Rejected",
+        description: "Designer will be notified.",
+        variant: "destructive",
+      });
+      setIsViewOpen(false);
+      setIsRejectOpen(false);
+      window.dispatchEvent(new Event("stats-updated"));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to reject design.";
+      toast({ title: "Rejection Failed", description: message, variant: "destructive" });
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const openRejectDialog = (id: string) => {
+    setRejectTargetId(id);
+    setRejectReason("");
+    setIsRejectOpen(true);
+  };
+
+  const stats = {
+    pending: designs.filter((d) => d.status === "Pending").length,
+    approved: designs.filter((d) => d.status === "Approved").length,
+    rejected: designs.filter((d) => d.status === "Rejected").length,
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Page header */}
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+            Design Approval
+          </h1>
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+            Review and approve designs before sending to print.
+          </p>
+        </div>
+        {/* Status summary */}
+        <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            <span className="font-semibold text-slate-900 dark:text-white">
+              {stats.pending}
+            </span>
+            <span className="text-slate-500">pending</span>
+          </div>
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="font-semibold text-slate-900 dark:text-white">
+              {stats.approved}
+            </span>
+            <span className="text-slate-500">approved</span>
+          </div>
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700" />
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            <span className="font-semibold text-slate-900 dark:text-white">
+              {stats.rejected}
+            </span>
+            <span className="text-slate-500">rejected</span>
+          </div>
+        </div>
+      </div>
+
+      {loadError ? (
+        <Card className="border border-red-200 bg-red-50">
+          <CardContent className="flex flex-col items-start gap-2 p-4 text-sm text-red-700">
+            <span>{loadError}</span>
+            <Button size="sm" variant="outline" onClick={loadDesigns}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Design Cards */}
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {isLoading ? (
+          <Card className="col-span-full">
+            <CardContent className="p-6 text-center text-sm text-slate-500">
+              Loading designs...
+            </CardContent>
+          </Card>
+        ) : designs.length === 0 ? (
+          <Card className="col-span-full">
+            <CardContent className="p-6 text-center text-sm text-slate-500">
+              No design submissions available.
+            </CardContent>
+          </Card>
+        ) : (
+          designs.map((design) => {
+            const cfg = STATUS_CONFIG[design.status as keyof typeof STATUS_CONFIG];
+            return (
+              <Card
+                key={design.id}
+                className="group overflow-hidden transition-all hover:shadow-md"
+              >
+                {/* Image */}
+                <div className="relative aspect-video overflow-hidden bg-slate-100 dark:bg-slate-800">
+                  {design.image ? (
+                    <img
+                      src={design.image}
+                      alt={design.title}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                      No preview available
+                    </div>
+                  )}
+                  {/* Status badge */}
+                  <div className="absolute right-3 top-3">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-sm ${cfg.bg} ${cfg.text} ${cfg.ring}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                      {cfg.label}
+                    </span>
+                  </div>
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="gap-2 bg-white/95 text-slate-900 hover:bg-white shadow-lg"
+                      onClick={() => {
+                        setSelectedDesign(design);
+                        setIsViewOpen(true);
+                      }}
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      Full Review
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Info */}
+                <CardHeader className="p-4 pb-0">
+                  <CardTitle className="line-clamp-1 text-sm font-semibold text-slate-900 dark:text-white">
+                    {design.title}
+                  </CardTitle>
+                  <div className="flex items-center gap-3 pt-1 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" /> {design.designer}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> {design.submittedDate}
+                    </span>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-4 pt-2.5">
+                  <p className="text-xs text-slate-500">
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      {design.client}
+                    </span>
+                    {" � "}
+                    <span className="font-mono">{design.id}</span>
+                  </p>
+                </CardContent>
+
+                <CardFooter className="gap-2 border-t border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 gap-1.5"
+                    onClick={() => {
+                      setSelectedDesign(design);
+                      setIsViewOpen(true);
+                    }}
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                    Review
+                  </Button>
+                  {design.status === "Pending" && (
+                    <>
+                      <Button
+                        size="sm"
+                        className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                        onClick={() => handleApprove(design.id)}
+                        disabled={actionId === design.id}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1 gap-1.5"
+                        onClick={() => openRejectDialog(design.id)}
+                        disabled={actionId === design.id}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                </CardFooter>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      {/* Review Dialog */}
+      <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{selectedDesign?.title}</DialogTitle>
+            <DialogDescription>
+              Submitted by <strong>{selectedDesign?.designer}</strong> for{" "}
+              {selectedDesign?.client} � {selectedDesign?.id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 shadow-inner dark:bg-slate-800">
+            {selectedDesign ? (
+              selectedDesign.image ? (
+                <img
+                  src={selectedDesign.image}
+                  alt={selectedDesign.title}
+                  className="h-full w-full object-contain"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
+                  No preview available
+                </div>
+              )
+            ) : null}
+          </div>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setIsViewOpen(false)}>
+              Close
+            </Button>
+            {selectedDesign?.status === "Pending" && (
+              <>
+                <Button
+                  variant="destructive"
+                  className="gap-2"
+                  onClick={() =>
+                    selectedDesign && openRejectDialog(selectedDesign.id)
+                  }
+                  disabled={actionId === selectedDesign.id}
+                >
+                  <X className="h-4 w-4" /> Reject
+                </Button>
+                <Button
+                  className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+                  onClick={() => selectedDesign && handleApprove(selectedDesign.id)}
+                  disabled={actionId === selectedDesign?.id}
+                >
+                  <Check className="h-4 w-4" /> Approve Design
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reject Design</DialogTitle>
+            <DialogDescription>
+              Add a short reason to help the client fix the submission.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="design-reject-reason">Rejection Reason</Label>
+            <textarea
+              id="design-reject-reason"
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              rows={4}
+              placeholder="Describe why this design was rejected..."
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition-all focus:border-red-400 focus:ring-2 focus:ring-red-200 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-red-500 dark:focus:ring-red-900/40"
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button variant="outline" onClick={() => setIsRejectOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() =>
+                rejectTargetId && handleReject(rejectTargetId, rejectReason.trim())
+              }
+              disabled={
+                !rejectTargetId ||
+                rejectReason.trim().length === 0 ||
+                actionId === rejectTargetId
+              }
+            >
+              Reject Design
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+
