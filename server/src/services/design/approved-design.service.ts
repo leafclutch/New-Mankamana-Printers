@@ -1,5 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../../connect";
 
 // Client: List all my approved designs
 // getMyApprovedDesignsService: Returns all ACTIVE approved designs for the logged-in client

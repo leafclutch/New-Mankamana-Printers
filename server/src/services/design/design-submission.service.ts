@@ -1,6 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "../../connect";
+import { Prisma } from "@prisma/client";
 import { sendDesignApproved, sendDesignRejected } from "../../utils/email";
-const prisma = new PrismaClient();
 
 // createDesignSubmissionService: Atomic transaction to submit a new design for review
 export const createDesignSubmissionService = async (data: {
@@ -95,6 +95,7 @@ export const getAdminSubmissionsService = async (options: {
       where,
       include: {
         client: { select: { id: true, business_name: true, phone_number: true } },
+        approvedDesign: { select: { designCode: true } },
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -125,59 +126,82 @@ export const approveSubmissionService = async (
   adminId: string,
   note?: string
 ) => {
-  // Fetch client email before transaction
+  // Pre-flight check and email data fetch before transaction
   const submissionWithClient = await prisma.designSubmission.findUnique({
     where: { id: submissionId },
     include: { client: { select: { email: true, business_name: true } } },
   });
 
-  const result = await prisma.$transaction(async (tx) => {
-    const submission = await tx.designSubmission.findUnique({ where: { id: submissionId } });
-    if (!submission) throw new Error("Submission not found");
-    if (submission.status !== "PENDING_REVIEW") throw new Error("Submission is not pending review");
-
-    // Generate unique public Design ID
-    const nanoId = Math.random().toString(36).substr(2, 6).toUpperCase();
-    const designCode = `DSN-${new Date().getFullYear()}-${nanoId}`;
-
-    // Create approved design
-    const approvedDesign = await tx.approvedDesign.create({
-      data: {
-        designCode,
-        clientId: submission.clientId,
-        submissionId: submission.id,
-        approvedFileUrl: submission.fileUrl,
-        approvedBy_id: adminId,
-        status: "ACTIVE",
-      },
-    });
-
-    // Update submission status
-    const updatedSubmission = await tx.designSubmission.update({
-      where: { id: submissionId },
-      data: {
-        status: "APPROVED",
-        approvedDesignId: approvedDesign.id,
-        reviewedBy_id: adminId,
-        reviewedAt: new Date(),
-        feedbackMessage: note,
-      },
-    });
-
-    return { submission: updatedSubmission, approvedDesign };
-  });
-
-  // Send approval email (non-blocking)
-  if (submissionWithClient?.client) {
-    sendDesignApproved({
-      to: submissionWithClient.client.email,
-      businessName: submissionWithClient.client.business_name,
-      designCode: result.approvedDesign.designCode,
-      designTitle: submissionWithClient.title ?? undefined,
-    }).catch((err) => console.error("[Email] Failed to send design approval:", err));
+  if (!submissionWithClient) throw new Error("Submission not found");
+  if (submissionWithClient.status !== "PENDING_REVIEW") {
+    throw new Error(
+      submissionWithClient.status === "APPROVED"
+        ? "This submission has already been approved."
+        : "This submission has already been reviewed and cannot be approved."
+    );
   }
 
-  return result;
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      // Re-read inside transaction to guard against concurrent approval
+      const submission = await tx.designSubmission.findUnique({ where: { id: submissionId } });
+      if (!submission) throw new Error("Submission not found");
+      if (submission.status !== "PENDING_REVIEW") {
+        throw new Error(
+          submission.status === "APPROVED"
+            ? "This submission has already been approved."
+            : "This submission has already been reviewed and cannot be approved."
+        );
+      }
+
+      // Generate cryptographically random design code
+      const { randomBytes } = await import("crypto");
+      const nanoId = randomBytes(3).toString("hex").toUpperCase();
+      const designCode = `DSN-${new Date().getFullYear()}-${nanoId}`;
+
+      const approvedDesign = await tx.approvedDesign.create({
+        data: {
+          designCode,
+          clientId: submission.clientId,
+          submissionId: submission.id,
+          approvedFileUrl: submission.fileUrl,
+          approvedBy_id: adminId,
+          status: "ACTIVE",
+        },
+      });
+
+      const updatedSubmission = await tx.designSubmission.update({
+        where: { id: submissionId },
+        data: {
+          status: "APPROVED",
+          approvedDesignId: approvedDesign.id,
+          reviewedBy_id: adminId,
+          reviewedAt: new Date(),
+          feedbackMessage: note,
+        },
+      });
+
+      return { submission: updatedSubmission, approvedDesign };
+    });
+
+    // Send approval email (non-blocking)
+    if (submissionWithClient.client) {
+      sendDesignApproved({
+        to: submissionWithClient.client.email,
+        businessName: submissionWithClient.client.business_name,
+        designCode: result.approvedDesign.designCode,
+        designTitle: submissionWithClient.title ?? undefined,
+      }).catch((err) => console.error("[Email] Failed to send design approval:", err));
+    }
+
+    return result;
+  } catch (err: any) {
+    // P2002: unique constraint on submissionId — a concurrent request already created the ApprovedDesign
+    if (err?.code === "P2002") {
+      throw new Error("This submission has already been approved (concurrent request).");
+    }
+    throw err;
+  }
 };
 
 // rejectSubmissionService: Rejects a submission and captures administrative feedback for the client

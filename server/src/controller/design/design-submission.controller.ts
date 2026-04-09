@@ -31,7 +31,7 @@ export const createDesignSubmission = async (req: Request, res: Response, next: 
 
     let fileUrl = "";
     try {
-      fileUrl = await uploadToSupabase(file, "submissions");
+      fileUrl = await uploadToSupabase(file, "designs/submissions");
     } catch (uploadError: any) {
       return res.status(500).json({ success: false, message: "File upload failed", error: uploadError.message });
     }
@@ -166,6 +166,7 @@ export const getAdminSubmissions = async (req: Request, res: Response) => {
       fileType: i.fileType,
       client: i.client ? { id: i.client.id, name: i.client.business_name, phone: i.client.phone_number } : null,
       submittedAt: i.submittedAt,
+      designCode: i.approvedDesign?.designCode ?? null,
     }));
 
     res.status(200).json({

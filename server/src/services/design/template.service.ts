@@ -1,5 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../../connect";
 
 // getCategoriesService: Logic to fetch all template categories from the database
 export const getCategoriesService = async () => {

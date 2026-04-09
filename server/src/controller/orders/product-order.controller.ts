@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as orderService from "../../services/orders/product-order.service";
-import { createProductOrderSchema, updateOrderStatusSchema } from "../../validators/order.validator";
+import { createProductOrderSchema, updateOrderStatusSchema, setDeliveryDateSchema } from "../../validators/order.validator";
 import { uploadToSupabase } from "../../utils/file-upload";
 
 // createProductOrder: Handles the placement of a new order by a client, with optional payment proof upload
@@ -18,7 +18,7 @@ export const createProductOrder = async (req: Request, res: Response) => {
 
     if (req.file) {
       try {
-        paymentProofUrl = await uploadToSupabase(req.file, "order-payment-proofs");
+        paymentProofUrl = await uploadToSupabase(req.file, "orders/payment-proofs");
         paymentProofFileName = req.file.originalname;
         paymentProofMimeType = req.file.mimetype;
         paymentProofFileSize = req.file.size;
@@ -89,8 +89,27 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "Validation failed", errors: validated.error.issues });
     }
 
-    const order = await orderService.updateOrderStatusService(orderId as string, validated.data.status);
+    const order = await orderService.updateOrderStatusService(
+      orderId as string,
+      validated.data.status,
+      validated.data.expected_delivery_date
+    );
     res.status(200).json({ success: true, message: "Order status updated successfully", data: order });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message || "Internal server error" });
+  }
+};
+
+// setOrderDeliveryDate: Admin-only — set or update expected delivery date without changing status
+export const setOrderDeliveryDate = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const validated = setDeliveryDateSchema.safeParse(req.body);
+    if (!validated.success) {
+      return res.status(400).json({ success: false, message: "Validation failed", errors: validated.error.issues });
+    }
+    const order = await orderService.setOrderDeliveryDateService(orderId as string, validated.data.expected_delivery_date);
+    res.status(200).json({ success: true, message: "Expected delivery date updated", data: order });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message || "Internal server error" });
   }

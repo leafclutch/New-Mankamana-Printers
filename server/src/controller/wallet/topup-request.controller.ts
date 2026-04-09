@@ -33,7 +33,7 @@ export const submitTopupRequest = async (req: Request, res: Response) => {
     // Upload proof to Supabase private bucket
     let proofUrl: string;
     try {
-      proofUrl = await uploadToSupabase(file, "payment-proofs");
+      proofUrl = await uploadToSupabase(file, "wallet/payment-proofs");
     } catch (uploadError: any) {
       return res.status(500).json({ success: false, message: "Proof upload failed", error: uploadError.message });
     }

@@ -9,11 +9,10 @@ export interface DesignListItem {
   status: DesignStatusUi;
   image: string;
   fileUrl?: string;
-  previewUrl?: string;
   designCode?: string;
 }
 
-interface PendingDesignApi {
+interface SubmissionApi {
   submissionId: string;
   title: string;
   status: "PENDING_REVIEW" | "APPROVED" | "REJECTED";
@@ -21,21 +20,11 @@ interface PendingDesignApi {
   fileUrl?: string | null;
   fileType?: string | null;
   notes?: string | null;
+  designCode?: string | null;
   client?: {
     id?: string | null;
     name?: string | null;
     phone?: string | null;
-  } | null;
-}
-
-interface ApprovedDesignApi {
-  designId: string;
-  status: "APPROVED" | "ARCHIVED";
-  approvedAt?: string | null;
-  submissionId?: string | null;
-  client?: {
-    id?: string | null;
-    name?: string | null;
   } | null;
 }
 
@@ -47,65 +36,32 @@ const formatDate = (isoDate: string) => {
 
 const safeJson = async (response: Response) => {
   const raw = await response.text();
-  if (!raw || raw.trim().length === 0) {
-    return {};
-  }
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return { message: raw };
-  }
+  if (!raw || raw.trim().length === 0) return {};
+  try { return JSON.parse(raw); } catch { return { message: raw }; }
 };
 
-const mapPendingDesign = (design: PendingDesignApi): DesignListItem => ({
-  id: design.submissionId,
-  title: design.title || `Design Submission ${design.submissionId.slice(0, 6)}`,
-  client: design.client?.name || "Unknown Client",
-  designer: design.client?.name || "Client",
-  submittedDate: formatDate(design.submittedAt),
-  status: design.status === "PENDING_REVIEW" ? "Pending" : design.status === "APPROVED" ? "Approved" : "Rejected",
-  image: design.fileUrl || "",
-  fileUrl: design.fileUrl || undefined,
-  designCode: undefined,
+const mapSubmission = (s: SubmissionApi): DesignListItem => ({
+  id: s.submissionId,
+  title: s.title || `Submission ${s.submissionId.slice(0, 6)}`,
+  client: s.client?.name || "Unknown Client",
+  designer: s.client?.name || "Client",
+  submittedDate: formatDate(s.submittedAt),
+  status: s.status === "PENDING_REVIEW" ? "Pending" : s.status === "APPROVED" ? "Approved" : "Rejected",
+  image: s.fileUrl || "",
+  fileUrl: s.fileUrl || undefined,
+  designCode: s.designCode ?? undefined,
 });
 
-const mapApprovedDesign = (design: ApprovedDesignApi): DesignListItem => ({
-  id: design.designId,
-  title: design.designId || `Approved Design ${design.designId.slice(0, 6)}`,
-  client: design.client?.name || "Unknown Client",
-  designer: design.client?.name || "Client",
-  submittedDate: formatDate(design.approvedAt || ""),
-  status: "Approved",
-  image: "",
-  designCode: design.designId,
-});
-
-export const fetchPendingDesignSubmissions = async (): Promise<DesignListItem[]> => {
-  const response = await fetch("/api/admin/designs/submissions", {
+// fetchAllDesignSubmissions: Loads ALL submissions (pending + approved + rejected) for the admin review page.
+// Using a single source avoids duplicate cards that occurred when merging submissions + approved-designs lists.
+export const fetchAllDesignSubmissions = async (): Promise<DesignListItem[]> => {
+  const response = await fetch("/api/admin/designs/submissions?limit=200", {
     method: "GET",
     cache: "no-store",
   });
-
   const data = await safeJson(response);
-  if (!response.ok) {
-    throw new Error(data?.message || "Failed to load design submissions.");
-  }
-
-  return (data?.data?.items || []).map(mapPendingDesign);
-};
-
-export const fetchApprovedDesigns = async (): Promise<DesignListItem[]> => {
-  const response = await fetch("/api/admin/designs", {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  const data = await safeJson(response);
-  if (!response.ok) {
-    throw new Error(data?.message || "Failed to load approved designs.");
-  }
-
-  return (data?.data?.items || []).map(mapApprovedDesign);
+  if (!response.ok) throw new Error(data?.message || "Failed to load design submissions.");
+  return (data?.data?.items || []).map(mapSubmission);
 };
 
 export const approveDesignSubmission = async (

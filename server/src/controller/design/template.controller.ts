@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { getCategoriesService, getTemplatesService, getTemplateByIdService, createCategoryService, createTemplateService } from "../../services/design/template.service";
 import { getTemplatesQuerySchema, createTemplateCategorySchema, createTemplateSchema } from "../../validators/template.validator";
 import { uploadToSupabase } from "../../utils/file-upload";
+import prisma from "../../connect";
 
 // getTemplateCategories: Fetches all available categories for design templates
 export const getTemplateCategories = async (req: Request, res: Response) => {
@@ -97,10 +98,16 @@ export const createTemplate = async (req: Request, res: Response) => {
     const file = req.file;
     const body = { ...req.body };
     
-    // If a file was uploaded, upload to Supabase
+    // Resolve folder: templates/{category-slug} for organised storage
     if (file) {
       try {
-        body.fileUrl = await uploadToSupabase(file, "templates");
+        let folder = "templates/general";
+        const categoryId = req.body.categoryId;
+        if (categoryId) {
+          const cat = await prisma.templateCategory.findUnique({ where: { id: categoryId } });
+          if (cat?.slug) folder = `templates/${cat.slug}`;
+        }
+        body.fileUrl = await uploadToSupabase(file, folder);
       } catch (uploadError: any) {
         return res.status(500).json({ success: false, message: "File upload failed", error: uploadError.message });
       }

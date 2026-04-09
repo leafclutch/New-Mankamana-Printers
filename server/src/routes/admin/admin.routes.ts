@@ -96,6 +96,7 @@ router.get("/pricing/:variantId", protect, restrictTo("ADMIN"), adminPricingCont
 // ORDERS MANAGEMENT: Overview and status updates for all client orders
 router.get("/orders", protect, restrictTo("ADMIN"), productOrderController.getAdminOrders);
 router.patch("/orders/:orderId/status", protect, restrictTo("ADMIN"), productOrderController.updateOrderStatus);
+router.patch("/orders/:orderId/delivery-date", protect, restrictTo("ADMIN"), productOrderController.setOrderDeliveryDate);
 router.get("/orders/:orderId", protect, restrictTo("ADMIN"), productOrderController.getOrderDetails);
 
 // ANALYTICS: Visitor and page-view stats for admin dashboard

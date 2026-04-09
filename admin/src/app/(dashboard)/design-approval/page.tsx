@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import {
@@ -31,8 +31,7 @@ import {
 } from "lucide-react";
 import {
   approveDesignSubmission,
-  fetchApprovedDesigns,
-  fetchPendingDesignSubmissions,
+  fetchAllDesignSubmissions,
   rejectDesignSubmission,
   type DesignListItem,
 } from "@/services/designApprovalService";
@@ -80,11 +79,11 @@ export default function DesignApprovalPage() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [pending, approved] = await Promise.all([
-        fetchPendingDesignSubmissions(),
-        fetchApprovedDesigns(),
-      ]);
-      setDesigns([...pending, ...approved]);
+      // Single source of truth: ALL submissions (pending/approved/rejected).
+      // Previously fetching submissions + approved-designs separately caused each approved
+      // submission to appear twice on this page.
+      const all = await fetchAllDesignSubmissions();
+      setDesigns(all);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unable to load designs.";
@@ -99,13 +98,18 @@ export default function DesignApprovalPage() {
   }, []);
 
   const handleApprove = async (id: string) => {
+    // Optimistically disable the button before the async call
     setActionId(id);
     try {
       await approveDesignSubmission(id);
+      // Optimistically mark as Approved in local state immediately, then refresh
+      setDesigns((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, status: "Approved" } : d))
+      );
       await loadDesigns();
       toast({
         title: "Design Approved",
-        description: "The design has been approved for printing.",
+        description: "The design has been approved and the client has been notified.",
         variant: "success",
       });
       setIsViewOpen(false);
@@ -132,7 +136,7 @@ export default function DesignApprovalPage() {
       );
       toast({
         title: "Design Rejected",
-        description: "Designer will be notified.",
+        description: "The client has been notified.",
         variant: "destructive",
       });
       setIsViewOpen(false);
@@ -227,6 +231,7 @@ export default function DesignApprovalPage() {
         ) : (
           designs.map((design) => {
             const cfg = STATUS_CONFIG[design.status as keyof typeof STATUS_CONFIG];
+            const isPending = design.status === "Pending";
             return (
               <Card
                 key={design.id}
@@ -258,6 +263,7 @@ export default function DesignApprovalPage() {
                   {/* Hover overlay */}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                     <Button
+                      type="button"
                       size="sm"
                       variant="secondary"
                       className="gap-2 bg-white/95 text-slate-900 hover:bg-white shadow-lg"
@@ -288,17 +294,20 @@ export default function DesignApprovalPage() {
                 </CardHeader>
 
                 <CardContent className="p-4 pt-2.5">
-                  <p className="text-xs text-slate-500">
-                    <span className="font-medium text-slate-700 dark:text-slate-300">
-                      {design.client}
-                    </span>
-                    {" � "}
-                    <span className="font-mono">{design.id}</span>
+                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                    {design.client}
                   </p>
+                  {design.designCode && (
+                    <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      Code:{" "}
+                      <span className="font-mono tracking-wide">{design.designCode}</span>
+                    </p>
+                  )}
                 </CardContent>
 
                 <CardFooter className="gap-2 border-t border-slate-100 bg-slate-50/60 p-3 dark:border-slate-800 dark:bg-slate-800/30">
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     className="flex-1 gap-1.5"
@@ -310,23 +319,25 @@ export default function DesignApprovalPage() {
                     <Eye className="h-3.5 w-3.5" />
                     Review
                   </Button>
-                  {design.status === "Pending" && (
+                  {isPending && (
                     <>
                       <Button
+                        type="button"
                         size="sm"
                         className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700"
                         onClick={() => handleApprove(design.id)}
-                        disabled={actionId === design.id}
+                        disabled={actionId !== null}
                       >
                         <Check className="h-3.5 w-3.5" />
-                        Approve
+                        {actionId === design.id ? "Approving..." : "Approve"}
                       </Button>
                       <Button
+                        type="button"
                         size="sm"
                         variant="destructive"
                         className="flex-1 gap-1.5"
                         onClick={() => openRejectDialog(design.id)}
-                        disabled={actionId === design.id}
+                        disabled={actionId !== null}
                       >
                         <X className="h-3.5 w-3.5" />
                         Reject
@@ -346,48 +357,56 @@ export default function DesignApprovalPage() {
           <DialogHeader>
             <DialogTitle className="text-lg">{selectedDesign?.title}</DialogTitle>
             <DialogDescription>
-              Submitted by <strong>{selectedDesign?.designer}</strong> for{" "}
-              {selectedDesign?.client} � {selectedDesign?.id}
+              Submitted by <strong>{selectedDesign?.designer}</strong> &mdash;{" "}
+              {selectedDesign?.client}
+              {selectedDesign?.designCode && (
+                <>
+                  {" "}
+                  &middot; Code:{" "}
+                  <span className="font-mono text-emerald-700 dark:text-emerald-400">
+                    {selectedDesign.designCode}
+                  </span>
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="aspect-video w-full overflow-hidden rounded-lg bg-slate-100 shadow-inner dark:bg-slate-800">
-            {selectedDesign ? (
-              selectedDesign.image ? (
-                <img
-                  src={selectedDesign.image}
-                  alt={selectedDesign.title}
-                  className="h-full w-full object-contain"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
-                  No preview available
-                </div>
-              )
-            ) : null}
+            {selectedDesign?.image ? (
+              <img
+                src={selectedDesign.image}
+                alt={selectedDesign.title}
+                className="h-full w-full object-contain"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
+                No preview available
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:justify-end">
-            <Button variant="outline" onClick={() => setIsViewOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsViewOpen(false)}>
               Close
             </Button>
             {selectedDesign?.status === "Pending" && (
               <>
                 <Button
+                  type="button"
                   variant="destructive"
                   className="gap-2"
-                  onClick={() =>
-                    selectedDesign && openRejectDialog(selectedDesign.id)
-                  }
-                  disabled={actionId === selectedDesign.id}
+                  onClick={() => selectedDesign && openRejectDialog(selectedDesign.id)}
+                  disabled={actionId !== null}
                 >
                   <X className="h-4 w-4" /> Reject
                 </Button>
                 <Button
+                  type="button"
                   className="gap-2 bg-emerald-600 hover:bg-emerald-700"
                   onClick={() => selectedDesign && handleApprove(selectedDesign.id)}
-                  disabled={actionId === selectedDesign?.id}
+                  disabled={actionId !== null}
                 >
-                  <Check className="h-4 w-4" /> Approve Design
+                  <Check className="h-4 w-4" />
+                  {actionId === selectedDesign?.id ? "Approving..." : "Approve Design"}
                 </Button>
               </>
             )}
@@ -395,6 +414,7 @@ export default function DesignApprovalPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Reject Dialog */}
       <Dialog open={isRejectOpen} onOpenChange={setIsRejectOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -415,10 +435,11 @@ export default function DesignApprovalPage() {
             />
           </div>
           <DialogFooter className="gap-2 sm:justify-end">
-            <Button variant="outline" onClick={() => setIsRejectOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setIsRejectOpen(false)}>
               Cancel
             </Button>
             <Button
+              type="button"
               variant="destructive"
               onClick={() =>
                 rejectTargetId && handleReject(rejectTargetId, rejectReason.trim())
@@ -426,10 +447,10 @@ export default function DesignApprovalPage() {
               disabled={
                 !rejectTargetId ||
                 rejectReason.trim().length === 0 ||
-                actionId === rejectTargetId
+                actionId !== null
               }
             >
-              Reject Design
+              {actionId === rejectTargetId ? "Rejecting..." : "Reject Design"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -437,5 +458,3 @@ export default function DesignApprovalPage() {
     </div>
   );
 }
-
-

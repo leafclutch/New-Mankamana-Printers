@@ -192,8 +192,8 @@ export const getAllOrdersService = async () => {
   });
 };
 
-// updateOrderStatusService: Logic to transition an order status through the defined processing states
-export const updateOrderStatusService = async (orderId: string, status: string) => {
+// updateOrderStatusService: Logic to transition an order status; admin can cancel any active order
+export const updateOrderStatusService = async (orderId: string, status: string, expectedDeliveryDate?: string) => {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
   });
@@ -202,13 +202,17 @@ export const updateOrderStatusService = async (orderId: string, status: string) 
     throw new Error("Order not found");
   }
 
-  const allowedTargetStatuses = Object.values(ORDER_STATUS_FLOW).filter(Boolean);
-  if (!allowedTargetStatuses.includes(status)) {
-    throw new Error("Unsupported order status");
+  const FINAL_STATUSES = ["ORDER_DELIVERED", "ORDER_CANCELLED"];
+
+  if (FINAL_STATUSES.includes(order.status as string)) {
+    throw new Error(`Cannot update a ${order.status.replace("ORDER_", "").toLowerCase()} order.`);
   }
 
-  if (order.status === status) {
-    return order;
+  if (status === "ORDER_CANCELLED") {
+    return await prisma.order.update({
+      where: { id: orderId },
+      data: { status: "ORDER_CANCELLED" as any, updated_at: new Date() },
+    });
   }
 
   const allowedNextStatus = ORDER_STATUS_FLOW[order.status];
@@ -218,8 +222,24 @@ export const updateOrderStatusService = async (orderId: string, status: string) 
     );
   }
 
+  const updateData: any = { status: status as any, updated_at: new Date() };
+  if (expectedDeliveryDate) {
+    updateData.expected_delivery_date = new Date(expectedDeliveryDate);
+  }
+
   return await prisma.order.update({
     where: { id: orderId },
-    data: { status: status as any, updated_at: new Date() },
+    data: updateData,
+  });
+};
+
+// setOrderDeliveryDateService: Admin sets or updates the expected delivery date without changing status
+export const setOrderDeliveryDateService = async (orderId: string, expectedDeliveryDate: string) => {
+  const order = await prisma.order.findUnique({ where: { id: orderId } });
+  if (!order) throw new Error("Order not found");
+
+  return await prisma.order.update({
+    where: { id: orderId },
+    data: { expected_delivery_date: new Date(expectedDeliveryDate), updated_at: new Date() },
   });
 };

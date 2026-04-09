@@ -1,12 +1,15 @@
 import { Request, Response } from "express";
-import { uploadFileToSupabase } from "../services/upload.service";
+import { uploadFileToSupabase } from "../utils/file-upload";
 
-// Folders that callers are permitted to upload into
+// Folders that callers are permitted to upload into via the generic /uploads endpoint
 const ALLOWED_FOLDERS = new Set([
   "general",
-  "designs",
-  "payment-proofs",
-  "templates",
+  "designs/submissions",
+  "designs/approved",
+  "orders/payment-proofs",
+  "wallet/payment-proofs",
+  "templates/general",
+  "products/images",
   "profile",
   "qr-codes",
 ]);

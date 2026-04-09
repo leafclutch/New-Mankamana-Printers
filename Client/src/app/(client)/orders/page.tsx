@@ -17,6 +17,23 @@ const STATUS_FILTERS = [
     { label: "Cancelled", value: "ORDER_CANCELLED" },
 ];
 
+// Status flow for the progress indicator
+const STATUS_FLOW = [
+    "ORDER_PLACED",
+    "ORDER_PROCESSING",
+    "ORDER_PREPARED",
+    "ORDER_DISPATCHED",
+    "ORDER_DELIVERED",
+];
+
+const STATUS_STEP_LABELS: Record<string, string> = {
+    ORDER_PLACED: "Placed",
+    ORDER_PROCESSING: "Processing",
+    ORDER_PREPARED: "Prepared",
+    ORDER_DISPATCHED: "Dispatched",
+    ORDER_DELIVERED: "Delivered",
+};
+
 interface ApiOrder {
     id: string;
     quantity: number;
@@ -26,11 +43,50 @@ interface ApiOrder {
     payment_status: string;
     notes?: string;
     created_at: string;
+    expected_delivery_date?: string | null;
     variant: {
         variant_name: string;
         product: { name: string };
     };
     approvedDesign?: { designCode: string } | null;
+}
+
+function OrderStatusTracker({ status }: { status: string }) {
+    if (status === "ORDER_CANCELLED") {
+        return (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-[0.78rem] font-medium text-red-600">
+                <span className="text-base">✕</span> Order Cancelled
+            </div>
+        );
+    }
+    const currentIdx = STATUS_FLOW.indexOf(status);
+    return (
+        <div className="flex items-center gap-1">
+            {STATUS_FLOW.map((s, idx) => (
+                <div key={s} className="flex items-center">
+                    <div
+                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold transition-colors ${
+                            idx < currentIdx
+                                ? "bg-[#1a56db] text-white"
+                                : idx === currentIdx
+                                ? "bg-[#1a56db] text-white ring-2 ring-[#1a56db]/30"
+                                : "bg-[#e2e8f0] text-[#94a3b8]"
+                        }`}
+                        title={STATUS_STEP_LABELS[s]}
+                    >
+                        {idx < currentIdx ? "✓" : idx + 1}
+                    </div>
+                    {idx < STATUS_FLOW.length - 1 && (
+                        <div
+                            className={`h-0.5 w-5 transition-colors ${
+                                idx < currentIdx ? "bg-[#1a56db]" : "bg-[#e2e8f0]"
+                            }`}
+                        />
+                    )}
+                </div>
+            ))}
+        </div>
+    );
 }
 
 export default function OrdersPage() {
@@ -95,6 +151,7 @@ export default function OrdersPage() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Search orders…"
+                        aria-label="Search orders"
                         className="form-input w-full sm:w-[220px] pl-9 py-2 pr-3.5"
                     />
                 </div>
@@ -116,6 +173,15 @@ export default function OrdersPage() {
                 </div>
             </div>
 
+            {/* Cancel notice */}
+            <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <span className="mt-0.5 text-amber-500">ℹ</span>
+                <p className="text-[0.82rem] text-amber-800">
+                    To cancel an order, please contact{" "}
+                    <strong>New Mankamana Printers</strong> directly. Clients cannot cancel orders online.
+                </p>
+            </div>
+
             {/* Loading / Error */}
             {loading && (
                 <div className="bg-white rounded-2xl border border-[#e2e8f0] p-12 text-center text-[#94a3b8]">
@@ -133,17 +199,17 @@ export default function OrdersPage() {
                 <>
                     <div className="hidden md:block">
                         <div className="bg-white rounded-2xl border border-[#e2e8f0] overflow-x-auto">
-                            <table className="w-full border-collapse min-w-[800px]">
+                            <table className="w-full border-collapse min-w-[900px]">
                                 <thead>
                                     <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-left text-[0.78rem] uppercase tracking-[0.04em]">
-                                        <th className="p-4 font-bold">Order ID</th>
+                                        <th className="p-4 font-bold">Order</th>
                                         <th className="p-4 font-bold">Product</th>
-                                        <th className="p-4 font-bold">Variant</th>
                                         <th className="p-4 font-bold">Qty</th>
                                         <th className="p-4 font-bold">Amount</th>
                                         <th className="p-4 font-bold">Payment</th>
                                         <th className="p-4 font-bold">Status</th>
-                                        <th className="p-4 font-bold">Date</th>
+                                        <th className="p-4 font-bold">Est. Delivery</th>
+                                        <th className="p-4 font-bold">Placed On</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#e2e8f0]">
@@ -156,14 +222,26 @@ export default function OrdersPage() {
                                     ) : (
                                         filtered.map((order) => (
                                             <tr key={order.id} className="hover:bg-[#f8fafc] transition-colors">
-                                                <td className="p-4 text-[#1a56db] font-mono font-bold text-[0.75rem]">
-                                                    {order.id.slice(0, 8)}…
+                                                <td className="p-4">
+                                                    <p className="text-[#1a56db] font-mono font-bold text-[0.75rem]">
+                                                        #{order.id.slice(0, 8)}
+                                                    </p>
+                                                    <div className="mt-1.5">
+                                                        <OrderStatusTracker status={order.status} />
+                                                    </div>
                                                 </td>
-                                                <td className="p-4 font-semibold text-[#0f172a] text-[0.88rem]">
-                                                    {order.variant.product.name}
-                                                </td>
-                                                <td className="p-4 text-[#475569] text-[0.82rem]">
-                                                    {order.variant.variant_name}
+                                                <td className="p-4">
+                                                    <p className="font-semibold text-[#0f172a] text-[0.88rem]">
+                                                        {order.variant.product.name}
+                                                    </p>
+                                                    <p className="text-[#475569] text-[0.78rem]">
+                                                        {order.variant.variant_name}
+                                                    </p>
+                                                    {order.approvedDesign && (
+                                                        <p className="text-[0.72rem] text-[#64748b] mt-0.5">
+                                                            Design: <span className="font-mono font-semibold">{order.approvedDesign.designCode}</span>
+                                                        </p>
+                                                    )}
                                                 </td>
                                                 <td className="p-4 text-[#475569]">
                                                     {order.quantity.toLocaleString()}
@@ -179,13 +257,24 @@ export default function OrdersPage() {
                                                             ? "bg-green-100 text-green-700"
                                                             : "bg-gray-100 text-gray-600"
                                                     }`}>
-                                                        {order.payment_status.replace("_", " ")}
+                                                        {order.payment_status.replace(/_/g, " ")}
                                                     </span>
                                                 </td>
                                                 <td className="p-4">
                                                     <span className={`px-2.5 py-1 rounded-full text-[0.75rem] font-semibold ${getStatusColor(order.status)}`}>
                                                         {getStatusLabel(order.status)}
                                                     </span>
+                                                </td>
+                                                <td className="p-4 text-[0.82rem]">
+                                                    {order.expected_delivery_date ? (
+                                                        <span className="text-[#0f172a] font-medium">
+                                                            {new Date(order.expected_delivery_date).toLocaleDateString("en-NP", {
+                                                                day: "numeric", month: "short", year: "numeric"
+                                                            })}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[#94a3b8]">—</span>
+                                                    )}
                                                 </td>
                                                 <td className="p-4 text-[#64748b] text-[0.82rem]">
                                                     {formatDate(order.created_at)}
@@ -208,21 +297,30 @@ export default function OrdersPage() {
                             filtered.map((order) => (
                                 <div
                                     key={order.id}
-                                    className="bg-white rounded-2xl border border-[#e2e8f0] p-4 flex flex-col gap-2 shadow-sm"
+                                    className={`bg-white rounded-2xl border p-4 flex flex-col gap-3 shadow-sm ${
+                                        order.status === "ORDER_CANCELLED"
+                                            ? "border-red-100"
+                                            : "border-[#e2e8f0]"
+                                    }`}
                                 >
                                     <div className="flex items-center justify-between">
                                         <span className="font-mono text-[#1a56db] text-[0.8rem] font-bold">
-                                            {order.id.slice(0, 8)}…
+                                            #{order.id.slice(0, 8)}
                                         </span>
                                         <span className={`px-2.5 py-1 rounded-full text-[0.75rem] font-semibold ${getStatusColor(order.status)}`}>
                                             {getStatusLabel(order.status)}
                                         </span>
                                     </div>
+
+                                    {/* Status tracker */}
+                                    <OrderStatusTracker status={order.status} />
+
                                     <div className="font-extrabold text-[#0f172a] text-[1rem]">
                                         {order.variant.product.name}
                                     </div>
                                     <div className="text-[0.82rem] text-[#475569]">{order.variant.variant_name}</div>
-                                    <div className="flex flex-wrap gap-4 text-[0.8rem] text-[#475569] mt-1">
+
+                                    <div className="flex flex-wrap gap-4 text-[0.8rem] text-[#475569]">
                                         <div>
                                             <span className="block font-medium text-[0.72rem] text-[#94a3b8]">Qty</span>
                                             <span>{order.quantity.toLocaleString()}</span>
@@ -233,16 +331,26 @@ export default function OrdersPage() {
                                         </div>
                                         <div>
                                             <span className="block font-medium text-[0.72rem] text-[#94a3b8]">Payment</span>
-                                            <span>{order.payment_status.replace("_", " ")}</span>
+                                            <span>{order.payment_status.replace(/_/g, " ")}</span>
                                         </div>
+                                        {order.expected_delivery_date && (
+                                            <div>
+                                                <span className="block font-medium text-[0.72rem] text-[#94a3b8]">Est. Delivery</span>
+                                                <span className="font-medium text-[#0f172a]">
+                                                    {new Date(order.expected_delivery_date).toLocaleDateString("en-NP", {
+                                                        day: "numeric", month: "short", year: "numeric"
+                                                    })}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     {order.approvedDesign && (
                                         <div className="text-[0.78rem] text-[#64748b]">
                                             Design: <span className="font-mono font-semibold">{order.approvedDesign.designCode}</span>
                                         </div>
                                     )}
-                                    <div className="text-[0.78rem] text-[#94a3b8] mt-1">
-                                        {formatDate(order.created_at)}
+                                    <div className="text-[0.78rem] text-[#94a3b8]">
+                                        Placed: {formatDate(order.created_at)}
                                     </div>
                                 </div>
                             ))

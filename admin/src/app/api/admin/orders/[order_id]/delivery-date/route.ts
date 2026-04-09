@@ -14,33 +14,31 @@ async function toJsonResponse(apiResponse: Response) {
   const contentType = apiResponse.headers.get("content-type") || "";
   const rawBody = await apiResponse.text();
   let data: unknown = null;
-
   if (contentType.includes("application/json")) {
-    try {
-      data = JSON.parse(rawBody);
-    } catch {
-      data = { message: "Invalid JSON from backend." };
-    }
+    try { data = JSON.parse(rawBody); } catch { data = { message: "Invalid JSON from backend." }; }
   } else {
     data = { message: rawBody || "Unexpected response from backend." };
   }
-
   return NextResponse.json(data, { status: apiResponse.status });
 }
 
-export async function GET(request: Request) {
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<{ order_id: string }> }
+) {
   const token = await getAuthToken();
-  if (!token) {
-    return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
-  }
+  if (!token) return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
 
-  const { searchParams } = new URL(request.url);
-  const query = searchParams.toString();
+  const { order_id } = await context.params;
+  const payload = await request.json().catch(() => null);
 
   const apiResponse = await fetch(
-    `${API_BASE_URL}/admin/design-submissions${query ? `?${query}` : ""}`,
-    { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }
+    `${API_BASE_URL}/admin/orders/${order_id}/delivery-date`,
+    {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: payload ? JSON.stringify(payload) : undefined,
+    }
   );
-
   return toJsonResponse(apiResponse);
 }

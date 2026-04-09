@@ -157,15 +157,31 @@ export const approveTopupService = async (
   approvedAmount: number,
   note?: string
 ) => {
-  return prisma.$transaction(async (tx) => {
-    // 1. Fetch request and verify status
+  // Pre-flight idempotency check before entering transaction
+  const preCheck = await prisma.walletTopupRequest.findUnique({ where: { id: requestId } });
+  if (!preCheck) throw new Error("Top-up request not found");
+  if (preCheck.status !== "PENDING_REVIEW") {
+    throw new Error(
+      preCheck.status === "APPROVED"
+        ? "This top-up request has already been approved."
+        : "This top-up request has already been reviewed."
+    );
+  }
+
+  try {
+  return await prisma.$transaction(async (tx) => {
+    // 1. Re-read inside transaction to guard against concurrent approval
     const request = await tx.walletTopupRequest.findUnique({
       where: { id: requestId },
     });
 
     if (!request) throw new Error("Top-up request not found");
     if (request.status !== "PENDING_REVIEW") {
-      throw new Error(`Request already ${request.status.toLowerCase()}`);
+      throw new Error(
+        request.status === "APPROVED"
+          ? "This top-up request has already been approved."
+          : "This top-up request has already been reviewed."
+      );
     }
 
     // 2. Get wallet and current balance
@@ -230,6 +246,12 @@ export const approveTopupService = async (
       newBalance,
     };
   });
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      throw new Error("This top-up request has already been approved (concurrent request).");
+    }
+    throw err;
+  }
 };
 
 // rejectTopupService: Logic to deny a top-up request, capture feedback, and alert the client
@@ -239,6 +261,16 @@ export const rejectTopupService = async (
   reason: string,
   reasonCode?: string
 ) => {
+  const preCheck = await prisma.walletTopupRequest.findUnique({ where: { id: requestId } });
+  if (!preCheck) throw new Error("Top-up request not found");
+  if (preCheck.status !== "PENDING_REVIEW") {
+    throw new Error(
+      preCheck.status === "REJECTED"
+        ? "This top-up request has already been rejected."
+        : "This top-up request has already been reviewed."
+    );
+  }
+
   return prisma.$transaction(async (tx) => {
     const request = await tx.walletTopupRequest.findUnique({
       where: { id: requestId },
@@ -246,7 +278,7 @@ export const rejectTopupService = async (
 
     if (!request) throw new Error("Top-up request not found");
     if (request.status !== "PENDING_REVIEW") {
-      throw new Error(`Request already ${request.status.toLowerCase()}`);
+      throw new Error("This top-up request has already been reviewed.");
     }
 
     const updatedRequest = await tx.walletTopupRequest.update({

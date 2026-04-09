@@ -390,6 +390,8 @@ model Order {
   payment_proof_mime_type String?  @db.VarChar(100)
   payment_proof_file_size Int?
 
+  expected_delivery_date DateTime?
+
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt @default(now())
 

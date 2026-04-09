@@ -25,4 +25,9 @@ export const updateOrderStatusSchema = z.object({
     "ORDER_DELIVERED",
     "ORDER_CANCELLED",
   ]),
+  expected_delivery_date: z.string().optional(), // ISO date string e.g. "2025-05-10"
+});
+
+export const setDeliveryDateSchema = z.object({
+  expected_delivery_date: z.string().min(1, "Date is required"),
 });
