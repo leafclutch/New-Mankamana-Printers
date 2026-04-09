@@ -66,7 +66,7 @@ export const createRegistrationRequestService = async (data: {
       throw new AppError("This phone number has already been approved. Please log in with your credentials.", 400);
     }
     if (existingRequest.status === "REJECTED") {
-      throw new AppError("A previous registration request for this phone number was rejected. Please contact New Manakamana Printers for assistance.", 400);
+      throw new AppError("A previous registration request for this phone number was rejected. Please contact New Mankamana Printers for assistance.", 400);
     }
   }
 

@@ -5,7 +5,7 @@ import PageTracker from "@/components/layout/PageTracker";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
-  title: "Manakamana Printing Press – B2B Printing Platform",
+  title: "New Mankamana Printers – B2B Printing Platform",
   description:
     "Professional B2B printing platform. Order visiting cards, pamphlets, letterheads, ID cards, garment tags and more.",
 };

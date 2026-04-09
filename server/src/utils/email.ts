@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const FROM = `"Manakamana Printing" <${process.env.SMTP_EMAIL}>`;
+const FROM = `"New Mankamana Printers" <${process.env.SMTP_EMAIL}>`;
 
 // sendClientCredentials: Sends login credentials to a newly approved client
 export const sendClientCredentials = async (opts: {
@@ -23,11 +23,11 @@ export const sendClientCredentials = async (opts: {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Your Manakamana Printing Account is Ready",
+    subject: "Your New Mankamana Printers Account is Ready",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
         <div style="background: #0061FF; padding: 32px 40px;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Manakamana Printing</h1>
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">New Mankamana Printers</h1>
         </div>
         <div style="padding: 40px; border: 1px solid #e2e8f0; border-top: none;">
           <h2 style="font-size: 20px; margin: 0 0 8px;">Welcome, ${businessName}</h2>
@@ -56,7 +56,7 @@ export const sendClientCredentials = async (opts: {
           </p>
         </div>
         <div style="padding: 20px 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
-          <p style="margin: 0; color: #94a3b8; font-size: 12px;">Manakamana Printing &mdash; Professional Printing Services</p>
+          <p style="margin: 0; color: #94a3b8; font-size: 12px;">New Mankamana Printers &mdash; Professional Printing Services</p>
         </div>
       </div>
     `,
@@ -76,11 +76,11 @@ export const sendPasswordReset = async (opts: {
   await transporter.sendMail({
     from: FROM,
     to,
-    subject: "Your Manakamana Printing Password Has Been Reset",
+    subject: "Your New Mankamana Printers Password Has Been Reset",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
         <div style="background: #0061FF; padding: 32px 40px;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Manakamana Printing</h1>
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">New Mankamana Printers</h1>
         </div>
         <div style="padding: 40px; border: 1px solid #e2e8f0; border-top: none;">
           <h2 style="font-size: 20px; margin: 0 0 8px;">Password Reset</h2>
@@ -110,7 +110,7 @@ export const sendPasswordReset = async (opts: {
           </p>
         </div>
         <div style="padding: 20px 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
-          <p style="margin: 0; color: #94a3b8; font-size: 12px;">Manakamana Printing &mdash; Professional Printing Services</p>
+          <p style="margin: 0; color: #94a3b8; font-size: 12px;">New Mankamana Printers &mdash; Professional Printing Services</p>
         </div>
       </div>
     `,
@@ -133,7 +133,7 @@ export const sendDesignApproved = async (opts: {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
         <div style="background: #0061FF; padding: 32px 40px;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Manakamana Printing</h1>
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">New Mankamana Printers</h1>
         </div>
         <div style="padding: 40px; border: 1px solid #e2e8f0; border-top: none;">
           <h2 style="font-size: 20px; margin: 0 0 8px;">Design Approved</h2>
@@ -161,7 +161,7 @@ export const sendDesignApproved = async (opts: {
           </p>
         </div>
         <div style="padding: 20px 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
-          <p style="margin: 0; color: #94a3b8; font-size: 12px;">Manakamana Printing &mdash; Professional Printing Services</p>
+          <p style="margin: 0; color: #94a3b8; font-size: 12px;">New Mankamana Printers &mdash; Professional Printing Services</p>
         </div>
       </div>
     `,
@@ -184,7 +184,7 @@ export const sendDesignRejected = async (opts: {
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
         <div style="background: #0061FF; padding: 32px 40px;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Manakamana Printing</h1>
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">New Mankamana Printers</h1>
         </div>
         <div style="padding: 40px; border: 1px solid #e2e8f0; border-top: none;">
           <h2 style="font-size: 20px; margin: 0 0 8px;">Design Needs Revision</h2>
@@ -210,7 +210,7 @@ export const sendDesignRejected = async (opts: {
           </p>
         </div>
         <div style="padding: 20px 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
-          <p style="margin: 0; color: #94a3b8; font-size: 12px;">Manakamana Printing &mdash; Professional Printing Services</p>
+          <p style="margin: 0; color: #94a3b8; font-size: 12px;">New Mankamana Printers &mdash; Professional Printing Services</p>
         </div>
       </div>
     `,

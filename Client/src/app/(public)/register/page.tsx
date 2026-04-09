@@ -111,7 +111,7 @@ export default function RegisterPage() {
                                 <div className="flex items-center gap-2.5 mb-6">
                                 <Image src={'/main-logo.png'} alt="this is logo" className="cursor-pointer" width={52} height={52}/>
                                     <div>
-                                      <div className="text-white text-[0.9rem] font-extrabold tracking-[0.05em]">NEW MANAKAMANA</div>
+                                      <div className="text-white text-[0.9rem] font-extrabold tracking-[0.05em]">NEW MANKAMANA</div>
                                         <div className="text-white/[0.65] text-[0.6rem] tracking-[0.15em]">PRINTERS</div>
                                     </div>
                                 </div>
@@ -160,7 +160,7 @@ export default function RegisterPage() {
                                 </div>
                                 <h2 className="font-extrabold text-[1.18rem] sm:text-[1.25rem] mb-3 text-[#0f172a]">Response Submitted!</h2>
                                 <p className="text-[#64748b] text-[0.86rem] sm:text-[0.875rem] leading-[1.7] max-w-[300px]">
-                                    Your response has been submitted. Once New Manakamana Printers approves your request, your ID and password will be sent to your email.
+                                    Your response has been submitted. Once New Mankamana Printers approves your request, your ID and password will be sent to your email.
                                 </p>
                                 <Link href="/login" className="btn-primary mt-6 text-center">
                                     Go to Login

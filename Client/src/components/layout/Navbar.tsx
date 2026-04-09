@@ -39,7 +39,7 @@ export default function Navbar() {
                     <Image src={'/main-logo.png'} alt="this is logo" width={52} height={52}/>
                     <div className="max-sm:hidden">
                         <div className="text-base font-extrabold tracking-wider text-[color:var(--primary)] leading-[1]">
-                            NEW MANAKAMANA
+                            NEW MANKAMANA
                         </div>
                         <div className="text-[0.55rem] font-medium tracking-widest uppercase text-[color:var(--text-muted)]">
                             Printers

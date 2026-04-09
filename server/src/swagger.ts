@@ -2,7 +2,7 @@ const swaggerAutogen = require('swagger-autogen')();
 
 const doc = {
   info: {
-    title: 'Manakamana Printing API',
+    title: 'New Mankamana Printers API',
     description: ' Pricing & Ordering  API Documentation',
   },
   host: 'localhost:8005',

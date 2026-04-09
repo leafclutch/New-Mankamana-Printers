@@ -85,7 +85,7 @@ export function Sidebar() {
       <div className="relative flex items-center gap-3 p-6">
         <Image
           src="/main-logo.png"
-          alt="Manakamana Logo"
+          alt="New Mankamana Printers Logo"
           width={40}
           height={40}
           className="object-contain"

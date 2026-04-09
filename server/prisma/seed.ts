@@ -69,9 +69,9 @@ async function main() {
     () =>
       prisma.companyPaymentDetail.create({
         data: {
-          companyName: "Manakamana Printing Base",
+          companyName: "New Mankamana Printers",
           bankName: "Global IME Bank",
-          accountName: "Manakamana Prints",
+          accountName: "New Mankamana Printers",
           accountNumber: "0010000000001",
           branch: "Kathmandu Branch",
           note: "Primary Bank Account",
@@ -83,9 +83,9 @@ async function main() {
       prisma.companyPaymentDetail.update({
         where: { id: existing.id },
         data: {
-          companyName: "Manakamana Printing Base",
+          companyName: "New Mankamana Printers",
           bankName: "Global IME Bank",
-          accountName: "Manakamana Prints",
+          accountName: "New Mankamana Printers",
           accountNumber: "0010000000001",
           branch: "Kathmandu Branch",
           note: "Primary Bank Account",

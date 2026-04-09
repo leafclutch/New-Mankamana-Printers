@@ -435,7 +435,7 @@ export default function PaymentsPage() {
                   companyName: event.target.value,
                 }))
               }
-              placeholder="Manakamana Printing Press"
+              placeholder="New Mankamana Printers"
             />
           </div>
           <div className="space-y-2">
@@ -461,7 +461,7 @@ export default function PaymentsPage() {
                   accountName: event.target.value,
                 }))
               }
-              placeholder="Manakamana Printing Press"
+              placeholder="New Mankamana Printers"
             />
           </div>
           <div className="space-y-2">

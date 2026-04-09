@@ -10,7 +10,7 @@ import { useAuthStore } from "@/store/authStore";
 const heroSlides = [
   {
     label: "WELCOME TO",
-    title: "NEW MANAKAMANA\nPRINTERS",
+    title: "NEW MANKAMANA\nPRINTERS",
     subtitle:
       "We're Rededicated for development of printing Industry through Innovation and excellence.",
     // Deep royal blue gradient like the design reference

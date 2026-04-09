@@ -14,7 +14,7 @@ export const buildRegistrationMessage = (data: {
     address: string;
     printingNeeds: string;
 }) => {
-    return `Hello Manakamana Printing Press,
+    return `Hello New Mankamana Printers,
 
 A new client registration request has been submitted.
 

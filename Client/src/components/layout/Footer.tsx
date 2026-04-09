@@ -46,7 +46,7 @@ export default function Footer() {
                     <div className="flex items-center gap-2.5 mb-4">
                         <Image src={'/main-logo.png'} alt="this is logo" width={52} height={52} />
                         <div>
-                            <div className="text-white text-[0.9rem] font-extrabold tracking-[0.05em]">NEW MANAKAMANA</div>
+                            <div className="text-white text-[0.9rem] font-extrabold tracking-[0.05em]">NEW MANKAMANA</div>
                             <div className="text-[color:var(--text-muted)] text-[0.6rem] tracking-[0.15em] uppercase">Printers</div>
                         </div>
                     </div>
@@ -120,7 +120,7 @@ export default function Footer() {
 
             <div className="border-t border-[#1e293b] py-5 px-6 text-center">
                 <p className="text-[0.75rem] text-[#475569]">
-                    © 2024 New Manakamana Printers. All rights reserved.
+                    © 2024 New Mankamana Printers. All rights reserved.
                 </p>
             </div>
         </footer>

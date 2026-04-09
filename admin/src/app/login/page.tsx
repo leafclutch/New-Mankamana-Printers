@@ -62,7 +62,7 @@ export default function LoginPage() {
             </div>
             <div className="mx-auto mb-3 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-slate-600">
               <Sparkles className="h-3 w-3" />
-              Manakamana Admin
+              New Mankamana Admin
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Welcome Back</h1>
             <p className="mt-1 text-sm text-slate-500">Sign in to continue to your dashboard</p>

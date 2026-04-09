@@ -12,8 +12,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Manakamana Printing Press Admin",
-  description: "Admin portal for Manakamana Printing Press",
+  title: "New Mankamana Printers Admin",
+  description: "Admin portal for New Mankamana Printers",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body>
-        <ThemeProvider defaultTheme="light" storageKey="manakamana-theme">
+        <ThemeProvider defaultTheme="light" storageKey="nmprinters-theme">
           {children}
           <Toaster />
         </ThemeProvider>
