@@ -43,11 +43,9 @@ export const protect = async (
       return next(new AppError("The user belonging to this token no longer exists.", 401));
     }
 
-    // GRANT ACCESS TO PROTECTED ROUTE
-    req.user = { 
-      ...currentUser, 
-      role: decoded.role // Ensure role is available as it might be implicit in AdminUser but not in Client record
-    };
+    // GRANT ACCESS TO PROTECTED ROUTE — strip password before attaching to request
+    const { password: _pw, ...safeUser } = currentUser as any;
+    req.user = { ...safeUser, role: decoded.role };
     next();
   } catch (error: any) {
     next(new AppError("Invalid token or session expired", 401));

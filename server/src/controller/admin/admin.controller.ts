@@ -62,12 +62,11 @@ export const approveRegistrationRequest = async (
     const result = await adminService.approveRegistrationRequestService(request_id as string, admin_id);
     res.status(200).json({
       success: true,
-      message: "Client approved successfully",
+      message: "Client approved successfully. Credentials sent to client email.",
       data: {
         clientId: result.credentials.phone_number,
-        generatedPassword: result.credentials.password,
-        clientUuid: result.client.id
-      }
+        clientUuid: result.client.id,
+      },
     });
   } catch (error: any) {
     next(error);

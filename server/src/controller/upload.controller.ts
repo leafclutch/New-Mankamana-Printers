@@ -1,6 +1,16 @@
 import { Request, Response } from "express";
 import { uploadFileToSupabase } from "../services/upload.service";
 
+// Folders that callers are permitted to upload into
+const ALLOWED_FOLDERS = new Set([
+  "general",
+  "designs",
+  "payment-proofs",
+  "templates",
+  "profile",
+  "qr-codes",
+]);
+
 // uploadFile: Generic handler to upload a single file to Supabase storage, with optional folder specification
 export const uploadFile = async (req: Request, res: Response) => {
   try {
@@ -8,18 +18,18 @@ export const uploadFile = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
-    const { folder } = req.body;
-    const fileUrl = await uploadFileToSupabase(req.file, folder || "general");
+    const requestedFolder = String(req.body.folder || "general");
+    const folder = ALLOWED_FOLDERS.has(requestedFolder) ? requestedFolder : "general";
+
+    const fileUrl = await uploadFileToSupabase(req.file, folder);
 
     res.status(200).json({
       success: true,
       message: "File uploaded successfully",
-      data: {
-        fileUrl,
-      },
+      data: { fileUrl },
     });
-  } catch (error) {
-    console.error("Upload Error:", error);
+  } catch (error: any) {
+    console.error("Upload Error:", error.message);
     res.status(500).json({ success: false, message: "Failed to upload file" });
   }
 };

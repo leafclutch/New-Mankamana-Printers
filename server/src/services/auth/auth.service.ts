@@ -91,12 +91,22 @@ export const loginAdminService = async ({
   });
 
   if (!admin) {
-    throw new AppError("Admin not found", 404);
+    throw new AppError("Invalid credentials", 401); // don't reveal whether email exists
   }
 
-  // PLAIN TEXT PASSWORD COMPARISON AS REQUESTED
-  if (password !== admin.password) {
+  // Support legacy plain-text admin passwords with auto-upgrade to bcrypt
+  const isHashed = admin.password.startsWith("$2");
+  const passwordMatches = isHashed
+    ? await bcrypt.compare(password, admin.password)
+    : password === admin.password;
+
+  if (!passwordMatches) {
     throw new AppError("Invalid credentials", 401);
+  }
+
+  if (!isHashed) {
+    const hashed = await bcrypt.hash(password, 12);
+    await prisma.adminUser.update({ where: { id: admin.id }, data: { password: hashed } });
   }
 
   const token = jwt.sign(

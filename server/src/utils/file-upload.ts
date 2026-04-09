@@ -20,7 +20,15 @@ export const uploadToSupabase = async (
     });
   }
 
-  const fileExtension = file.originalname.split(".").pop();
+  // Derive extension from MIME type (not user-supplied filename) to prevent extension spoofing
+  const MIME_TO_EXT: Record<string, string> = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "application/pdf": "pdf",
+  };
+  const fileExtension = MIME_TO_EXT[file.mimetype] ?? "bin";
   const fileName = `${folder}/${uuidv4()}.${fileExtension}`;
 
   const { data, error } = await supabase.storage

@@ -2,6 +2,7 @@ import prisma from "../../connect";
 import { AppError } from "../../utils/apperror";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
+import { randomBytes } from "crypto";
 import { sendClientCredentials, sendPasswordReset } from "../../utils/email";
 
 // getRegistrationRequestsService: Logic to fetch registration requests with optional status and search filtering
@@ -125,8 +126,8 @@ export const approveRegistrationRequestService = async (request_id: string, admi
   const existingClient = await prisma.client.findUnique({ where: { phone_number } });
   if (existingClient) throw new AppError("Client already exists for this phone number", 400);
 
-  const clientCode = "MP" + Math.random().toString(36).substring(2, 10).toUpperCase();
-  const rawPassword = Math.random().toString(36).substring(7);
+  const clientCode = "MP" + randomBytes(5).toString("hex").toUpperCase(); // 10 hex chars, cryptographically random
+  const rawPassword = randomBytes(8).toString("base64url"); // ~11 chars, URL-safe, cryptographically random
   const hashedPassword = await bcrypt.hash(rawPassword, 10);
 
   const result = await prisma.$transaction(async (tx: any) => {
@@ -174,7 +175,7 @@ export const approveRegistrationRequestService = async (request_id: string, admi
     message: "Client approved and created successfully",
     credentials: {
       phone_number: phone_number,
-      password: rawPassword, // Returned to admin as well
+      // rawPassword intentionally NOT returned — sent to client via email only
     },
     client: result.newClient
   };
@@ -246,8 +247,8 @@ export const resetClientPasswordService = async (clientId: string) => {
   const client = await prisma.client.findUnique({ where: { id: clientId } });
   if (!client) throw new AppError("Client not found", 404);
 
-  const newPassword = Math.random().toString(36).substring(2, 10);
-  const hashed = await bcrypt.hash(newPassword, 10);
+  const newPassword = randomBytes(8).toString("base64url");
+  const hashed = await bcrypt.hash(newPassword, 12);
 
   await prisma.client.update({
     where: { id: clientId },
@@ -264,10 +265,10 @@ export const resetClientPasswordService = async (clientId: string) => {
   }).catch((err) => console.error("[Email] Failed to send password reset email:", err));
 
   return {
-    message: "Password reset successfully",
+    message: "Password reset successfully. New credentials sent to client email.",
     credentials: {
       phone_number: client.phone_number,
-      new_password: newPassword,
+      // new_password intentionally NOT returned — sent to client via email only
     },
   };
 };

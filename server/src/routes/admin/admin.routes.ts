@@ -11,12 +11,21 @@ import * as adminCatalogController from "../../controller/admin/admin-catalog.co
 import * as productOrderController from "../../controller/orders/product-order.controller";
 import { getVisitorStats } from "../../controller/analytics/analytics.controller";
 import { validate } from "../../middleware/validate.middleware";
+import rateLimit from "express-rate-limit";
+
+const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: "Too many attempts. Please try again in 15 minutes." },
+});
 // Legacy validators removed
 
 const router = Router();
 
 // ADMIN AUTH: Specialized authentication routes for administrative access
-router.post("/auth/login", authController.loginAdmin);
+router.post("/auth/login", authRateLimiter, authController.loginAdmin);
 router.post("/auth/logout", authController.logout);
 router.get("/auth/me", protect, restrictTo("ADMIN"), authController.getMe);
 
