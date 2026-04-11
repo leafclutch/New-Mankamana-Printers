@@ -154,7 +154,7 @@ export const MOCK_ORDERS: Order[] = [
         finishingOption: "UV Coating",
         designId: "D301",
         orderType: "CUSTOM",
-        status: "ORDER_ACCEPTED",
+        status: "ORDER_PROCESSING",
         date: "2026-03-04",
     },
     {
