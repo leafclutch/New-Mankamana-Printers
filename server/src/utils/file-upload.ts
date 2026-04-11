@@ -1,5 +1,5 @@
+import { randomUUID } from "crypto";
 import { supabase } from "./supabase";
-import { v4 as uuidv4 } from "uuid";
 
 // MIME type → file extension mapping (extension from MIME, not from user-supplied filename)
 const MIME_TO_EXT: Record<string, string> = {
@@ -78,7 +78,7 @@ export const uploadToSupabasePath = async (
   const { bucket, isPrivate } = resolveBucket(folder);
 
   const fileExtension = MIME_TO_EXT[file.mimetype] ?? "bin";
-  const filePath = `${folder}/${uuidv4()}.${fileExtension}`;
+  const filePath = `${folder}/${randomUUID()}.${fileExtension}`;
 
   const { error } = await supabase.storage
     .from(bucket)

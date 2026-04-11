@@ -1,7 +1,6 @@
 import prisma from "../../connect";
 import { AppError } from "../../utils/apperror";
 import bcrypt from "bcrypt";
-import { v4 as uuidv4 } from "uuid";
 import { randomBytes } from "crypto";
 import { sendClientCredentials, sendPasswordReset, sendClientDeactivated } from "../../utils/email";
 
