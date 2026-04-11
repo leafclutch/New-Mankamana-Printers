@@ -1,20 +1,82 @@
 import prisma from "../../connect";
+import { getSignedUrl, getSupabasePublicUrl } from "../../utils/file-upload";
 
-// Client: List all my approved designs
+const DESIGN_BUCKET = "design-files";
+
+/**
+ * Resolves the preview URL for an approved design file.
+ * - If the stored URL is already a full https URL (old public bucket), return as-is.
+ * - If it's a raw path (e.g. "designs/approved/uuid.png"), generate a 2-hour signed URL.
+ */
+async function resolveDesignUrl(approvedFileUrl: string | null): Promise<string | null> {
+  if (!approvedFileUrl) return null;
+  // Already a full URL (legacy records pointing to old public bucket)
+  if (approvedFileUrl.startsWith("http")) return approvedFileUrl;
+  // Raw path — generate signed URL (2 hour expiry)
+  try {
+    return await getSignedUrl(approvedFileUrl, DESIGN_BUCKET, 7200);
+  } catch {
+    return approvedFileUrl; // fallback: return path, let frontend handle it
+  }
+}
+
+// Client: List all my approved designs, optionally filtered by productId or product name keyword
 // getMyApprovedDesignsService: Returns all ACTIVE approved designs for the logged-in client
-export const getMyApprovedDesignsService = async (clientId: string) => {
-  return await prisma.approvedDesign.findMany({
-    where: { clientId, status: "ACTIVE" },
-    include: {
-      submission: {
-        select: {
-          title: true,
-          template: { select: { category: { select: { name: true, slug: true } } } },
+export const getMyApprovedDesignsService = async (
+  clientId: string,
+  productId?: string,
+  productName?: string,
+) => {
+  let designs;
+
+  // If productId provided, do an exact DB-level filter for best accuracy
+  if (productId && productId.trim()) {
+    designs = await prisma.approvedDesign.findMany({
+      where: { clientId, status: "ACTIVE", productId },
+      include: {
+        submission: {
+          select: {
+            title: true,
+            notes: true,
+            template: { select: { category: { select: { name: true, slug: true } } } },
+          },
         },
       },
-    },
-    orderBy: { approvedAt: "desc" },
-  });
+      orderBy: { approvedAt: "desc" },
+    });
+  } else {
+    designs = await prisma.approvedDesign.findMany({
+      where: { clientId, status: "ACTIVE" },
+      include: {
+        submission: {
+          select: {
+            title: true,
+            notes: true,
+            template: { select: { category: { select: { name: true, slug: true } } } },
+          },
+        },
+      },
+      orderBy: { approvedAt: "desc" },
+    });
+
+    // Fallback: filter by product name substring match on title/notes
+    if (productName && productName.trim()) {
+      const keyword = productName.trim().toLowerCase();
+      designs = designs.filter((d) => {
+        const title = (d.submission?.title ?? "").toLowerCase();
+        const notes = (d.submission?.notes ?? "").toLowerCase();
+        return title.includes(keyword) || notes.includes(keyword);
+      });
+    }
+  }
+
+  // Resolve signed URLs for all designs in parallel
+  return Promise.all(
+    designs.map(async (d) => ({
+      ...d,
+      approvedFileUrl: await resolveDesignUrl(d.approvedFileUrl),
+    }))
+  );
 };
 
 // Client: Get my design

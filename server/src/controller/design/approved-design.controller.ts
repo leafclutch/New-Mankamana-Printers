@@ -11,10 +11,13 @@ import { verifyDesignSchema, adminApprovedDesignQuerySchema, archiveDesignSchema
 
 // CLIENT APIs
 // getMyDesigns: Lists all approved designs belonging to the logged-in client (for order form dropdown)
+// Optional query param: ?productName=Card+Holders — returns only designs matching that product
 export const getMyDesigns = async (req: Request, res: Response) => {
   try {
     const clientId = (req as any).user.id;
-    const designs = await getMyApprovedDesignsService(clientId);
+    const productId = (req.query.productId as string) || undefined;
+    const productName = (req.query.productName as string) || undefined;
+    const designs = await getMyApprovedDesignsService(clientId, productId, productName);
 
     res.status(200).json({
       success: true,
@@ -23,6 +26,7 @@ export const getMyDesigns = async (req: Request, res: Response) => {
         title: d.submission?.title || null,
         approvedAt: d.approvedAt,
         status: d.status,
+        approvedFileUrl: d.approvedFileUrl || null,
         categoryName: d.submission?.template?.category?.name || null,
         categorySlug: d.submission?.template?.category?.slug || null,
       })),

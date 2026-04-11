@@ -20,7 +20,7 @@ export const createDesignSubmission = async (req: Request, res: Response, next: 
       return res.status(400).json({ success: false, message: "Validation failed", errors: [{ field: "file", message: "File is required" }] });
     }
 
-    const { templateId, title, notes } = req.body;
+    const { templateId, productId, title, notes } = req.body;
     const clientId = (req as any).user.id; // User must be authenticated as client
 
     // Validate body
@@ -39,6 +39,7 @@ export const createDesignSubmission = async (req: Request, res: Response, next: 
     const submission = await createDesignSubmissionService({
       clientId,
       templateId: validatedBody.data.templateId,
+      productId: typeof productId === "string" ? productId : undefined,
       title: validatedBody.data.title,
       notes: validatedBody.data.notes,
       fileUrl: fileUrl,
@@ -165,6 +166,7 @@ export const getAdminSubmissions = async (req: Request, res: Response) => {
       fileUrl: i.fileUrl,
       fileType: i.fileType,
       client: i.client ? { id: i.client.id, name: i.client.business_name, phone: i.client.phone_number } : null,
+      product: i.product ? { id: i.product.id, name: i.product.name } : null,
       submittedAt: i.submittedAt,
       designCode: i.approvedDesign?.designCode ?? null,
     }));

@@ -6,6 +6,7 @@ import { sendDesignApproved, sendDesignRejected } from "../../utils/email";
 export const createDesignSubmissionService = async (data: {
   clientId: string;
   templateId?: string;
+  productId?: string;
   title?: string;
   notes?: string;
   fileUrl: string;
@@ -17,6 +18,7 @@ export const createDesignSubmissionService = async (data: {
       data: {
         clientId: data.clientId,
         templateId: data.templateId,
+        productId: data.productId,
         title: data.title,
         notes: data.notes,
         fileUrl: data.fileUrl,
@@ -95,6 +97,7 @@ export const getAdminSubmissionsService = async (options: {
       where,
       include: {
         client: { select: { id: true, business_name: true, phone_number: true } },
+        product: { select: { id: true, name: true } },
         approvedDesign: { select: { designCode: true } },
       },
       skip: (page - 1) * limit,
@@ -166,6 +169,8 @@ export const approveSubmissionService = async (
           submissionId: submission.id,
           approvedFileUrl: submission.fileUrl,
           approvedBy_id: adminId,
+          // Copy productId from submission so we can filter by product in checkout
+          productId: (submission as any).productId ?? null,
           status: "ACTIVE",
         },
       });

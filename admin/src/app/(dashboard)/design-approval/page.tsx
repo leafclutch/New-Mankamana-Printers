@@ -328,6 +328,11 @@ export default function DesignApprovalPage() {
                   <p className="text-xs font-medium text-slate-700 dark:text-slate-300">
                     {design.client}
                   </p>
+                  {design.productName && (
+                    <p className="mt-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                      📦 {design.productName}
+                    </p>
+                  )}
                   {design.designCode && (
                     <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       Code:{" "}
@@ -402,6 +407,15 @@ export default function DesignApprovalPage() {
             <DialogDescription>
               Submitted by <strong>{selectedDesign?.designer}</strong> &mdash;{" "}
               {selectedDesign?.client}
+              {selectedDesign?.productName && (
+                <>
+                  {" "}
+                  &middot; Product:{" "}
+                  <span className="font-semibold text-blue-600 dark:text-blue-400">
+                    {selectedDesign.productName}
+                  </span>
+                </>
+              )}
               {selectedDesign?.designCode && (
                 <>
                   {" "}

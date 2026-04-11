@@ -414,16 +414,24 @@ export default function ClientsPage() {
                     <div className="space-y-2">
                       {clientOrders.map((order) => (
                         <div key={order.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                          <div className="flex items-center justify-between">
-                            <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
                               <span className="font-semibold text-slate-800">{order.variant.product.name}</span>
                               <span className="text-slate-500"> — {order.variant.variant_name}</span>
+                              {/* Order ID as a link to the orders page with pre-filter */}
+                              <a
+                                href={`/orders?search=${order.id}`}
+                                className="ml-2 font-mono text-[10px] text-[#0061FF] hover:underline"
+                                title="Open in Orders page"
+                              >
+                                #{order.id.slice(0, 8)}
+                              </a>
                             </div>
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${order.status === "ORDER_DELIVERED" ? "bg-emerald-100 text-emerald-700" : order.status === "ORDER_CANCELLED" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
+                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${order.status === "ORDER_DELIVERED" ? "bg-emerald-100 text-emerald-700" : order.status === "ORDER_CANCELLED" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
                               {ORDER_STATUS_LABELS[order.status] ?? order.status}
                             </span>
                           </div>
-                          <div className="mt-1 flex gap-4 text-xs text-slate-500">
+                          <div className="mt-1 flex flex-wrap gap-3 text-xs text-slate-500">
                             <span>Qty: {order.quantity}</span>
                             <span>NPR {Number(order.final_amount).toLocaleString()}</span>
                             <span>{new Date(order.created_at).toLocaleDateString()}</span>

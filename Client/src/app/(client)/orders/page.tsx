@@ -17,14 +17,7 @@ const STATUS_FILTERS = [
     { label: "Cancelled", value: "ORDER_CANCELLED" },
 ];
 
-// Status flow for the progress indicator
-const STATUS_FLOW = [
-    "ORDER_PLACED",
-    "ORDER_PROCESSING",
-    "ORDER_PREPARED",
-    "ORDER_DISPATCHED",
-    "ORDER_DELIVERED",
-];
+const STATUS_FLOW = ["ORDER_PLACED", "ORDER_PROCESSING", "ORDER_PREPARED", "ORDER_DISPATCHED", "ORDER_DELIVERED"];
 
 const STATUS_STEP_LABELS: Record<string, string> = {
     ORDER_PLACED: "Placed",
@@ -34,57 +27,210 @@ const STATUS_STEP_LABELS: Record<string, string> = {
     ORDER_DELIVERED: "Delivered",
 };
 
+const STATUS_ICONS: Record<string, string> = {
+    ORDER_PLACED: "📋",
+    ORDER_PROCESSING: "🖨️",
+    ORDER_PREPARED: "📦",
+    ORDER_DISPATCHED: "🚚",
+    ORDER_DELIVERED: "✅",
+    ORDER_CANCELLED: "❌",
+};
+
+interface OrderConfig {
+    group_label: string;
+    selected_label: string;
+}
+
 interface ApiOrder {
     id: string;
     quantity: number;
     unit_price: string | number;
     final_amount: string | number;
+    total_amount: string | number;
+    discount_amount?: string | number;
     status: string;
     payment_status: string;
     notes?: string;
     created_at: string;
     expected_delivery_date?: string | null;
+    payment_proof_url?: string | null;
+    payment_proof_file_name?: string | null;
+    configurations?: OrderConfig[];
     variant: {
         variant_name: string;
-        product: { name: string };
+        product: { name: string; image_url?: string | null };
     };
     approvedDesign?: { designCode: string } | null;
 }
 
-function OrderStatusTracker({ status }: { status: string }) {
+function OrderProgressBar({ status }: { status: string }) {
     if (status === "ORDER_CANCELLED") {
         return (
-            <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-[0.78rem] font-medium text-red-600">
-                <span className="text-base">✕</span> Order Cancelled
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 w-fit">
+                ✕ Cancelled
             </div>
         );
     }
     const currentIdx = STATUS_FLOW.indexOf(status);
     return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
             {STATUS_FLOW.map((s, idx) => (
                 <div key={s} className="flex items-center">
                     <div
-                        className={`flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold transition-colors ${
-                            idx < currentIdx
-                                ? "bg-[#1a56db] text-white"
-                                : idx === currentIdx
-                                ? "bg-[#1a56db] text-white ring-2 ring-[#1a56db]/30"
-                                : "bg-[#e2e8f0] text-[#94a3b8]"
-                        }`}
                         title={STATUS_STEP_LABELS[s]}
+                        className={`h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
+                            idx < currentIdx ? "bg-blue-600 text-white" :
+                            idx === currentIdx ? "bg-blue-600 text-white ring-2 ring-blue-200" :
+                            "bg-slate-200 text-slate-400"
+                        }`}
                     >
                         {idx < currentIdx ? "✓" : idx + 1}
                     </div>
                     {idx < STATUS_FLOW.length - 1 && (
-                        <div
-                            className={`h-0.5 w-5 transition-colors ${
-                                idx < currentIdx ? "bg-[#1a56db]" : "bg-[#e2e8f0]"
-                            }`}
-                        />
+                        <div className={`h-0.5 w-4 ${idx < currentIdx ? "bg-blue-600" : "bg-slate-200"}`} />
                     )}
                 </div>
             ))}
+        </div>
+    );
+}
+
+function OrderDetailModal({ order, onClose }: { order: ApiOrder; onClose: () => void }) {
+    const isCancelled = order.status === "ORDER_CANCELLED";
+    const currentIdx = STATUS_FLOW.indexOf(order.status);
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+            <div
+                className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between rounded-t-2xl">
+                    <div>
+                        <p className="font-mono text-xs text-blue-600 font-bold">#{order.id.slice(0, 8)}</p>
+                        <p className="font-bold text-slate-900 text-sm mt-0.5">
+                            {order.variant.product.name} — {order.variant.variant_name}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-700 text-xl font-bold leading-none p-1" aria-label="Close">✕</button>
+                </div>
+
+                <div className="px-5 py-4 space-y-5">
+                    {/* Status track */}
+                    {!isCancelled ? (
+                        <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Order Progress</p>
+                            <div className="flex justify-between relative">
+                                <div className="absolute top-3 left-0 right-0 h-0.5 bg-slate-200 mx-5" />
+                                <div
+                                    className="absolute top-3 left-0 h-0.5 bg-blue-600 mx-5 transition-all"
+                                    style={{ width: `${Math.min(currentIdx / (STATUS_FLOW.length - 1), 1) * 100}%` }}
+                                />
+                                {STATUS_FLOW.map((s, idx) => (
+                                    <div key={s} className="flex flex-col items-center gap-1.5 relative z-10">
+                                        <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
+                                            idx < currentIdx ? "bg-blue-600 border-blue-600 text-white" :
+                                            idx === currentIdx ? "bg-white border-blue-600 text-blue-600" :
+                                            "bg-white border-slate-300 text-slate-400"
+                                        }`}>
+                                            {idx < currentIdx ? "✓" : STATUS_ICONS[s]}
+                                        </div>
+                                        <span className={`text-[9px] font-semibold text-center leading-tight ${
+                                            idx <= currentIdx ? "text-blue-700" : "text-slate-400"
+                                        }`}>{STATUS_STEP_LABELS[s]}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm font-semibold text-red-600 flex items-center gap-2">
+                            ✕ This order has been cancelled
+                        </div>
+                    )}
+
+                    {/* Key info */}
+                    <div className="grid grid-cols-2 gap-3">
+                        {[
+                            { label: "Amount", value: formatCurrency(order.final_amount) },
+                            { label: "Quantity", value: order.quantity.toLocaleString() },
+                            { label: "Payment", value: order.payment_status.replace(/_/g, " ") },
+                            { label: "Placed On", value: formatDate(order.created_at) },
+                        ].map(({ label, value }) => (
+                            <div key={label} className="rounded-lg bg-slate-50 px-3 py-2.5">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                                <p className="text-sm font-semibold text-slate-800 mt-0.5">{value}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Delivery date */}
+                    {order.expected_delivery_date && (
+                        <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 flex items-center gap-3">
+                            <span className="text-xl">📅</span>
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-500">Est. Delivery</p>
+                                <p className="text-sm font-bold text-blue-900">
+                                    {new Date(order.expected_delivery_date).toLocaleDateString("en-NP", { day: "numeric", month: "long", year: "numeric" })}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Configuration */}
+                    {order.configurations && order.configurations.length > 0 && (
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Configuration</p>
+                            <div className="rounded-xl border border-slate-100 divide-y divide-slate-100 overflow-hidden">
+                                {order.configurations.map((c, i) => (
+                                    <div key={i} className="flex justify-between px-4 py-2.5 text-sm">
+                                        <span className="text-slate-500">{c.group_label}</span>
+                                        <span className="font-medium text-slate-800">{c.selected_label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Design code */}
+                    {order.approvedDesign && (
+                        <div className="rounded-lg bg-indigo-50 border border-indigo-100 px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Design Code</p>
+                            <p className="font-mono text-sm font-bold text-indigo-800 mt-0.5">{order.approvedDesign.designCode}</p>
+                        </div>
+                    )}
+
+                    {/* Notes */}
+                    {order.notes && (
+                        <div className="rounded-lg bg-amber-50 border border-amber-100 px-4 py-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Remarks</p>
+                            <p className="text-sm text-amber-800 mt-0.5">{order.notes}</p>
+                        </div>
+                    )}
+
+                    {/* Payment proof */}
+                    {order.payment_proof_url && (
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Payment Proof</p>
+                            <a
+                                href={order.payment_proof_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50 transition-colors"
+                            >
+                                <span className="text-2xl">🧾</span>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-blue-600 truncate">
+                                        {order.payment_proof_file_name || "View payment proof"}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">Click to open</p>
+                                </div>
+                                <span className="text-slate-400">↗</span>
+                            </a>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
@@ -95,26 +241,19 @@ export default function OrdersPage() {
     const [error, setError] = useState<string | null>(null);
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [search, setSearch] = useState("");
+    const [selectedOrder, setSelectedOrder] = useState<ApiOrder | null>(null);
 
     useEffect(() => {
-        const fetchOrders = async () => {
-            try {
-                const res = await fetch(`${API_BASE}/orders`, {
-                    headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-                });
-                const data = await res.json();
-                if (!res.ok || !data.success) {
-                    setError(data.message || "Failed to load orders");
-                    return;
-                }
+        fetch(`${API_BASE}/orders`, {
+            headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        })
+            .then((r) => r.json())
+            .then((data) => {
+                if (!data.success) { setError(data.message || "Failed to load orders"); return; }
                 setOrders(data.data || []);
-            } catch {
-                setError("Network error. Please try again.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchOrders();
+            })
+            .catch(() => setError("Network error. Please try again."))
+            .finally(() => setLoading(false));
     }, []);
 
     const filtered = orders.filter((o) => {
@@ -128,240 +267,194 @@ export default function OrdersPage() {
     });
 
     return (
-        <div className="p-3 sm:p-6 md:p-10 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-7 gap-3 sm:gap-4 flex-wrap">
-                <div>
-                    <h1 className="text-[1.3rem] sm:text-[1.5rem] font-extrabold text-[#0f172a]">Order History</h1>
-                    <p className="text-[#64748b] text-[0.9rem] mt-1">
-                        Track all your printing orders and their current status.
+        <div className="min-h-screen bg-slate-50">
+            {selectedOrder && <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />}
+
+            <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-2xl font-extrabold text-slate-900">Order History</h1>
+                        <p className="text-slate-500 text-sm mt-1">Track and manage your printing orders.</p>
+                    </div>
+                    <Link
+                        href="/services"
+                        className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition-colors shadow-sm shadow-blue-200"
+                    >
+                        + New Order
+                    </Link>
+                </div>
+
+                {/* Stats strip */}
+                {!loading && orders.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-6">
+                        {[
+                            { label: "Total", count: orders.length, color: "bg-slate-100 text-slate-700" },
+                            { label: "Active", count: orders.filter(o => ["ORDER_PLACED","ORDER_PROCESSING","ORDER_PREPARED"].includes(o.status)).length, color: "bg-blue-50 text-blue-700" },
+                            { label: "Dispatched", count: orders.filter(o => o.status === "ORDER_DISPATCHED").length, color: "bg-amber-50 text-amber-700" },
+                            { label: "Delivered", count: orders.filter(o => o.status === "ORDER_DELIVERED").length, color: "bg-emerald-50 text-emerald-700" },
+                            { label: "Cancelled", count: orders.filter(o => o.status === "ORDER_CANCELLED").length, color: "bg-red-50 text-red-700" },
+                        ].map(({ label, count, color }) => (
+                            <div key={label} className={`rounded-xl ${color} px-3 py-2.5 text-center`}>
+                                <p className="text-xl font-bold">{count}</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">{label}</p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Filters */}
+                <div className="flex flex-col sm:flex-row gap-3 mb-5">
+                    <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔍</span>
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search orders…"
+                            className="w-full sm:w-56 pl-9 pr-4 py-2 text-sm rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-200 outline-none"
+                        />
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                        {STATUS_FILTERS.map((f) => (
+                            <button
+                                key={f.value}
+                                type="button"
+                                onClick={() => setStatusFilter(f.value)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                    statusFilter === f.value
+                                        ? "bg-blue-600 text-white"
+                                        : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                }`}
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Notice */}
+                <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <span className="text-amber-500 mt-0.5">ℹ</span>
+                    <p className="text-xs text-amber-800">
+                        To cancel an order, contact <strong>New Mankamana Printers</strong> directly. Tap any order to view full details.
                     </p>
                 </div>
-                <Link href="/orders/create" className="btn-primary w-full sm:w-auto text-center">
-                    + New Order
-                </Link>
-            </div>
 
-            {/* Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 flex-wrap mb-5 items-stretch sm:items-center">
-                <div className="relative mb-2 sm:mb-0">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8] text-[0.9rem]">🔍</span>
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search orders…"
-                        aria-label="Search orders"
-                        className="form-input w-full sm:w-[220px] pl-9 py-2 pr-3.5"
-                    />
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                    {STATUS_FILTERS.map((f) => (
-                        <button
-                            key={f.value}
-                            type="button"
-                            onClick={() => setStatusFilter(f.value)}
-                            className={`py-1.5 px-3.5 rounded-[50px] font-semibold text-[0.8rem] cursor-pointer whitespace-nowrap transition ${
-                                statusFilter === f.value
-                                    ? "border-none bg-gradient-to-r from-[#1a56db] to-[#2563eb] text-white"
-                                    : "border-[1.5px] border-[#e2e8f0] bg-white text-[#475569] hover:bg-gray-50"
-                            }`}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
+                {/* Content */}
+                {loading && (
+                    <div className="space-y-3">
+                        {[1,2,3].map(i => (
+                            <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 animate-pulse">
+                                <div className="flex gap-4">
+                                    <div className="h-12 w-12 bg-slate-100 rounded-xl" />
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-3 bg-slate-100 rounded w-1/3" />
+                                        <div className="h-3 bg-slate-100 rounded w-1/2" />
+                                        <div className="h-3 bg-slate-100 rounded w-1/4" />
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
-            {/* Cancel notice */}
-            <div className="mb-5 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <span className="mt-0.5 text-amber-500">ℹ</span>
-                <p className="text-[0.82rem] text-amber-800">
-                    To cancel an order, please contact{" "}
-                    <strong>New Mankamana Printers</strong> directly. Clients cannot cancel orders online.
-                </p>
-            </div>
+                {error && !loading && (
+                    <div className="bg-white rounded-2xl border border-red-200 p-10 text-center">
+                        <p className="text-red-500 font-medium">{error}</p>
+                    </div>
+                )}
 
-            {/* Loading / Error */}
-            {loading && (
-                <div className="bg-white rounded-2xl border border-[#e2e8f0] p-12 text-center text-[#94a3b8]">
-                    Loading orders…
-                </div>
-            )}
-            {error && !loading && (
-                <div className="bg-white rounded-2xl border border-red-200 p-8 text-center text-red-500">
-                    {error}
-                </div>
-            )}
+                {!loading && !error && filtered.length === 0 && (
+                    <div className="bg-white rounded-2xl border border-slate-200 p-14 text-center">
+                        <p className="text-5xl mb-3">📭</p>
+                        <p className="font-semibold text-slate-700">No orders found</p>
+                        <p className="text-sm text-slate-400 mt-1">
+                            {search || statusFilter !== "ALL" ? "Try adjusting your filters." : "Place your first order to get started."}
+                        </p>
+                    </div>
+                )}
 
-            {/* Table — md+ */}
-            {!loading && !error && (
-                <>
-                    <div className="hidden md:block">
-                        <div className="bg-white rounded-2xl border border-[#e2e8f0] overflow-x-auto">
-                            <table className="w-full border-collapse min-w-[900px]">
-                                <thead>
-                                    <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-[#64748b] text-left text-[0.78rem] uppercase tracking-[0.04em]">
-                                        <th className="p-4 font-bold">Order</th>
-                                        <th className="p-4 font-bold">Product</th>
-                                        <th className="p-4 font-bold">Qty</th>
-                                        <th className="p-4 font-bold">Amount</th>
-                                        <th className="p-4 font-bold">Payment</th>
-                                        <th className="p-4 font-bold">Status</th>
-                                        <th className="p-4 font-bold">Est. Delivery</th>
-                                        <th className="p-4 font-bold">Placed On</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-[#e2e8f0]">
-                                    {filtered.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={8} className="text-center p-12 text-[#94a3b8]">
-                                                No orders found
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        filtered.map((order) => (
-                                            <tr key={order.id} className="hover:bg-[#f8fafc] transition-colors">
-                                                <td className="p-4">
-                                                    <p className="text-[#1a56db] font-mono font-bold text-[0.75rem]">
-                                                        #{order.id.slice(0, 8)}
-                                                    </p>
-                                                    <div className="mt-1.5">
-                                                        <OrderStatusTracker status={order.status} />
-                                                    </div>
-                                                </td>
-                                                <td className="p-4">
-                                                    <p className="font-semibold text-[#0f172a] text-[0.88rem]">
-                                                        {order.variant.product.name}
-                                                    </p>
-                                                    <p className="text-[#475569] text-[0.78rem]">
-                                                        {order.variant.variant_name}
-                                                    </p>
-                                                    {order.approvedDesign && (
-                                                        <p className="text-[0.72rem] text-[#64748b] mt-0.5">
-                                                            Design: <span className="font-mono font-semibold">{order.approvedDesign.designCode}</span>
+                {!loading && !error && filtered.length > 0 && (
+                    <div className="space-y-3">
+                        {filtered.map((order) => {
+                            const isCancelled = order.status === "ORDER_CANCELLED";
+                            const isDelivered = order.status === "ORDER_DELIVERED";
+                            return (
+                                <div
+                                    key={order.id}
+                                    onClick={() => setSelectedOrder(order)}
+                                    className={`bg-white rounded-2xl border cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+                                        isCancelled ? "border-red-100 opacity-75" :
+                                        isDelivered ? "border-emerald-100" :
+                                        "border-slate-200"
+                                    }`}
+                                >
+                                    <div className="p-4 sm:p-5">
+                                        <div className="flex items-start gap-3 sm:gap-4">
+                                            {/* Icon */}
+                                            <div className={`flex-shrink-0 h-11 w-11 rounded-xl flex items-center justify-center text-xl ${
+                                                isCancelled ? "bg-red-50" :
+                                                isDelivered ? "bg-emerald-50" :
+                                                "bg-blue-50"
+                                            }`}>
+                                                {STATUS_ICONS[order.status] || "📋"}
+                                            </div>
+
+                                            {/* Main info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-start justify-between gap-2 flex-wrap">
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 text-sm leading-tight">
+                                                            {order.variant.product.name}
                                                         </p>
-                                                    )}
-                                                </td>
-                                                <td className="p-4 text-[#475569]">
-                                                    {order.quantity.toLocaleString()}
-                                                </td>
-                                                <td className="p-4 text-[#0f172a] font-semibold text-[0.85rem]">
-                                                    {formatCurrency(order.final_amount)}
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className={`px-2 py-0.5 rounded text-[0.72rem] font-semibold ${
-                                                        order.payment_status === "PROOF_SUBMITTED"
-                                                            ? "bg-blue-100 text-blue-700"
-                                                            : order.payment_status === "CONFIRMED"
-                                                            ? "bg-green-100 text-green-700"
-                                                            : "bg-gray-100 text-gray-600"
+                                                        <p className="text-xs text-slate-500 mt-0.5">{order.variant.variant_name} · Qty: {order.quantity}</p>
+                                                    </div>
+                                                    <div className="text-right flex-shrink-0">
+                                                        <p className="font-bold text-slate-900 text-sm">{formatCurrency(order.final_amount)}</p>
+                                                        <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold ${getStatusColor(order.status)}`}>
+                                                            {getStatusLabel(order.status)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Progress */}
+                                                <div className="mt-3">
+                                                    <OrderProgressBar status={order.status} />
+                                                </div>
+
+                                                {/* Footer meta */}
+                                                <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
+                                                    <span>#{order.id.slice(0, 8)}</span>
+                                                    <span>{formatDate(order.created_at)}</span>
+                                                    <span className={`font-medium ${
+                                                        order.payment_status === "CONFIRMED" ? "text-emerald-600" :
+                                                        order.payment_status === "PROOF_SUBMITTED" ? "text-blue-600" :
+                                                        "text-slate-400"
                                                     }`}>
                                                         {order.payment_status.replace(/_/g, " ")}
                                                     </span>
-                                                </td>
-                                                <td className="p-4">
-                                                    <span className={`px-2.5 py-1 rounded-full text-[0.75rem] font-semibold ${getStatusColor(order.status)}`}>
-                                                        {getStatusLabel(order.status)}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-[0.82rem]">
-                                                    {order.expected_delivery_date ? (
-                                                        <span className="text-[#0f172a] font-medium">
-                                                            {new Date(order.expected_delivery_date).toLocaleDateString("en-NP", {
-                                                                day: "numeric", month: "short", year: "numeric"
-                                                            })}
+                                                    {order.expected_delivery_date && (
+                                                        <span className="text-blue-600 font-medium">
+                                                            📅 {new Date(order.expected_delivery_date).toLocaleDateString("en-NP", { day: "numeric", month: "short" })}
                                                         </span>
-                                                    ) : (
-                                                        <span className="text-[#94a3b8]">—</span>
                                                     )}
-                                                </td>
-                                                <td className="p-4 text-[#64748b] text-[0.82rem]">
-                                                    {formatDate(order.created_at)}
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    {/* Cards — mobile */}
-                    <div className="md:hidden flex flex-col gap-3">
-                        {filtered.length === 0 ? (
-                            <div className="bg-white text-[#94a3b8] text-center p-8 rounded-2xl border border-[#e2e8f0]">
-                                No orders found
-                            </div>
-                        ) : (
-                            filtered.map((order) => (
-                                <div
-                                    key={order.id}
-                                    className={`bg-white rounded-2xl border p-4 flex flex-col gap-3 shadow-sm ${
-                                        order.status === "ORDER_CANCELLED"
-                                            ? "border-red-100"
-                                            : "border-[#e2e8f0]"
-                                    }`}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-mono text-[#1a56db] text-[0.8rem] font-bold">
-                                            #{order.id.slice(0, 8)}
-                                        </span>
-                                        <span className={`px-2.5 py-1 rounded-full text-[0.75rem] font-semibold ${getStatusColor(order.status)}`}>
-                                            {getStatusLabel(order.status)}
-                                        </span>
-                                    </div>
-
-                                    {/* Status tracker */}
-                                    <OrderStatusTracker status={order.status} />
-
-                                    <div className="font-extrabold text-[#0f172a] text-[1rem]">
-                                        {order.variant.product.name}
-                                    </div>
-                                    <div className="text-[0.82rem] text-[#475569]">{order.variant.variant_name}</div>
-
-                                    <div className="flex flex-wrap gap-4 text-[0.8rem] text-[#475569]">
-                                        <div>
-                                            <span className="block font-medium text-[0.72rem] text-[#94a3b8]">Qty</span>
-                                            <span>{order.quantity.toLocaleString()}</span>
-                                        </div>
-                                        <div>
-                                            <span className="block font-medium text-[0.72rem] text-[#94a3b8]">Amount</span>
-                                            <span className="font-semibold">{formatCurrency(order.final_amount)}</span>
-                                        </div>
-                                        <div>
-                                            <span className="block font-medium text-[0.72rem] text-[#94a3b8]">Payment</span>
-                                            <span>{order.payment_status.replace(/_/g, " ")}</span>
-                                        </div>
-                                        {order.expected_delivery_date && (
-                                            <div>
-                                                <span className="block font-medium text-[0.72rem] text-[#94a3b8]">Est. Delivery</span>
-                                                <span className="font-medium text-[#0f172a]">
-                                                    {new Date(order.expected_delivery_date).toLocaleDateString("en-NP", {
-                                                        day: "numeric", month: "short", year: "numeric"
-                                                    })}
-                                                </span>
+                                                </div>
                                             </div>
-                                        )}
-                                    </div>
-                                    {order.approvedDesign && (
-                                        <div className="text-[0.78rem] text-[#64748b]">
-                                            Design: <span className="font-mono font-semibold">{order.approvedDesign.designCode}</span>
+
+                                            {/* Chevron */}
+                                            <span className="text-slate-300 text-lg flex-shrink-0 mt-1">›</span>
                                         </div>
-                                    )}
-                                    <div className="text-[0.78rem] text-[#94a3b8]">
-                                        Placed: {formatDate(order.created_at)}
                                     </div>
                                 </div>
-                            ))
-                        )}
+                            );
+                        })}
+                        <p className="text-right text-xs text-slate-400 pt-1">
+                            Showing {filtered.length} of {orders.length} orders
+                        </p>
                     </div>
-
-                    <p className="text-right mt-4 text-[0.78rem] text-[#94a3b8]">
-                        Showing {filtered.length} of {orders.length} orders
-                    </p>
-                </>
-            )}
+                )}
+            </div>
         </div>
     );
 }

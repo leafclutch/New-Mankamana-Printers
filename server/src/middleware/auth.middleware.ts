@@ -43,6 +43,11 @@ export const protect = async (
       return next(new AppError("The user belonging to this token no longer exists.", 401));
     }
 
+    // Block deactivated client accounts — they must not be able to use any protected endpoint
+    if (decoded.role === "CLIENT" && (currentUser as any).status === "inactive") {
+      return next(new AppError("Your account has been deactivated. Please contact New Mankamana Printers.", 403));
+    }
+
     // GRANT ACCESS TO PROTECTED ROUTE — strip password before attaching to request
     const { password: _pw, ...safeUser } = currentUser as any;
     req.user = { ...safeUser, role: decoded.role };

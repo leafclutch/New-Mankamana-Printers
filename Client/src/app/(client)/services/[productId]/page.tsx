@@ -94,7 +94,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     const [quantity, setQuantity] = useState(1);
     const [minQty, setMinQty] = useState(1);
     const [designCode, setDesignCode] = useState("");
-    const [approvedDesigns, setApprovedDesigns] = useState<{ designCode: string; title: string | null }[]>([]);
+    const [approvedDesigns, setApprovedDesigns] = useState<{ designCode: string; title: string | null; approvedFileUrl: string | null }[]>([]);
     const [notes, setNotes] = useState("");
     const [pricing, setPricing] = useState<PricingResult | null>(null);
     const [pricingLoading, setPricingLoading] = useState(false);
@@ -122,13 +122,18 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
             .catch(() => {});
     }, [productId]);
 
-    // Fetch approved designs
+    // Fetch approved designs filtered to this product by productId (exact) + name fallback
+    // Note: productId is stable (from route params), product changes once when loaded.
+    // Both must be in deps — productId is listed first so the array length is always 2.
     useEffect(() => {
-        fetch(`${API_BASE}/designs/my`, { headers: getAuthHeaders() })
+        if (!product) return;
+        const url = `${API_BASE}/designs/my?productId=${encodeURIComponent(productId)}&productName=${encodeURIComponent(product.name)}`;
+        fetch(url, { headers: getAuthHeaders() })
             .then((r) => r.json())
             .then((d) => { if (d.success) setApprovedDesigns(d.data || []); })
             .catch(() => {});
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [productId, product]);
 
     // Fetch options when variant changes
     useEffect(() => {
@@ -153,7 +158,8 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
 
     // Calculate price
     const calculatePrice = useCallback(async () => {
-        if (!selectedVariantId || optionGroups.some(g => g.is_required && !selectedOptions[g.name])) return;
+        const configurableGroups = optionGroups.filter(g => g.name.toLowerCase() !== "quantity");
+        if (!selectedVariantId || configurableGroups.some(g => g.is_required && !selectedOptions[g.name])) return;
         setPricingLoading(true);
         try {
             const res = await fetch(`${API_BASE}/pricing/calculate`, {
@@ -317,13 +323,13 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
             </div>
 
             {/* Option Groups */}
-            {selectedVariantId && !loadingOptions && optionGroups.length > 0 && (
+            {selectedVariantId && !loadingOptions && optionGroups.filter(g => g.name.toLowerCase() !== "quantity").length > 0 && (
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
                     <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
                         <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">Configure Options</span>
                     </div>
                     <div className="px-4 py-4 flex flex-col gap-4 bg-white">
-                        {optionGroups.map((group) => (
+                        {optionGroups.filter(g => g.name.toLowerCase() !== "quantity").map((group) => (
                             <div key={group.id}>
                                 <label className="block text-sm font-semibold text-blue-700 mb-1">
                                     {group.label} {group.is_required && <span className="text-red-500">*</span>}
@@ -355,32 +361,79 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                         id="qty"
                         type="number"
                         min={minQty}
+                        step={minQty}
                         value={quantity}
-                        onChange={(e) => setQuantity(Math.max(minQty, parseInt(e.target.value) || minQty))}
+                        onChange={(e) => {
+                            const raw = parseInt(e.target.value) || minQty;
+                            const snapped = Math.max(minQty, Math.round(raw / minQty) * minQty);
+                            setQuantity(snapped);
+                        }}
                         className="w-32 px-3 py-2 border border-gray-300 rounded text-sm text-gray-800 text-center focus:border-blue-500 outline-none"
                     />
                 </div>
             )}
 
             {/* Approved Design */}
-            {selectedVariantId && approvedDesigns.length > 0 && (
+            {selectedVariantId && (
                 <div>
                     <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1">
                         Approved Design <span className="text-gray-400 font-normal normal-case">(optional)</span>
                     </label>
-                    <select
-                        value={designCode}
-                        onChange={(e) => setDesignCode(e.target.value)}
-                        aria-label="Select approved design"
-                        className="w-full px-3 py-2.5 rounded border border-gray-300 text-sm text-gray-800 bg-white focus:border-blue-500 outline-none"
-                    >
-                        <option value="">— No design (skip) —</option>
-                        {approvedDesigns.map((d) => (
-                            <option key={d.designCode} value={d.designCode}>
-                                {d.designCode}{d.title ? ` — ${d.title}` : ""}
-                            </option>
-                        ))}
-                    </select>
+                    {approvedDesigns.length === 0 ? (
+                        <p className="text-xs text-gray-400 italic">No approved designs for this product yet.</p>
+                    ) : (
+                        <>
+                            <select
+                                value={designCode}
+                                onChange={(e) => setDesignCode(e.target.value)}
+                                aria-label="Select approved design"
+                                className="w-full px-3 py-2.5 rounded border border-gray-300 text-sm text-gray-800 bg-white focus:border-blue-500 outline-none"
+                            >
+                                <option value="">— No design (skip) —</option>
+                                {approvedDesigns.map((d) => (
+                                    <option key={d.designCode} value={d.designCode}>
+                                        {d.designCode}{d.title ? ` — ${d.title}` : ""}
+                                    </option>
+                                ))}
+                            </select>
+                            {/* Design preview */}
+                            {designCode && (() => {
+                                const selected = approvedDesigns.find(d => d.designCode === designCode);
+                                if (!selected?.approvedFileUrl) return null;
+                                const isImage = /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(selected.approvedFileUrl);
+                                return (
+                                    <div className="mt-2 rounded-lg border border-blue-100 bg-blue-50 overflow-hidden">
+                                        {isImage ? (
+                                            <img
+                                                src={selected.approvedFileUrl}
+                                                alt={`Preview: ${selected.designCode}`}
+                                                className="w-full max-h-48 object-contain bg-white"
+                                            />
+                                        ) : (
+                                            <div className="px-4 py-3 flex items-center gap-2">
+                                                <span className="text-2xl">📄</span>
+                                                <span className="text-sm text-blue-700 font-medium">{selected.designCode}</span>
+                                            </div>
+                                        )}
+                                        <div className="px-3 py-2 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-xs font-bold text-blue-700">{selected.designCode}</p>
+                                                {selected.title && <p className="text-[11px] text-blue-500">{selected.title}</p>}
+                                            </div>
+                                            <a
+                                                href={selected.approvedFileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[11px] text-blue-600 underline hover:text-blue-800"
+                                            >
+                                                Open ↗
+                                            </a>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </>
+                    )}
                 </div>
             )}
 

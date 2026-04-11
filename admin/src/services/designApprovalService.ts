@@ -11,6 +11,7 @@ export interface DesignListItem {
   fileUrl?: string;
   fileType?: string;
   designCode?: string;
+  productName?: string;
 }
 
 interface SubmissionApi {
@@ -26,6 +27,10 @@ interface SubmissionApi {
     id?: string | null;
     name?: string | null;
     phone?: string | null;
+  } | null;
+  product?: {
+    id?: string | null;
+    name?: string | null;
   } | null;
 }
 
@@ -53,6 +58,7 @@ const mapSubmission = (s: SubmissionApi): DesignListItem => ({
   fileUrl: s.fileUrl || undefined,
   fileType: s.fileType || undefined,
   designCode: s.designCode ?? undefined,
+  productName: s.product?.name ?? undefined,
 });
 
 // fetchAllDesignSubmissions: Loads ALL submissions (pending + approved + rejected) for the admin review page.

@@ -32,6 +32,9 @@ async function autoAdvanceToProcessing(orderId: string): Promise<void> {
       where: { id: orderId },
       data: { status: "ORDER_PROCESSING", updated_at: new Date() },
     });
+    prisma.orderStatusHistory.create({
+      data: { order_id: orderId, status: "ORDER_PROCESSING", changed_by: "system" },
+    }).catch(() => {});
     // Fire email notification (non-blocking)
     sendOrderStatusUpdate({
       to: order.client.email,
@@ -177,6 +180,11 @@ export const createProductOrderService = async (data: {
       });
     }
 
+    // Write initial status history row
+    await tx.orderStatusHistory.create({
+      data: { order_id: order.id, status: "ORDER_PLACED", changed_by: "client" },
+    });
+
     return order;
   });
 
@@ -226,6 +234,9 @@ export const getOrderDetailsService = async (orderId: string) => {
         },
       },
       configurations: true,
+      statusHistory: {
+        orderBy: { changed_at: "asc" },
+      },
     },
   });
 };
@@ -297,6 +308,10 @@ export const updateOrderStatusService = async (orderId: string, status: string, 
         variant: { select: { variant_name: true, product: { select: { name: true } } } },
       },
     });
+    // Record cancellation in history (non-blocking)
+    prisma.orderStatusHistory.create({
+      data: { order_id: orderId, status: "ORDER_CANCELLED", changed_by: "admin" },
+    }).catch(() => {});
     sendOrderStatusUpdate({
       to: updated.client.email,
       businessName: updated.client.business_name,
@@ -328,6 +343,10 @@ export const updateOrderStatusService = async (orderId: string, status: string, 
       variant: { select: { variant_name: true, product: { select: { name: true } } } },
     },
   });
+  // Record forward transition in history (non-blocking)
+  prisma.orderStatusHistory.create({
+    data: { order_id: orderId, status, changed_by: "admin" },
+  }).catch(() => {});
   sendOrderStatusUpdate({
     to: updated.client.email,
     businessName: updated.client.business_name,

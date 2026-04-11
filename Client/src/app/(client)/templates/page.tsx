@@ -53,12 +53,22 @@ function TemplatesContent() {
     }, [tabParam]);
     const [activeCategory, setActiveCategory] = useState("All");
     const [customDesignType, setCustomDesignType] = useState("");
+    const [customDesignProductId, setCustomDesignProductId] = useState("");
+    const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
     const [customDesignFile, setCustomDesignFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
     const [myDesigns, setMyDesigns] = useState<MyDesignSubmission[]>([]);
     const [myDesignsLoading, setMyDesignsLoading] = useState(false);
     const [myDesignsError, setMyDesignsError] = useState<string | null>(null);
+
+    // Fetch product list once for the product selector in the custom tab
+    useEffect(() => {
+        fetch(`${API_BASE}/products`)
+            .then((r) => r.json())
+            .then((d) => { if (d.success) setProducts(d.data || []); })
+            .catch(() => {});
+    }, []);
 
     useEffect(() => {
         if (activeTab !== "mydesigns") return;
@@ -113,8 +123,12 @@ function TemplatesContent() {
     };
 
     const handleCustomDesign = async () => {
+        if (!customDesignProductId) {
+            notify.error("Please select which product this design is for.");
+            return;
+        }
         if (!customDesignType) {
-            notify.error("Please select a design type first.");
+            notify.error("Please enter a title for your design.");
             return;
         }
         if (!customDesignFile) {
@@ -133,6 +147,7 @@ function TemplatesContent() {
             const formData = new FormData();
             formData.append("file", customDesignFile);
             formData.append("title", customDesignType);
+            formData.append("productId", customDesignProductId);
 
             const res = await fetch(`${API_BASE}/design-submissions`, {
                 method: "POST",
@@ -145,6 +160,7 @@ function TemplatesContent() {
             notify.success("Design submitted successfully! You will receive a design code via email once approved.");
             setCustomDesignFile(null);
             setCustomDesignType("");
+            setCustomDesignProductId("");
             if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
         } catch (err: any) {
             notify.error(err.message || "Failed to submit design. Please try again.");
@@ -432,18 +448,30 @@ function TemplatesContent() {
                             {/* Form card */}
                             <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm p-5 sm:p-7">
 
-                                {/* Design Type */}
+                                {/* Product selector — determines which product this design is for */}
                                 <div className="form-group mb-5">
-                                    <label className="form-label">Design Type <span className="text-red-500">*</span></label>
+                                    <label className="form-label">Product <span className="text-red-500">*</span></label>
                                     <select
-                                        value={customDesignType}
-                                        onChange={(e) => setCustomDesignType(e.target.value)}
-                                        aria-label="Design type"
+                                        value={customDesignProductId}
+                                        onChange={(e) => setCustomDesignProductId(e.target.value)}
+                                        aria-label="Select product"
                                         className="form-input appearance-none"
                                     >
-                                        <option value="">Select design type…</option>
-                                        {SERVICES.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)}
+                                        <option value="">Select which product this design is for…</option>
+                                        {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                                     </select>
+                                </div>
+
+                                {/* Design Title */}
+                                <div className="form-group mb-5">
+                                    <label className="form-label">Design Title <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        value={customDesignType}
+                                        onChange={(e) => setCustomDesignType(e.target.value)}
+                                        placeholder="e.g. Business Card Front Side"
+                                        className="form-input"
+                                    />
                                 </div>
 
                                 {/* File Upload */}

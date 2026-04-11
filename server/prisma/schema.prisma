@@ -194,6 +194,8 @@ model Product {
 
   category ProductCategory? @relation(fields: [category_id], references: [id])
   variants ProductVariant[]
+  designSubmissions DesignSubmission[]
+  approvedDesigns   ApprovedDesign[]
 
   @@map("products")
 }
@@ -276,6 +278,10 @@ model DesignSubmission {
   clientId String @db.Uuid
   client   Client @relation(fields: [clientId], references: [id])
 
+  // Which product this design is intended for (set by client at submission time)
+  productId String?  @db.Uuid
+  product   Product? @relation(fields: [productId], references: [id])
+
   templateId String?
   template   Template? @relation(fields: [templateId], references: [id])
 
@@ -311,6 +317,10 @@ model ApprovedDesign {
 
   submissionId String           @unique @db.Uuid
   submission   DesignSubmission @relation(fields: [submissionId], references: [id])
+
+  // Denormalised product link for fast filtering (copied from submission at approval time)
+  productId String?  @db.Uuid
+  product   Product? @relation(fields: [productId], references: [id])
 
   approvedFileUrl String
 
@@ -392,7 +402,24 @@ model Order {
   walletTransaction WalletTransaction? @relation("OrderToWalletTxn", fields: [walletTransactionId], references: [id])
   walletTransactionId String?           @unique @db.Uuid
 
+  statusHistory    OrderStatusHistory[]
+
   @@map("orders")
+}
+
+// Immutable audit log: every status transition gets a row
+model OrderStatusHistory {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id   String   @db.Uuid
+  status     String   @db.VarChar(30)
+  changed_at DateTime @default(now())
+  // who made the change — null means system (auto-transition)
+  changed_by String?  @db.VarChar(100)
+
+  order Order @relation(fields: [order_id], references: [id], onDelete: Cascade)
+
+  @@index([order_id])
+  @@map("order_status_history")
 }
 
 model OrderConfiguration {

@@ -1,58 +1,49 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Search,
-  Package,
-  Clock,
-  CheckCircle2,
-  Printer,
-  Truck,
-  RefreshCw,
-  Calendar,
-  XCircle,
-  ChevronRight,
-  AlertTriangle,
+  Search, Package, Clock, CheckCircle2, Printer, Truck,
+  RefreshCw, Calendar, XCircle, ChevronRight, AlertTriangle,
+  Eye, FileText, X,
 } from "lucide-react";
 
 type OrderStatus =
-  | "ORDER_PLACED"
-  | "ORDER_PROCESSING"
-  | "ORDER_PREPARED"
-  | "ORDER_DISPATCHED"
-  | "ORDER_DELIVERED"
-  | "ORDER_CANCELLED";
+  | "ORDER_PLACED" | "ORDER_PROCESSING" | "ORDER_PREPARED"
+  | "ORDER_DISPATCHED" | "ORDER_DELIVERED" | "ORDER_CANCELLED";
+
+interface OrderConfig {
+  group_label: string;
+  selected_label: string;
+}
 
 interface Order {
   id: string;
   status: OrderStatus;
   final_amount: number;
+  total_amount: number;
+  discount_amount?: number;
   quantity: number;
   payment_status: string;
   created_at: string;
   expected_delivery_date?: string | null;
   notes?: string | null;
-  client?: {
-    business_name: string;
-    phone_number?: string;
-    client_code?: string;
-  };
-  variant?: {
-    variant_name: string;
-    product?: { name: string };
-  };
+  payment_proof_url?: string | null;
+  payment_proof_file_name?: string | null;
+  payment_proof_mime_type?: string | null;
+  pricing_snapshot?: unknown;
+  configurations?: OrderConfig[];
+  client?: { business_name: string; phone_number?: string; client_code?: string };
+  variant?: { variant_name: string; product?: { name: string } };
+  approvedDesign?: { designCode: string } | null;
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
-  ORDER_PLACED: "Order Placed",
-  ORDER_PROCESSING: "Processing",
-  ORDER_PREPARED: "Prepared",
-  ORDER_DISPATCHED: "Dispatched",
-  ORDER_DELIVERED: "Delivered",
-  ORDER_CANCELLED: "Cancelled",
+  ORDER_PLACED: "Order Placed", ORDER_PROCESSING: "Processing",
+  ORDER_PREPARED: "Prepared", ORDER_DISPATCHED: "Dispatched",
+  ORDER_DELIVERED: "Delivered", ORDER_CANCELLED: "Cancelled",
 };
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -64,22 +55,26 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   ORDER_CANCELLED: "bg-red-100 text-red-700 border-red-200",
 };
 
-// ORDER_PLACED auto-advances; admin manually drives everything from ORDER_PROCESSING onwards
+// Admin can manually advance from PROCESSING onwards; ORDER_PLACED auto-advances
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
+  ORDER_PLACED: "ORDER_PROCESSING",
   ORDER_PROCESSING: "ORDER_PREPARED",
   ORDER_PREPARED: "ORDER_DISPATCHED",
   ORDER_DISPATCHED: "ORDER_DELIVERED",
 };
 
+const NEXT_LABEL: Partial<Record<OrderStatus, string>> = {
+  ORDER_PLACED: "Accept Order",
+  ORDER_PROCESSING: "Mark Prepared",
+  ORDER_PREPARED: "Mark Dispatched",
+  ORDER_DISPATCHED: "Mark Delivered",
+};
+
 const STATUS_FLOW: OrderStatus[] = [
-  "ORDER_PLACED",
-  "ORDER_PROCESSING",
-  "ORDER_PREPARED",
-  "ORDER_DISPATCHED",
-  "ORDER_DELIVERED",
+  "ORDER_PLACED", "ORDER_PROCESSING", "ORDER_PREPARED", "ORDER_DISPATCHED", "ORDER_DELIVERED",
 ];
 
-const ALL_FILTER_TABS: { label: string; value: string }[] = [
+const ALL_FILTER_TABS = [
   { label: "All", value: "All" },
   { label: "Placed", value: "ORDER_PLACED" },
   { label: "Processing", value: "ORDER_PROCESSING" },
@@ -89,51 +84,243 @@ const ALL_FILTER_TABS: { label: string; value: string }[] = [
   { label: "Cancelled", value: "ORDER_CANCELLED" },
 ];
 
-// ── Cancel confirmation modal ──────────────────────────────────────────────
-function CancelModal({
+// ── Order Detail Modal ───────────────────────────────────────────────────────
+function OrderDetailModal({
   order,
-  onConfirm,
   onClose,
-  loading,
+  onAdvance,
+  onCancel,
+  onSetDate,
+  advancing,
 }: {
   order: Order;
-  onConfirm: () => void;
   onClose: () => void;
-  loading: boolean;
+  onAdvance: (order: Order) => void;
+  onCancel: (order: Order) => void;
+  onSetDate: (order: Order) => void;
+  advancing: boolean;
+}) {
+  const isCancelled = order.status === "ORDER_CANCELLED";
+  const isDelivered = order.status === "ORDER_DELIVERED";
+  const isFinal = isCancelled || isDelivered;
+  const currentIdx = STATUS_FLOW.indexOf(order.status);
+  const nextStatus = NEXT_STATUS[order.status];
+  const nextLabel = NEXT_LABEL[order.status];
+
+  const isImage = order.payment_proof_mime_type?.startsWith("image/") ||
+    order.payment_proof_url?.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div
+        className="w-full max-w-xl bg-white rounded-2xl shadow-2xl dark:bg-slate-900 max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div>
+            <p className="font-mono text-xs font-semibold text-slate-400">#{order.id}</p>
+            <h2 className="font-bold text-slate-900 dark:text-white text-base mt-0.5">
+              {order.variant?.product?.name ?? "—"} — {order.variant?.variant_name ?? ""}
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {order.client?.business_name} · {order.client?.phone_number}
+            </p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Body — scrollable */}
+        <div className="overflow-y-auto flex-1 px-6 py-5 space-y-5">
+
+          {/* Progress bar */}
+          {!isCancelled && (
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800/50 p-4 border border-slate-100 dark:border-slate-700">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Order Progress</p>
+              <div className="flex items-start justify-between relative">
+                <div className="absolute top-3 left-4 right-4 h-0.5 bg-slate-200 dark:bg-slate-700" />
+                <div
+                  className="absolute top-3 left-4 h-0.5 bg-blue-600 transition-all"
+                  style={{ width: `calc(${(Math.max(currentIdx, 0) / (STATUS_FLOW.length - 1)) * 100}% - 2rem)` }}
+                />
+                {STATUS_FLOW.map((s, idx) => (
+                  <div key={s} className="flex flex-col items-center gap-1 relative z-10">
+                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
+                      idx < currentIdx ? "bg-blue-600 border-blue-600 text-white" :
+                      idx === currentIdx ? "bg-white border-blue-600 text-blue-600 dark:bg-slate-900" :
+                      "bg-white border-slate-300 text-slate-400 dark:bg-slate-900 dark:border-slate-700"
+                    }`}>
+                      {idx < currentIdx ? "✓" : idx + 1}
+                    </div>
+                    <span className={`text-[9px] font-semibold leading-tight text-center max-w-[50px] ${
+                      idx <= currentIdx ? "text-blue-700 dark:text-blue-400" : "text-slate-400"
+                    }`}>{STATUS_LABELS[s]}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {isCancelled && (
+            <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 flex items-center gap-2 text-red-700 dark:bg-red-900/20 dark:border-red-900/40 dark:text-red-400">
+              <XCircle className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm font-medium">This order has been cancelled.</span>
+            </div>
+          )}
+
+          {/* Summary grid */}
+          <div className="grid grid-cols-2 gap-2.5">
+            {[
+              { label: "Amount", value: `NPR ${Number(order.final_amount).toLocaleString()}` },
+              { label: "Quantity", value: order.quantity.toLocaleString() },
+              { label: "Payment", value: order.payment_status.replace(/_/g, " "), highlight: order.payment_status === "PROOF_SUBMITTED" ? "blue" : order.payment_status === "CONFIRMED" ? "green" : undefined },
+              { label: "Placed", value: new Date(order.created_at).toLocaleDateString() },
+            ].map(({ label, value, highlight }) => (
+              <div key={label} className="rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2.5 border border-slate-100 dark:border-slate-700">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                <p className={`text-sm font-semibold mt-0.5 ${
+                  highlight === "blue" ? "text-blue-600" :
+                  highlight === "green" ? "text-emerald-600" :
+                  "text-slate-800 dark:text-slate-200"
+                }`}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Delivery date */}
+          <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-slate-400" />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Est. Delivery</p>
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                  {order.expected_delivery_date
+                    ? new Date(order.expected_delivery_date).toLocaleDateString("en-NP", { day: "numeric", month: "long", year: "numeric" })
+                    : "Not set"}
+                </p>
+              </div>
+            </div>
+            {!isCancelled && (
+              <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => onSetDate(order)}>
+                {order.expected_delivery_date ? "Change" : "Set Date"}
+              </Button>
+            )}
+          </div>
+
+          {/* Configuration */}
+          {order.configurations && order.configurations.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Configuration</p>
+              <div className="rounded-xl border border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700 overflow-hidden">
+                {order.configurations.map((c, i) => (
+                  <div key={i} className="flex justify-between items-center px-4 py-2.5">
+                    <span className="text-sm text-slate-500 dark:text-slate-400">{c.group_label}</span>
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{c.selected_label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Design code */}
+          {order.approvedDesign && (
+            <div className="rounded-lg bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/40 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Approved Design</p>
+              <p className="font-mono text-sm font-bold text-indigo-800 dark:text-indigo-300 mt-0.5">{order.approvedDesign.designCode}</p>
+            </div>
+          )}
+
+          {/* Notes */}
+          {order.notes && (
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/40 px-4 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-amber-500">Client Remarks</p>
+              <p className="text-sm text-amber-800 dark:text-amber-300 mt-0.5">{order.notes}</p>
+            </div>
+          )}
+
+          {/* Payment proof */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Payment Proof</p>
+            {order.payment_proof_url ? (
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                {isImage && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={order.payment_proof_url}
+                    alt="Payment proof"
+                    className="w-full max-h-56 object-contain bg-slate-50 dark:bg-slate-800"
+                  />
+                )}
+                <a
+                  href={order.payment_proof_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                >
+                  <FileText className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                  <span className="text-sm text-blue-600 font-medium truncate flex-1">
+                    {order.payment_proof_file_name || "View payment proof"}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                </a>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400 italic">No payment proof submitted.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Footer actions */}
+        {!isFinal && (
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              onClick={() => onCancel(order)}
+            >
+              <XCircle className="h-3.5 w-3.5 mr-1.5" /> Cancel Order
+            </Button>
+            <div className="flex-1" />
+            {nextStatus && nextLabel && (
+              <Button
+                size="sm"
+                disabled={advancing}
+                onClick={() => onAdvance(order)}
+                className="bg-[#0061FF] text-white hover:bg-[#0052d9] px-5"
+              >
+                {advancing ? "Updating…" : nextLabel} →
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Cancel confirm modal ──────────────────────────────────────────────────────
+function CancelModal({ order, onConfirm, onClose, loading }: {
+  order: Order; onConfirm: () => void; onClose: () => void; loading: boolean;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
             <AlertTriangle className="h-5 w-5 text-red-600" />
           </div>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Cancel Order</h2>
+          <div>
+            <h2 className="font-bold text-slate-900 dark:text-white">Cancel Order?</h2>
+            <p className="text-xs text-slate-500 mt-0.5">#{order.id.slice(0, 8)} · {order.client?.business_name}</p>
+          </div>
         </div>
-        <p className="mb-1 text-sm text-slate-600 dark:text-slate-300">
-          Are you sure you want to cancel this order?
-        </p>
-        <div className="my-3 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/50">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Order ID</p>
-          <p className="font-mono text-sm font-semibold text-slate-800 dark:text-slate-200">
-            {order.id.slice(0, 8)}...
-          </p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Client</p>
-          <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-            {order.client?.business_name ?? "—"}
-          </p>
-        </div>
-        <p className="mb-5 text-xs text-red-500">This action cannot be undone.</p>
+        <p className="text-sm text-red-500 mb-5">This action cannot be undone.</p>
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
-            Keep Order
-          </Button>
-          <Button
-            className="flex-1 bg-red-600 text-white hover:bg-red-700"
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? "Cancelling..." : "Yes, Cancel"}
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>Keep</Button>
+          <Button className="flex-1 bg-red-600 hover:bg-red-700 text-white" onClick={onConfirm} disabled={loading}>
+            {loading ? "Cancelling…" : "Yes, Cancel"}
           </Button>
         </div>
       </div>
@@ -141,17 +328,9 @@ function CancelModal({
   );
 }
 
-// ── Delivery date popover ─────────────────────────────────────────────────
-function DeliveryDatePopover({
-  order,
-  onSave,
-  onClose,
-  loading,
-}: {
-  order: Order;
-  onSave: (date: string) => void;
-  onClose: () => void;
-  loading: boolean;
+// ── Delivery date modal ───────────────────────────────────────────────────────
+function DeliveryDateModal({ order, onSave, onClose, loading }: {
+  order: Order; onSave: (date: string) => void; onClose: () => void; loading: boolean;
 }) {
   const existing = order.expected_delivery_date
     ? new Date(order.expected_delivery_date).toISOString().split("T")[0]
@@ -160,30 +339,18 @@ function DeliveryDatePopover({
   const today = new Date().toISOString().split("T")[0];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl dark:bg-slate-900">
-        <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">
-          Set Expected Delivery Date
-        </h2>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-2xl">
+        <h2 className="font-bold text-slate-900 dark:text-white mb-4">Set Delivery Date</h2>
         <input
-          type="date"
-          min={today}
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          aria-label="Expected delivery date"
-          title="Expected delivery date"
-          className="mb-5 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)}
+          aria-label="Delivery date"
+          className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm mb-5 outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] dark:border-slate-700 dark:bg-slate-800 dark:text-white"
         />
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button
-            className="flex-1 bg-[#0061FF] text-white hover:bg-[#0052d9]"
-            onClick={() => date && onSave(date)}
-            disabled={!date || loading}
-          >
-            {loading ? "Saving..." : "Save Date"}
+          <Button variant="outline" className="flex-1" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button className="flex-1 bg-[#0061FF] text-white hover:bg-[#0052d9]" onClick={() => date && onSave(date)} disabled={!date || loading}>
+            {loading ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
@@ -191,35 +358,31 @@ function DeliveryDatePopover({
   );
 }
 
-// ── Status progress bar ───────────────────────────────────────────────────
-function StatusProgress({ status }: { status: OrderStatus }) {
-  if (status === "ORDER_CANCELLED") return null;
-  const currentIdx = STATUS_FLOW.indexOf(status);
+// ── Status pill ───────────────────────────────────────────────────────────────
+function StatusPill({ status }: { status: OrderStatus }) {
+  const idx = STATUS_FLOW.indexOf(status);
   return (
     <div className="flex items-center gap-1">
-      {STATUS_FLOW.map((s, idx) => (
-        <div key={s} className="flex items-center gap-1">
-          <div
-            className={`h-1.5 w-5 rounded-full transition-colors ${
-              idx <= currentIdx ? "bg-[#0061FF]" : "bg-slate-200 dark:bg-slate-700"
-            }`}
-          />
-        </div>
+      {STATUS_FLOW.map((_, i) => (
+        <div key={i} className={`h-1.5 rounded-full transition-colors ${
+          i <= idx ? "w-5 bg-[#0061FF]" : "w-3 bg-slate-200 dark:bg-slate-700"
+        }`} />
       ))}
     </div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function OrderManagementPage() {
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
-  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
-  const [deliveryTarget, setDeliveryTarget] = useState<Order | null>(null);
+  const [dateTarget, setDateTarget] = useState<Order | null>(null);
+  const [advancingId, setAdvancingId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchOrders = async () => {
@@ -238,10 +401,21 @@ export default function OrderManagementPage() {
 
   useEffect(() => { fetchOrders(); }, []);
 
+  const openDetail = async (order: Order) => {
+    // Fetch full details (includes configurations + payment_proof_url)
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, { cache: "no-store" });
+      const json = await res.json();
+      setDetailOrder(json.data ?? json ?? order);
+    } catch {
+      setDetailOrder(order);
+    }
+  };
+
   const handleAdvanceStatus = async (order: Order) => {
     const next = NEXT_STATUS[order.status];
     if (!next) return;
-    setUpdatingId(order.id);
+    setAdvancingId(order.id);
     try {
       const res = await fetch(`/api/admin/orders/${order.id}/status`, {
         method: "PATCH",
@@ -250,13 +424,14 @@ export default function OrderManagementPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to update status");
-      setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: next } : o)));
+      setOrders((prev) => prev.map((o) => o.id === order.id ? { ...o, status: next } : o));
+      setDetailOrder((prev) => prev?.id === order.id ? { ...prev, status: next } : prev);
       toast({ title: "Status Updated", description: `Order moved to ${STATUS_LABELS[next]}` });
       window.dispatchEvent(new Event("stats-updated"));
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
-      setUpdatingId(null);
+      setAdvancingId(null);
     }
   };
 
@@ -271,10 +446,10 @@ export default function OrderManagementPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to cancel order");
-      setOrders((prev) =>
-        prev.map((o) => (o.id === cancelTarget.id ? { ...o, status: "ORDER_CANCELLED" } : o))
-      );
-      toast({ title: "Order Cancelled", description: "The order has been cancelled." });
+      const updated = { ...cancelTarget, status: "ORDER_CANCELLED" as OrderStatus };
+      setOrders((prev) => prev.map((o) => o.id === cancelTarget.id ? updated : o));
+      setDetailOrder((prev) => prev?.id === cancelTarget.id ? updated : prev);
+      toast({ title: "Order Cancelled" });
       window.dispatchEvent(new Event("stats-updated"));
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -285,27 +460,25 @@ export default function OrderManagementPage() {
   };
 
   const handleSetDeliveryDate = async (date: string) => {
-    if (!deliveryTarget) return;
+    if (!dateTarget) return;
     setActionLoading(true);
     try {
-      const res = await fetch(`/api/admin/orders/${deliveryTarget.id}/delivery-date`, {
+      const res = await fetch(`/api/admin/orders/${dateTarget.id}/delivery-date`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expected_delivery_date: date }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to set date");
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === deliveryTarget.id ? { ...o, expected_delivery_date: date } : o
-        )
-      );
-      toast({ title: "Delivery Date Set", description: `Expected delivery: ${new Date(date).toLocaleDateString()}` });
+      const updated = { ...dateTarget, expected_delivery_date: date };
+      setOrders((prev) => prev.map((o) => o.id === dateTarget.id ? updated : o));
+      setDetailOrder((prev) => prev?.id === dateTarget.id ? updated : prev);
+      toast({ title: "Delivery Date Set", description: new Date(date).toLocaleDateString() });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
       setActionLoading(false);
-      setDeliveryTarget(null);
+      setDateTarget(null);
     }
   };
 
@@ -320,40 +493,40 @@ export default function OrderManagementPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const activeStatuses: OrderStatus[] = ["ORDER_PLACED", "ORDER_PROCESSING", "ORDER_PREPARED", "ORDER_DISPATCHED"];
   const stats = {
     total: orders.length,
-    active: orders.filter((o) => activeStatuses.includes(o.status)).length,
+    active: orders.filter((o) => ["ORDER_PLACED","ORDER_PROCESSING"].includes(o.status)).length,
     prepared: orders.filter((o) => o.status === "ORDER_PREPARED").length,
     delivered: orders.filter((o) => o.status === "ORDER_DELIVERED").length,
   };
 
   return (
     <>
+      {/* Modals */}
       {cancelTarget && (
-        <CancelModal
-          order={cancelTarget}
-          onConfirm={handleCancel}
-          onClose={() => setCancelTarget(null)}
-          loading={actionLoading}
-        />
+        <CancelModal order={cancelTarget} onConfirm={handleCancel} onClose={() => setCancelTarget(null)} loading={actionLoading} />
       )}
-      {deliveryTarget && (
-        <DeliveryDatePopover
-          order={deliveryTarget}
-          onSave={handleSetDeliveryDate}
-          onClose={() => setDeliveryTarget(null)}
-          loading={actionLoading}
+      {dateTarget && (
+        <DeliveryDateModal order={dateTarget} onSave={handleSetDeliveryDate} onClose={() => setDateTarget(null)} loading={actionLoading} />
+      )}
+      {detailOrder && (
+        <OrderDetailModal
+          order={detailOrder}
+          onClose={() => setDetailOrder(null)}
+          onAdvance={handleAdvanceStatus}
+          onCancel={(o) => { setDetailOrder(null); setCancelTarget(o); }}
+          onSetDate={(o) => { setDateTarget(o); }}
+          advancing={advancingId === detailOrder.id}
         />
       )}
 
       <div className="space-y-6">
-        {/* Page header */}
+        {/* Header */}
         <div className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0061FF]">Fulfillment</p>
           <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">Order Management</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Track and manage print orders from placement to delivery.
+            Click any order to view details, payment proof, and manage status.
           </p>
         </div>
 
@@ -372,9 +545,7 @@ export default function OrderManagementPage() {
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
                     <h3 className="mt-0.5 text-2xl font-bold text-slate-900 dark:text-white">{value}</h3>
                   </div>
-                  <div className={`rounded-full p-3 ${color}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
+                  <div className={`rounded-full p-3 ${color}`}><Icon className="h-5 w-5" /></div>
                 </div>
               </CardContent>
             </Card>
@@ -398,17 +569,15 @@ export default function OrderManagementPage() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <Button type="button" variant="outline" size="icon" onClick={fetchOrders} title="Refresh">
+                  <Button type="button" variant="outline" size="icon" onClick={fetchOrders} title="Refresh" aria-label="Refresh">
                     <RefreshCw className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              {/* Filter tabs */}
               <div className="flex gap-1 overflow-x-auto pb-3">
                 {ALL_FILTER_TABS.map((tab) => (
                   <button
-                    type="button"
-                    key={tab.value}
+                    type="button" key={tab.value}
                     onClick={() => setStatusFilter(tab.value)}
                     className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
                       statusFilter === tab.value
@@ -429,10 +598,19 @@ export default function OrderManagementPage() {
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
-              <div className="px-6 py-16 text-center text-sm text-slate-500">Loading orders...</div>
+              <div className="space-y-0 divide-y divide-slate-100 dark:divide-slate-800">
+                {[1,2,3].map(i => (
+                  <div key={i} className="px-5 py-4 animate-pulse flex gap-4">
+                    <div className="h-4 w-24 bg-slate-100 dark:bg-slate-800 rounded" />
+                    <div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded" />
+                    <div className="h-4 w-28 bg-slate-100 dark:bg-slate-800 rounded" />
+                    <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 rounded ml-auto" />
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[900px] text-left text-sm">
+                <table className="w-full min-w-[800px] text-left text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                     <tr>
                       <th className="px-5 py-3.5 font-semibold">Order</th>
@@ -440,16 +618,14 @@ export default function OrderManagementPage() {
                       <th className="px-5 py-3.5 font-semibold">Product</th>
                       <th className="px-5 py-3.5 font-semibold">Amount</th>
                       <th className="px-5 py-3.5 font-semibold">Status</th>
-                      <th className="px-5 py-3.5 font-semibold">Est. Delivery</th>
-                      <th className="px-5 py-3.5 text-right font-semibold">Actions</th>
+                      <th className="px-5 py-3.5 font-semibold">Delivery</th>
+                      <th className="px-5 py-3.5 text-right font-semibold">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredOrders.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
-                          No orders found.
-                        </td>
+                        <td colSpan={7} className="px-6 py-12 text-center text-slate-500">No orders found.</td>
                       </tr>
                     ) : (
                       filteredOrders.map((order) => {
@@ -457,13 +633,14 @@ export default function OrderManagementPage() {
                         const isDelivered = order.status === "ORDER_DELIVERED";
                         const isFinal = isCancelled || isDelivered;
                         const nextStatus = NEXT_STATUS[order.status];
+                        const nextLabel = NEXT_LABEL[order.status];
 
                         return (
                           <tr
                             key={order.id}
-                            className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/30"
+                            className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/30 cursor-pointer"
+                            onClick={() => openDetail(order)}
                           >
-                            {/* Order ID + date */}
                             <td className="px-5 py-4">
                               <p className="font-mono text-xs font-semibold text-slate-900 dark:text-white">
                                 #{order.id.slice(0, 8)}
@@ -472,124 +649,79 @@ export default function OrderManagementPage() {
                                 <Clock className="h-3 w-3" />
                                 {new Date(order.created_at).toLocaleDateString()}
                               </div>
-                              <div className="mt-1">
-                                <StatusProgress status={order.status} />
+                              <div className="mt-1.5">
+                                {isCancelled ? (
+                                  <span className="text-[10px] text-red-500 font-medium">Cancelled</span>
+                                ) : (
+                                  <StatusPill status={order.status} />
+                                )}
                               </div>
                             </td>
 
-                            {/* Client */}
                             <td className="px-5 py-4">
-                              <p className="font-medium text-slate-900 dark:text-white">
-                                {order.client?.business_name ?? "—"}
-                              </p>
+                              <p className="font-medium text-slate-900 dark:text-white">{order.client?.business_name ?? "—"}</p>
                               <p className="text-[11px] text-slate-400">{order.client?.phone_number ?? ""}</p>
                             </td>
 
-                            {/* Product */}
                             <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
-                              <p>{order.variant?.product?.name ?? order.variant?.variant_name ?? "—"}</p>
-                              <p className="text-[11px] text-slate-400">Qty: {order.quantity}</p>
+                              <p className="font-medium">{order.variant?.product?.name ?? "—"}</p>
+                              <p className="text-[11px] text-slate-400">{order.variant?.variant_name} · Qty {order.quantity}</p>
                             </td>
 
-                            {/* Amount */}
-                            <td className="px-5 py-4 font-semibold text-slate-900 dark:text-white">
-                              NPR {Number(order.final_amount).toLocaleString()}
-                              <p className={`text-[11px] font-normal ${
-                                order.payment_status === "CONFIRMED"
-                                  ? "text-emerald-600"
-                                  : order.payment_status === "PROOF_SUBMITTED"
-                                  ? "text-blue-600"
-                                  : "text-slate-400"
+                            <td className="px-5 py-4">
+                              <p className="font-semibold text-slate-900 dark:text-white">
+                                NPR {Number(order.final_amount).toLocaleString()}
+                              </p>
+                              <p className={`text-[11px] font-medium ${
+                                order.payment_status === "CONFIRMED" ? "text-emerald-600" :
+                                order.payment_status === "PROOF_SUBMITTED" ? "text-blue-600" :
+                                "text-slate-400"
                               }`}>
                                 {order.payment_status.replace(/_/g, " ")}
                               </p>
                             </td>
 
-                            {/* Status badge */}
                             <td className="px-5 py-4">
-                              <span
-                                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status]}`}
-                              >
+                              <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status]}`}>
                                 {STATUS_LABELS[order.status]}
                               </span>
                             </td>
 
-                            {/* Expected delivery */}
-                            <td className="px-5 py-4">
-                              {order.expected_delivery_date ? (
-                                <button
-                                  type="button"
-                                  onClick={() => !isCancelled && setDeliveryTarget(order)}
-                                  className={`flex items-center gap-1 text-xs ${
-                                    isCancelled
-                                      ? "cursor-default text-slate-400"
-                                      : "text-[#0061FF] hover:underline"
-                                  }`}
-                                  title={isCancelled ? "Delivery date" : "Edit delivery date"}
-                                  aria-label={isCancelled ? "Delivery date" : "Edit delivery date"}
-                                >
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(order.expected_delivery_date).toLocaleDateString()}
-                                </button>
-                              ) : !isCancelled ? (
-                                <button
-                                  type="button"
-                                  onClick={() => setDeliveryTarget(order)}
-                                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-[#0061FF]"
-                                  title="Set delivery date"
-                                  aria-label="Set delivery date"
-                                >
-                                  <Calendar className="h-3 w-3" />
-                                  Set date
-                                </button>
-                              ) : (
-                                <span className="text-xs text-slate-300">—</span>
-                              )}
+                            <td className="px-5 py-4 text-xs text-slate-500">
+                              {order.expected_delivery_date
+                                ? new Date(order.expected_delivery_date).toLocaleDateString()
+                                : <span className="text-slate-300">—</span>}
                             </td>
 
-                            {/* Actions */}
-                            <td className="px-5 py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                {/* ORDER_PLACED auto-advances — show indicator instead of advance button */}
-                                {order.status === "ORDER_PLACED" && (
-                                  <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                    <Clock className="h-3 w-3 animate-spin" style={{ animationDuration: "3s" }} />
-                                    Auto-processing…
-                                  </span>
-                                )}
-                                {/* Manual advance button for ORDER_PROCESSING → DELIVERED */}
-                                {!isFinal && nextStatus && (
+                            <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 px-2.5 text-xs"
+                                  onClick={(e) => { e.stopPropagation(); openDetail(order); }}
+                                >
+                                  <Eye className="h-3.5 w-3.5 mr-1" /> View
+                                </Button>
+                                {!isFinal && nextStatus && nextLabel && (
                                   <Button
                                     size="sm"
-                                    disabled={updatingId === order.id}
-                                    onClick={() => handleAdvanceStatus(order)}
-                                    className="h-8 bg-[#0061FF] px-3 text-xs text-white hover:bg-[#0052d9]"
+                                    disabled={advancingId === order.id}
+                                    onClick={(e) => { e.stopPropagation(); handleAdvanceStatus(order); }}
+                                    className="h-7 px-2.5 text-xs bg-[#0061FF] text-white hover:bg-[#0052d9]"
                                   >
-                                    {updatingId === order.id ? (
-                                      "..."
-                                    ) : (
-                                      <>
-                                        <ChevronRight className="mr-0.5 h-3 w-3" />
-                                        {STATUS_LABELS[nextStatus]}
-                                      </>
-                                    )}
+                                    {advancingId === order.id ? "…" : nextLabel}
                                   </Button>
                                 )}
                                 {!isFinal && (
                                   <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setCancelTarget(order)}
-                                    className="h-8 border-red-200 px-2 text-xs text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-                                    title="Cancel order"
+                                    size="sm" variant="ghost"
+                                    className="h-7 w-7 p-0 text-red-400 hover:bg-red-50 hover:text-red-600"
+                                    onClick={(e) => { e.stopPropagation(); setCancelTarget(order); }}
+                                    title="Cancel order" aria-label="Cancel order"
                                   >
                                     <XCircle className="h-3.5 w-3.5" />
                                   </Button>
-                                )}
-                                {isFinal && (
-                                  <span className="text-xs text-slate-400">
-                                    {isCancelled ? "Cancelled" : "Delivered"}
-                                  </span>
                                 )}
                               </div>
                             </td>
@@ -601,8 +733,8 @@ export default function OrderManagementPage() {
                 </table>
               </div>
             )}
-            {!loading && filteredOrders.length > 0 && (
-              <div className="border-t border-slate-100 px-5 py-3 text-right text-xs text-slate-400 dark:border-slate-800">
+            {!loading && (
+              <div className="px-5 py-3 text-right text-xs text-slate-400 border-t border-slate-100 dark:border-slate-800">
                 Showing {filteredOrders.length} of {orders.length} orders
               </div>
             )}
