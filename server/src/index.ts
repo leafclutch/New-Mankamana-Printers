@@ -40,7 +40,15 @@ app.use(
   cors({
     origin: (origin, cb) => {
       // allow server-to-server or same-origin requests (no Origin header)
-      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      if (!origin) return cb(null, true);
+      // exact match from ALLOWED_ORIGINS env var
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      // allow all Vercel preview deployments for the same project prefixes
+      const vercelPreview = allowedOrigins.some((allowed) => {
+        const base = allowed.replace("https://", "");
+        return origin.startsWith(`https://${base.split(".")[0]}`);
+      });
+      if (vercelPreview) return cb(null, true);
       cb(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
