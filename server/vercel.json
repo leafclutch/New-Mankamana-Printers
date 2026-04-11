@@ -15,7 +15,7 @@
   "crons": [
     {
       "path": "/api/v1/admin/sweep",
-      "schedule": "*/5 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
