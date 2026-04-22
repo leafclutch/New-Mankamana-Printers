@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getAuthHeaders } from "@/store/authStore";
-import { fetchJsonCached } from "@/utils/requestCache";
+import { fetchJsonCached, registerFocusRevalidation } from "@/utils/requestCache";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
@@ -148,37 +148,38 @@ function ProductCard({ item, priority }: { item: StandaloneProduct; priority: bo
     );
 }
 
+type CatalogResponse = { success: boolean; data?: { groups: ProductGroup[]; products: StandaloneProduct[] } };
+
 export default function ServicesPage() {
     const [items, setItems] = useState<CatalogItem[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetchJsonCached<{
-            success: boolean;
-            data?: { groups: ProductGroup[]; products: StandaloneProduct[] };
-        }>(
-            "catalog-browse",
-            `${API_BASE}/catalog`,
-            { headers: getAuthHeaders() },
-            120_000
-        )
-            .then((d) => {
-                if (d.success && d.data) {
-                    // Interleave: groups first, then standalone products
-                    const combined: CatalogItem[] = [
-                        ...d.data.groups,
-                        ...d.data.products,
-                    ];
-                    setItems(combined);
-                    // Prefetch standalone product details
-                    d.data.products.forEach((p) => {
-                        fetchJsonCached<unknown>(`catalog-product-${p.id}`, `${API_BASE}/products/${p.id}`, { headers: getAuthHeaders() }, 120_000).catch(() => {});
-                        fetchJsonCached<unknown>(`catalog-variants-${p.id}`, `${API_BASE}/products/${p.id}/variants`, { headers: getAuthHeaders() }, 120_000).catch(() => {});
-                    });
-                }
-            })
+        const CATALOG_KEY = "catalog-browse";
+        const CATALOG_URL = `${API_BASE}/catalog`;
+        const init = { headers: getAuthHeaders() };
+
+        const applyData = (d: CatalogResponse) => {
+            if (!d.success || !d.data) return;
+            setItems([...d.data.groups, ...d.data.products]);
+            // Prefetch standalone product details into L1+L2 cache
+            d.data.products.forEach((p) => {
+                fetchJsonCached<unknown>(`catalog-product-${p.id}`, `${API_BASE}/products/${p.id}`, init, 120_000).catch(() => {});
+                fetchJsonCached<unknown>(`catalog-variants-${p.id}`, `${API_BASE}/products/${p.id}/variants`, init, 120_000).catch(() => {});
+            });
+        };
+
+        fetchJsonCached<CatalogResponse>(CATALOG_KEY, CATALOG_URL, init, 120_000)
+            .then(applyData)
             .catch(() => {})
             .finally(() => setLoading(false));
+
+        // Re-fetch when the tab regains focus or becomes visible — ensures catalog
+        // stays fresh after admin changes without requiring a full page reload.
+        const deregister = registerFocusRevalidation<CatalogResponse>(
+            CATALOG_KEY, CATALOG_URL, init, 120_000, applyData
+        );
+        return deregister;
     }, []);
 
     return (

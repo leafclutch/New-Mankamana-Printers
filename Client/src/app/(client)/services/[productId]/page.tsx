@@ -44,11 +44,11 @@ interface OptionGroup {
 }
 
 interface PricingRow {
-  combination_key: string; // sorted JSON string of pricing-dimension option codes
+  combination_key: string;
   price: number;
-  discount: number;       // pre-computed NPR discount amount (works for both fixed & percentage)
+  discount: number;
   discount_type: "fixed" | "percentage" | null;
-  discount_value: number; // raw value: NPR amount for fixed, percentage number for percentage
+  discount_value: number;
 }
 
 interface PricingResult {
@@ -58,8 +58,8 @@ interface PricingResult {
   discount_value: number;
   final_unit_price: number;
   total_price: number;
-  design_extra_per_unit: number;  // surcharge from approved design (0 if none)
-  design_extra_total: number;     // surcharge × quantity
+  design_extra_per_unit: number;
+  design_extra_total: number;
 }
 
 interface PaymentDetails {
@@ -82,8 +82,13 @@ interface VariantOptionsResponse {
   min_quantity: number;
 }
 
-function StepBar({ step }: { step: 1 | 2 }) {
-  const steps = [{ n: 1, label: "Configure" }, { n: 2, label: "Payment" }];
+function StepBar({ step }: { step: 1 | 2 | 3 | 4 }) {
+  const steps = [
+    { n: 1, label: "Product Info" },
+    { n: 2, label: "Files" },
+    { n: 3, label: "Payment" },
+    { n: 4, label: "Confirm" },
+  ];
   return (
     <div className="flex items-center justify-center mb-8">
       {steps.map(({ n, label }, idx) => (
@@ -96,12 +101,12 @@ function StepBar({ step }: { step: 1 | 2 }) {
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
               ) : n}
             </div>
-            <span className={`text-[0.72rem] font-semibold tracking-wide ${step >= n ? "text-slate-700" : "text-slate-400"}`}>{label}</span>
+            <span className={`text-[0.65rem] font-semibold tracking-wide ${step >= n ? "text-slate-700" : "text-slate-400"}`}>{label}</span>
           </div>
-          {idx === 0 && (
-            <div className="w-20 sm:w-28 mx-3 mb-5">
+          {idx < steps.length - 1 && (
+            <div className="w-10 sm:w-14 mx-1.5 mb-5">
               <div className="h-0.5 w-full bg-slate-200 relative overflow-hidden rounded-full">
-                <div className={`absolute inset-y-0 left-0 bg-emerald-500 transition-all duration-500 ${step > 1 ? "w-full" : "w-0"}`} />
+                <div className={`absolute inset-y-0 left-0 bg-emerald-500 transition-all duration-500 ${step > n ? "w-full" : "w-0"}`} />
               </div>
             </div>
           )}
@@ -116,7 +121,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const router = useRouter();
   useAuthStore();
 
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<Variant[]>([]);
@@ -139,8 +144,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
-  // Stable batch ID for this checkout session — used as the upload folder so files
-  // can be grouped per order on the server after order creation.
   const [uploadBatchId] = useState(() => crypto.randomUUID());
   const [submitting, setSubmitting] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(true);
@@ -156,7 +159,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   }
   const [priceChangedInfo, setPriceChangedInfo] = useState<PriceChangedInfo | null>(null);
 
-  // In-memory Map storing pre-loaded variant option data — avoids any async on variant select
   type VariantData = { optionGroups: OptionGroup[]; pricingRows: PricingRow[]; minQuantity: number };
   const variantDataCache = useRef<Map<string, VariantData>>(new Map());
 
@@ -177,8 +179,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         if (d.success) {
           const list: Variant[] = d.data || [];
           setVariants(list);
-          // Bulk-load ALL variant options in parallel; store in ref Map so variant
-          // switching never needs to wait for a network round-trip.
           list.forEach((v) => {
             fetchJsonCached<VariantOptionsResponse>(`variant-options-${v.id}`, `${API_BASE}/variants/${v.id}/options`, { headers: getAuthHeaders(), cache: "no-store" }, 5000)
               .then((od) => {
@@ -219,7 +219,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       return;
     }
 
-    // Check in-memory Map first (populated by bulk-load) — instant, no network
     const cached = variantDataCache.current.get(selectedVariantId);
     if (cached) {
       setOptionGroups(cached.optionGroups);
@@ -246,23 +245,15 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         setOptionGroups(freshData.optionGroups);
       };
 
-      // Immediate background revalidation on variant select
       revalidateInBackground(
-        cacheKey,
-        optionsUrl,
-        optionsInit,
-        5000,
+        cacheKey, optionsUrl, optionsInit, 5000,
         { success: true, option_groups: cached.optionGroups, pricing_rows: cached.pricingRows, min_quantity: cached.minQuantity },
         applyFresh
       );
 
-      // Periodic polling: re-check pricing every 5s while this variant is active
       const pollInterval = setInterval(() => {
         revalidateInBackground(
-          cacheKey,
-          optionsUrl,
-          optionsInit,
-          5000,
+          cacheKey, optionsUrl, optionsInit, 5000,
           variantDataCache.current.get(selectedVariantId)
             ? { success: true, option_groups: variantDataCache.current.get(selectedVariantId)!.optionGroups, pricing_rows: variantDataCache.current.get(selectedVariantId)!.pricingRows, min_quantity: variantDataCache.current.get(selectedVariantId)!.minQuantity }
             : { success: true, option_groups: [], pricing_rows: [], min_quantity: 1 },
@@ -294,10 +285,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       pollInterval = setInterval(() => {
         const current = variantDataCache.current.get(selectedVariantId);
         revalidateInBackground(
-          cacheKey,
-          optionsUrl,
-          optionsInit,
-          5000,
+          cacheKey, optionsUrl, optionsInit, 5000,
           current
             ? { success: true, option_groups: current.optionGroups, pricing_rows: current.pricingRows, min_quantity: current.minQuantity }
             : { success: true, option_groups: [], pricing_rows: [], min_quantity: 1 },
@@ -345,6 +333,9 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const hasNumericQuantityGroup = Boolean(quantityGroup && quantityGroupNumericValues.length === (quantityGroup?.values.length ?? 0));
   const hasMultipleQtyChoices = Boolean(hasNumericQuantityGroup && quantityGroupNumericValues.length > 1);
   const hasSingleQtyBase = Boolean(hasNumericQuantityGroup && quantityGroupNumericValues.length === 1);
+  // Non-numeric codes (e.g. "500_minus") = pricing-tier group; user also enters actual qty number
+  const hasNonNumericQtyGroup = Boolean(quantityGroup && !hasNumericQuantityGroup);
+
   const quantityStep = useMemo(() => {
     if (!hasSingleQtyBase || !quantityGroup) return 1;
     const selected = Number(selectedOptions[quantityGroup.name] || "");
@@ -352,6 +343,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     if (quantityGroupNumericValues.length > 0) return quantityGroupNumericValues[0].num;
     return 1;
   }, [hasSingleQtyBase, quantityGroup, quantityGroupNumericValues, selectedOptions]);
+
   const nonQuantityGroups = useMemo(
     () => optionGroups.filter((g) => !quantityNames.has(g.name.trim().toLowerCase())),
     [optionGroups, quantityNames]
@@ -360,17 +352,22 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
 
   const quantityNumber = Number(quantity);
   const quantityFromGroup = quantityGroup ? Number(selectedOptions[quantityGroup.name] || "") : NaN;
+
+  // For non-numeric tier groups, effectiveQuantity comes from the manual number input.
+  // For numeric-only groups, it comes from the dropdown or the input as before.
   const effectiveQuantity = hasMultipleQtyChoices
     ? quantityFromGroup
     : hasSingleQtyBase
       ? quantityNumber
-      : quantityGroup
-        ? quantityFromGroup
-        : quantityNumber;
+      : quantityNumber; // both generic (no group) and non-numeric tier group
+
   const isQuantityValid =
     Number.isFinite(effectiveQuantity) &&
     effectiveQuantity >= minQty &&
-    (!hasSingleQtyBase || (quantityStep > 0 && effectiveQuantity % quantityStep === 0));
+    (!hasSingleQtyBase || (quantityStep > 0 && effectiveQuantity % quantityStep === 0)) &&
+    // For non-numeric tier groups, also require a tier to be selected for pricing lookup
+    (!hasNonNumericQtyGroup || !!selectedOptions[quantityGroup!.name]);
+
   const isSelectionComplete = selectedVariantId !== "" && requiredGroups.every((g) => Boolean(selectedOptions[g.name])) && isQuantityValid;
 
   useEffect(() => {
@@ -395,36 +392,28 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     }
   }, [quantityGroup, hasSingleQtyBase, quantityGroupNumericValues, selectedOptions, quantity, minQty]);
 
-  // O(1) lookup map: combination_key → PricingRow. Rebuilt only when pricingRows array changes.
   const pricingMap = useMemo(
     () => new Map(pricingRows.map((r) => [r.combination_key, r])),
     [pricingRows]
   );
 
-  // Compute pricing locally from embedded pricing_rows — zero API calls, instant.
-  // Builds the same combination_key the backend uses (sorted JSON of pricing-dimension options).
   const pricing = useMemo<PricingResult | null>(() => {
     if (!isSelectionComplete || pricingMap.size === 0) return null;
 
-    // Filter selected options to only pricing-dimension groups
     const pricingDims = optionGroups
       .filter((g) => g.is_pricing_dimension && selectedOptions[g.name])
       .reduce<Record<string, string>>((acc, g) => { acc[g.name] = selectedOptions[g.name]; return acc; }, {});
 
-    // Build the same combination_key the backend stores:
-    // Sorted "key:value" pairs joined with "|", or "__NO_OPTIONS__" if empty.
-    // This MUST match buildCombinationKey() in server/src/services/catalog/product-pricing.service.ts
     const entries = Object.entries(pricingDims).sort(([a], [b]) => a.localeCompare(b));
     const combinationKey = entries.length === 0
       ? "__NO_OPTIONS__"
       : entries.map(([k, v]) => `${k}:${v}`).join("|");
 
-    const row = pricingMap.get(combinationKey); // O(1)
+    const row = pricingMap.get(combinationKey);
     if (!row) return null;
 
     const finalUnitPrice = Number((row.price - row.discount).toFixed(2));
 
-    // Add design surcharge if an approved design with extraPrice > 0 is selected
     const selectedDesignMeta = designCode
       ? approvedDesigns.find((d) => d.designCode === designCode)
       : undefined;
@@ -444,8 +433,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     };
   }, [isSelectionComplete, pricingMap, optionGroups, selectedOptions, effectiveQuantity, designCode, approvedDesigns]);
 
-  // Auto-upload new files as soon as they are selected.
-  // Runs whenever attachmentFiles grows — uploads only the newly added files.
+  // Auto-upload attachments as soon as they are selected
   const uploadingRef = useRef(false);
   useEffect(() => {
     const pending = attachmentFiles.slice(attachmentPaths.length);
@@ -481,7 +469,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     return () => { cancelled = true; };
   }, [attachmentFiles.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Delete a selected file. If it was already uploaded, also remove it from the server.
   const handleRemoveAttachment = async (index: number) => {
     const pathToDelete = index < attachmentPaths.length ? attachmentPaths[index] : null;
     setAttachmentFiles((prev) => prev.filter((_, i) => i !== index));
@@ -491,11 +478,20 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         method: "DELETE",
         headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ path: pathToDelete }),
-      }).catch(() => {}); // fire-and-forget
+      }).catch(() => {});
     }
   };
 
-  const proceedToPaymentStep = async () => {
+  // Step 1 → 2: validate selection only
+  const handleProceedToStep2 = () => {
+    if (!selectedVariantId) { notify.error("Please select a variant"); return; }
+    if (!pricing) { notify.error("This option combination has no pricing. Please select different options."); return; }
+    if (!isQuantityValid) { notify.error(`Minimum quantity is ${minQty}`); return; }
+    setStep(2);
+  };
+
+  // Step 2 → 3: verify price + fetch payment details
+  const proceedToStep3 = async () => {
     await Promise.allSettled([
       fetchJsonCached<ApiResponse<PaymentDetails>>("wallet-payment-details", `${API_BASE}/wallet/payment-details`, { headers: getAuthHeaders() }, 10_000)
         .then((d) => { if (d.success) setPaymentDetails(d.data); })
@@ -505,13 +501,10 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         .then((d) => { if (d.success) setWalletBalance(Number(d.data.availableBalance)); })
         .catch(() => {}),
     ]);
-    setStep(2);
+    setStep(3);
   };
 
-  const handleProceedToPayment = async () => {
-    if (!selectedVariantId) { notify.error("Please select a variant"); return; }
-    if (!pricing) { notify.error("This option combination has no pricing. Please select different options."); return; }
-    if (!isQuantityValid) { notify.error(`Minimum quantity is ${minQty}`); return; }
+  const handleProceedToStep3 = async () => {
     if (uploadingAttachments) { notify.error("Please wait for file uploads to complete"); return; }
 
     setPriceVerifying(true);
@@ -529,7 +522,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       });
       if (res.ok) {
         const json = await res.json() as { success: boolean; data: { unit_price: number; discount: number; final_unit_price: number; total_price: number } };
-        if (json.success && Math.abs(json.data.unit_price - pricing.unit_price) > 0.009) {
+        if (json.success && pricing && Math.abs(json.data.unit_price - pricing.unit_price) > 0.009) {
           const pricingDimsEntries = optionGroups
             .filter((g) => g.is_pricing_dimension && selectedOptions[g.name])
             .map((g): [string, string] => [g.name, selectedOptions[g.name]])
@@ -549,12 +542,12 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         }
       }
     } catch {
-      // Verification network failure — don't block checkout, the server re-validates on submit
+      // Verification network failure — don't block checkout
     } finally {
       setPriceVerifying(false);
     }
 
-    await proceedToPaymentStep();
+    await proceedToStep3();
   };
 
   const handleConfirmNewPrice = async () => {
@@ -567,7 +560,23 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       )
     );
     setPriceChangedInfo(null);
-    await proceedToPaymentStep();
+    await proceedToStep3();
+  };
+
+  // Step 3 → 4: validate payment choice
+  const handleProceedToStep4 = () => {
+    if (paymentMethod === "proof" && !proofFile && !proofPath) {
+      notify.error("Please upload your payment proof");
+      return;
+    }
+    if (paymentMethod === "wallet") {
+      const total = pricing!.total_price;
+      if (walletBalance === null || walletBalance < total) {
+        notify.error("Insufficient wallet balance");
+        return;
+      }
+    }
+    setStep(4);
   };
 
   const handleUploadProof = async (): Promise<string | null> => {
@@ -606,7 +615,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     setSubmitting(true);
     try {
       if (paymentMethod === "wallet") {
-        // Wallet payment: send JSON, no file upload
         const body = {
           variantId: selectedVariantId,
           quantity: effectiveQuantity,
@@ -629,7 +637,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           notify.error(data.error?.message || data.message || "Failed to place order");
         }
       } else {
-        // Proof upload payment: existing flow
         if (!proofFile && !proofPath) {
           notify.error("Please upload your payment proof");
           setSubmitting(false);
@@ -699,12 +706,12 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     );
   }
 
+  const selectCls = "w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none transition-shadow";
+  const labelCls = "block text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em] mb-1.5";
+
   const renderStep1 = () => {
     const images = [...(product.preview_images?.length ? product.preview_images : []), ...(product.image_url ? [product.image_url] : [])].filter(Boolean);
     const activeImg = images[previewIndex] ?? null;
-
-    const selectCls = "w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none transition-shadow";
-    const labelCls = "block text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em] mb-1.5";
 
     return (
       <div className="flex flex-col gap-5">
@@ -800,6 +807,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
               <span className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em]">Order Configuration</span>
             </div>
             <div className="px-4 py-4 flex flex-col gap-4 bg-white">
+              {/* Quantity input — 3 modes */}
               {quantityGroup && hasMultipleQtyChoices ? (
                 <div>
                   <label className={labelCls}>
@@ -830,21 +838,36 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                     className="w-44 px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 text-center focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none"
                   />
                 </div>
-              ) : quantityGroup ? (
-                <div>
-                  <label className={labelCls}>
-                    {quantityGroup.label} <span className="text-slate-400 font-normal normal-case">min. {minQty}</span>
-                  </label>
-                  <select
-                    value={selectedOptions[quantityGroup.name] || ""}
-                    onChange={(e) => { setSelectedOptions((prev) => ({ ...prev, [quantityGroup.name]: e.target.value })); setPricingError(null); }}
-                    aria-label={quantityGroup.label}
-                    className={selectCls}
-                  >
-                    <option value="">— Select —</option>
-                    {quantityGroup.values.map((v) => <option key={v.id} value={v.code}>{v.label}</option>)}
-                  </select>
-                </div>
+              ) : quantityGroup && hasNonNumericQtyGroup ? (
+                // Pricing tier dropdown + separate quantity number input
+                <>
+                  <div>
+                    <label className={labelCls}>{quantityGroup.label}</label>
+                    <select
+                      value={selectedOptions[quantityGroup.name] || ""}
+                      onChange={(e) => { setSelectedOptions((prev) => ({ ...prev, [quantityGroup.name]: e.target.value })); setPricingError(null); }}
+                      aria-label={quantityGroup.label}
+                      className={selectCls}
+                    >
+                      <option value="">— Select tier —</option>
+                      {quantityGroup.values.map((v) => <option key={v.id} value={v.code}>{v.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="qty" className={labelCls}>
+                      Quantity <span className="text-slate-400 font-normal normal-case">min. {minQty}</span>
+                    </label>
+                    <input
+                      id="qty"
+                      type="number"
+                      min={minQty}
+                      step={1}
+                      value={quantity}
+                      onChange={(e) => { setQuantity(e.target.value); setPricingError(null); }}
+                      className="w-44 px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 text-center focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none"
+                    />
+                  </div>
+                </>
               ) : (
                 <div>
                   <label htmlFor="qty" className={labelCls}>
@@ -921,103 +944,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           </div>
         )}
 
-        {/* Reference file attachments */}
-        {selectedVariantId && (
-          <div>
-            <label className={labelCls}>
-              Reference Files <span className="text-slate-400 font-normal normal-case">(optional — design references, images, etc.)</span>
-            </label>
-            <div
-              className="rounded-lg border-2 border-dashed border-slate-200 p-4 text-center cursor-pointer hover:border-slate-300 hover:bg-slate-50/50 transition-colors"
-              onClick={() => document.getElementById("attachment-files")?.click()}
-            >
-              {attachmentFiles.length === 0 ? (
-                <div>
-                  <svg className="mx-auto w-7 h-7 text-slate-300 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
-                  <p className="text-sm text-slate-400">Click to attach files</p>
-                  <p className="text-xs text-slate-300 mt-0.5">Any file type accepted • Multiple files allowed</p>
-                </div>
-              ) : (
-                <div className="space-y-1.5">
-                  {/* Upload progress summary badge */}
-                  <div className="flex items-center justify-between mb-2 px-1">
-                    <span className="text-xs font-semibold text-slate-500">
-                      {attachmentFiles.length} file{attachmentFiles.length !== 1 ? "s" : ""} selected
-                    </span>
-                    {attachmentFiles.length > 0 && (
-                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        attachmentPaths.length === attachmentFiles.length
-                          ? "bg-emerald-50 text-emerald-600"
-                          : uploadingAttachments
-                          ? "bg-blue-50 text-blue-500"
-                          : "bg-amber-50 text-amber-600"
-                      }`}>
-                        {uploadingAttachments ? (
-                          <>
-                            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                            Uploading…
-                          </>
-                        ) : attachmentPaths.length === attachmentFiles.length && attachmentPaths.length > 0 ? (
-                          <>{attachmentPaths.length}/{attachmentFiles.length} uploaded ✓</>
-                        ) : (
-                          <>{attachmentPaths.length}/{attachmentFiles.length} uploaded</>
-                        )}
-                      </span>
-                    )}
-                  </div>
-
-                  {attachmentFiles.map((f, i) => {
-                    const isUploaded = i < attachmentPaths.length;
-                    const isUploading = uploadingAttachments && i === attachmentPaths.length;
-                    return (
-                      <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 border text-sm transition-colors ${
-                        isUploaded ? "bg-emerald-50 border-emerald-100" : isUploading ? "bg-blue-50 border-blue-100" : "bg-white border-slate-100"
-                      }`}>
-                        <div className="flex items-center gap-2 min-w-0">
-                          {/* Status icon */}
-                          {isUploaded ? (
-                            <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
-                          ) : isUploading ? (
-                            <svg className="w-4 h-4 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                          ) : (
-                            <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
-                          )}
-                          <span className={`font-medium truncate ${isUploaded ? "text-emerald-700" : isUploading ? "text-blue-600" : "text-slate-700"}`}>{f.name}</span>
-                          <span className="text-slate-400 text-xs flex-shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
-                        </div>
-                        {!isUploading && (
-                          <button type="button" title={`Remove ${f.name}`} aria-label={`Remove ${f.name}`}
-                            onClick={(e) => { e.stopPropagation(); handleRemoveAttachment(i); }}
-                            className="text-slate-300 hover:text-red-400 ml-2 flex-shrink-0">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <button type="button" onClick={(e) => { e.stopPropagation(); document.getElementById("attachment-files")?.click(); }} className="text-xs text-slate-400 hover:text-slate-600 mt-1">+ Add more files</button>
-                </div>
-              )}
-            </div>
-            <input
-              id="attachment-files"
-              type="file"
-              multiple
-              className="hidden"
-              title="Attach reference files for your order"
-              aria-label="Attach reference files"
-              onChange={(e) => {
-                const files = Array.from(e.target.files || []);
-                if (files.length > 0) {
-                  setAttachmentFiles((prev) => [...prev, ...files]);
-                  setAttachmentPaths([]);
-                }
-                e.target.value = "";
-              }}
-            />
-          </div>
-        )}
-
         {/* Pricing summary */}
         {selectedVariantId && (
           <div className={`rounded-xl border overflow-hidden transition-all ${pricing ? "border-[#0f172a]/20 shadow-sm" : "border-slate-100"}`}>
@@ -1071,35 +997,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           </div>
         )}
 
-        {priceChangedInfo && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
-            <p className="font-semibold text-amber-800">Price updated by admin</p>
-            <p className="mt-1 text-amber-700">
-              Unit price changed from{" "}
-              <span className="line-through">NPR {priceChangedInfo.prevUnitPrice.toLocaleString()}</span>
-              {" → "}
-              <span className="font-bold">NPR {priceChangedInfo.newUnitPrice.toLocaleString()}</span>.
-              New total: <span className="font-bold">NPR {priceChangedInfo.newTotal.toLocaleString()}</span>.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={handleConfirmNewPrice}
-                className="px-4 py-1.5 bg-amber-700 text-white text-xs font-bold rounded-md hover:bg-amber-800 transition-colors"
-              >
-                Confirm new price &amp; continue
-              </button>
-              <button
-                type="button"
-                onClick={() => setPriceChangedInfo(null)}
-                className="px-4 py-1.5 border border-amber-300 text-amber-800 text-xs font-semibold rounded-md hover:bg-amber-100 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="flex gap-3 pt-1">
           <button
             type="button"
@@ -1110,28 +1007,170 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           </button>
           <button
             type="button"
-            onClick={handleProceedToPayment}
-            disabled={!pricing || uploadingAttachments || priceVerifying || !!priceChangedInfo}
+            onClick={handleProceedToStep2}
+            disabled={!pricing}
             className="flex-1 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {priceVerifying ? "Verifying price…" : uploadingAttachments ? "Uploading files…" : "Continue"}
-            {!priceVerifying && !uploadingAttachments && (
-              <svg className="inline-block w-4 h-4 ml-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
-            )}
+            Continue
+            <svg className="inline-block w-4 h-4 ml-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
           </button>
         </div>
       </div>
     );
   };
 
-  const renderStep2 = () => {
+  const renderStep2 = () => (
+    <div className="flex flex-col gap-5">
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-1">Reference Files</p>
+        <p className="text-xs text-slate-400 mb-4">Upload your design references, images, or any files needed for this order. You can skip this step if no files are needed.</p>
+        <div
+          className="rounded-lg border-2 border-dashed border-slate-200 p-4 text-center cursor-pointer hover:border-slate-300 hover:bg-slate-50/50 transition-colors"
+          onClick={() => document.getElementById("attachment-files")?.click()}
+        >
+          {attachmentFiles.length === 0 ? (
+            <div>
+              <svg className="mx-auto w-7 h-7 text-slate-300 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
+              <p className="text-sm text-slate-400">Click to attach files</p>
+              <p className="text-xs text-slate-300 mt-0.5">Any file type accepted · Multiple files allowed</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-xs font-semibold text-slate-500">
+                  {attachmentFiles.length} file{attachmentFiles.length !== 1 ? "s" : ""} selected
+                </span>
+                {attachmentFiles.length > 0 && (
+                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    attachmentPaths.length === attachmentFiles.length
+                      ? "bg-emerald-50 text-emerald-600"
+                      : uploadingAttachments
+                      ? "bg-blue-50 text-blue-500"
+                      : "bg-amber-50 text-amber-600"
+                  }`}>
+                    {uploadingAttachments ? (
+                      <>
+                        <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                        Uploading…
+                      </>
+                    ) : attachmentPaths.length === attachmentFiles.length && attachmentPaths.length > 0 ? (
+                      <>{attachmentPaths.length}/{attachmentFiles.length} uploaded ✓</>
+                    ) : (
+                      <>{attachmentPaths.length}/{attachmentFiles.length} uploaded</>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              {attachmentFiles.map((f, i) => {
+                const isUploaded = i < attachmentPaths.length;
+                const isUploading = uploadingAttachments && i === attachmentPaths.length;
+                return (
+                  <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 border text-sm transition-colors ${
+                    isUploaded ? "bg-emerald-50 border-emerald-100" : isUploading ? "bg-blue-50 border-blue-100" : "bg-white border-slate-100"
+                  }`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isUploaded ? (
+                        <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                      ) : isUploading ? (
+                        <svg className="w-4 h-4 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                      )}
+                      <span className={`font-medium truncate ${isUploaded ? "text-emerald-700" : isUploading ? "text-blue-600" : "text-slate-700"}`}>{f.name}</span>
+                      <span className="text-slate-400 text-xs flex-shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                    </div>
+                    {!isUploading && (
+                      <button type="button" title={`Remove ${f.name}`} aria-label={`Remove ${f.name}`}
+                        onClick={(e) => { e.stopPropagation(); handleRemoveAttachment(i); }}
+                        className="text-slate-300 hover:text-red-400 ml-2 flex-shrink-0">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+              <button type="button" onClick={(e) => { e.stopPropagation(); document.getElementById("attachment-files")?.click(); }} className="text-xs text-slate-400 hover:text-slate-600 mt-1">+ Add more files</button>
+            </div>
+          )}
+        </div>
+        <input
+          id="attachment-files"
+          type="file"
+          multiple
+          className="hidden"
+          title="Attach reference files for your order"
+          aria-label="Attach reference files"
+          onChange={(e) => {
+            const files = Array.from(e.target.files || []);
+            if (files.length > 0) {
+              setAttachmentFiles((prev) => [...prev, ...files]);
+              setAttachmentPaths([]);
+            }
+            e.target.value = "";
+          }}
+        />
+      </div>
+
+      {/* Price change alert (shown if price changed during step 1 → 2 transition) */}
+      {priceChangedInfo && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+          <p className="font-semibold text-amber-800">Price updated by admin</p>
+          <p className="mt-1 text-amber-700">
+            Unit price changed from{" "}
+            <span className="line-through">NPR {priceChangedInfo.prevUnitPrice.toLocaleString()}</span>
+            {" → "}
+            <span className="font-bold">NPR {priceChangedInfo.newUnitPrice.toLocaleString()}</span>.
+            New total: <span className="font-bold">NPR {priceChangedInfo.newTotal.toLocaleString()}</span>.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={handleConfirmNewPrice}
+              className="px-4 py-1.5 bg-amber-700 text-white text-xs font-bold rounded-md hover:bg-amber-800 transition-colors"
+            >
+              Confirm new price &amp; continue
+            </button>
+            <button
+              type="button"
+              onClick={() => { setPriceChangedInfo(null); setStep(1); }}
+              className="px-4 py-1.5 border border-amber-300 text-amber-800 text-xs font-semibold rounded-md hover:bg-amber-100 transition-colors"
+            >
+              Go back
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3 pt-1">
+        <button type="button" onClick={() => setStep(1)}
+          className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
+          Back
+        </button>
+        <button
+          type="button"
+          onClick={handleProceedToStep3}
+          disabled={uploadingAttachments || priceVerifying || !!priceChangedInfo}
+          className="flex-1 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          {priceVerifying ? "Verifying price…" : uploadingAttachments ? "Uploading files…" : (
+            <>
+              Continue to Payment
+              <svg className="inline-block w-4 h-4 ml-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => {
     const total = pricing!.total_price;
     const walletSufficient = walletBalance !== null && walletBalance >= total;
-    const canSubmitWallet = paymentMethod === "wallet" && walletSufficient;
-    const canSubmitProof = paymentMethod === "proof" && (!!proofFile || !!proofPath);
-    const canSubmit = canSubmitWallet || canSubmitProof;
 
     return (
       <div className="flex flex-col gap-5">
@@ -1273,17 +1312,122 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         )}
 
         <div className="flex gap-3 pt-1">
-          <button type="button" onClick={() => setStep(1)}
-            className="flex-1 py-3 border border-slate-200 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
+          <button type="button" onClick={() => setStep(2)}
+            className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
+            Back
+          </button>
+          <button
+            type="button"
+            onClick={handleProceedToStep4}
+            disabled={paymentMethod === "proof" ? (!proofFile && !proofPath) : (walletBalance === null || walletBalance < pricing!.total_price)}
+            className="flex-1 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Review Order
+            <svg className="inline-block w-4 h-4 ml-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderStep4 = () => {
+    const total = pricing!.total_price;
+    const configuredOptions = optionGroups.filter((g) => selectedOptions[g.name]);
+
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <p className="text-sm font-semibold text-slate-700 mb-0.5">Review your order</p>
+          <p className="text-xs text-slate-400">Please confirm the details before placing your order.</p>
+        </div>
+
+        {/* Order summary card */}
+        <div className="rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+          <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100">
+            <span className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em]">Order Details</span>
+          </div>
+          <div className="bg-white divide-y divide-slate-50 text-sm">
+            <div className="px-4 py-2.5 flex justify-between">
+              <span className="text-slate-400">Product</span>
+              <span className="font-semibold text-slate-800 text-right max-w-[60%]">{product.name}</span>
+            </div>
+            <div className="px-4 py-2.5 flex justify-between">
+              <span className="text-slate-400">Variant</span>
+              <span className="font-semibold text-slate-800 text-right max-w-[60%]">
+                {variants.find((v) => v.id === selectedVariantId)?.variant_name || "—"}
+              </span>
+            </div>
+            {configuredOptions.map((g) => {
+              const val = g.values.find((v) => v.code === selectedOptions[g.name]);
+              return (
+                <div key={g.id} className="px-4 py-2.5 flex justify-between">
+                  <span className="text-slate-400">{g.label}</span>
+                  <span className="font-semibold text-slate-800">{val?.label || selectedOptions[g.name]}</span>
+                </div>
+              );
+            })}
+            <div className="px-4 py-2.5 flex justify-between">
+              <span className="text-slate-400">Quantity</span>
+              <span className="font-semibold text-slate-800">{effectiveQuantity}</span>
+            </div>
+            {attachmentFiles.length > 0 && (
+              <div className="px-4 py-2.5 flex justify-between">
+                <span className="text-slate-400">Files</span>
+                <span className="font-semibold text-slate-800">{attachmentPaths.length} uploaded</span>
+              </div>
+            )}
+            {designCode && (
+              <div className="px-4 py-2.5 flex justify-between">
+                <span className="text-slate-400">Design</span>
+                <span className="font-semibold text-slate-800">{designCode}</span>
+              </div>
+            )}
+            {notes && (
+              <div className="px-4 py-2.5 flex justify-between gap-3">
+                <span className="text-slate-400 shrink-0">Remarks</span>
+                <span className="font-semibold text-slate-800 text-right">{notes}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Payment summary */}
+        <div className="rounded-xl border border-slate-100 overflow-hidden shadow-sm">
+          <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100">
+            <span className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em]">Payment</span>
+          </div>
+          <div className="bg-white divide-y divide-slate-50 text-sm">
+            <div className="px-4 py-2.5 flex justify-between">
+              <span className="text-slate-400">Method</span>
+              <span className="font-semibold text-slate-800">{paymentMethod === "wallet" ? "Wallet" : "Bank / QR Transfer"}</span>
+            </div>
+            {paymentMethod === "proof" && proofFile && (
+              <div className="px-4 py-2.5 flex justify-between">
+                <span className="text-slate-400">Proof</span>
+                <span className="font-semibold text-slate-800 truncate max-w-[60%]">{proofFile.name}</span>
+              </div>
+            )}
+            <div className="px-4 py-3.5 flex justify-between items-center bg-slate-50/60">
+              <span className="font-bold text-slate-900">Total</span>
+              <span className="font-extrabold text-[#0f172a] text-xl">NPR {total.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-1">
+          <button type="button" onClick={() => setStep(3)}
+            className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
             Back
           </button>
           <button
             type="button"
             onClick={handleSubmitOrder}
-            disabled={submitting || uploadingProof || !canSubmit}
+            disabled={submitting || uploadingProof}
             className="flex-[2] py-3 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {uploadingProof ? "Uploading…" : submitting ? "Placing order…" : "Place Order"}
+            {uploadingProof ? "Uploading proof…" : submitting ? "Placing order…" : "Place Order"}
           </button>
         </div>
       </div>
@@ -1322,7 +1466,10 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       <div className="max-w-2xl mx-auto px-4 py-8">
         <StepBar step={step} />
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
-          {step === 1 ? renderStep1() : renderStep2()}
+          {step === 1 && renderStep1()}
+          {step === 2 && renderStep2()}
+          {step === 3 && renderStep3()}
+          {step === 4 && renderStep4()}
         </div>
       </div>
     </div>

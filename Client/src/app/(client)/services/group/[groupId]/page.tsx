@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { getAuthHeaders } from "@/store/authStore";
-import { fetchJsonCached } from "@/utils/requestCache";
+import { fetchJsonCached, registerFocusRevalidation } from "@/utils/requestCache";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
@@ -47,26 +47,33 @@ export default function GroupPage() {
 
     useEffect(() => {
         if (!groupId) return;
-        fetchJsonCached<{ success: boolean; data?: GroupData }>(
-            `catalog-group-${groupId}`,
-            `${API_BASE}/product-groups/${groupId}`,
-            { headers: getAuthHeaders() },
-            120_000
-        )
-            .then((d) => {
-                if (d.success && d.data) {
-                    setGroup(d.data);
-                    // Prefetch each sub-product's details + variants
-                    d.data.products.forEach((p) => {
-                        fetchJsonCached<unknown>(`catalog-product-${p.id}`, `${API_BASE}/products/${p.id}`, { headers: getAuthHeaders() }, 120_000).catch(() => {});
-                        fetchJsonCached<unknown>(`catalog-variants-${p.id}`, `${API_BASE}/products/${p.id}/variants`, { headers: getAuthHeaders() }, 120_000).catch(() => {});
-                    });
-                } else {
-                    setNotFound(true);
-                }
-            })
+
+        type GroupResponse = { success: boolean; data?: GroupData };
+        const key = `catalog-group-${groupId}`;
+        const url = `${API_BASE}/product-groups/${groupId}`;
+        const init = { headers: getAuthHeaders() };
+
+        const applyData = (d: GroupResponse) => {
+            if (d.success && d.data) {
+                setGroup(d.data);
+                // Prefetch each sub-product's details + variants into L1+L2 cache
+                d.data.products.forEach((p) => {
+                    fetchJsonCached<unknown>(`catalog-product-${p.id}`, `${API_BASE}/products/${p.id}`, init, 120_000).catch(() => {});
+                    fetchJsonCached<unknown>(`catalog-variants-${p.id}`, `${API_BASE}/products/${p.id}/variants`, init, 120_000).catch(() => {});
+                });
+            } else {
+                setNotFound(true);
+            }
+        };
+
+        fetchJsonCached<GroupResponse>(key, url, init, 120_000)
+            .then(applyData)
             .catch(() => setNotFound(true))
             .finally(() => setLoading(false));
+
+        // Re-fetch when tab regains focus so product list stays current
+        const deregister = registerFocusRevalidation<GroupResponse>(key, url, init, 120_000, applyData);
+        return deregister;
     }, [groupId]);
 
     return (
