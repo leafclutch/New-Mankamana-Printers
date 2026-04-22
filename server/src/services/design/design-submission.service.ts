@@ -1,6 +1,7 @@
 import prisma from "../../connect";
 import { Prisma } from "@prisma/client";
 import { sendDesignApproved, sendDesignRejected } from "../../utils/email";
+import { withCache, invalidateCacheByPrefix } from "../../utils/cache";
 
 // createDesignSubmissionService: Atomic transaction to submit a new design for review
 export const createDesignSubmissionService = async (data: {
@@ -87,29 +88,32 @@ export const getAdminSubmissionsService = async (options: {
   sort: "submittedAt.desc" | "submittedAt.asc";
 }) => {
   const { status, clientId, page, limit, sort } = options;
+  const cacheKey = `admin:design-submissions:${status ?? "all"}:${clientId ?? "all"}:${page}:${limit}:${sort}`;
 
-  const where: any = {};
-  if (status) where.status = status;
-  if (clientId) where.clientId = clientId;
+  return withCache(cacheKey, 15_000, async () => {
+    const where: any = {};
+    if (status) where.status = status;
+    if (clientId) where.clientId = clientId;
 
-  const [items, totalItems] = await Promise.all([
-    prisma.designSubmission.findMany({
-      where,
-      include: {
-        client: { select: { id: true, business_name: true, phone_number: true } },
-        product: { select: { id: true, name: true } },
-        approvedDesign: { select: { designCode: true } },
-      },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { submittedAt: sort === "submittedAt.desc" ? "desc" : "asc" },
-    }),
-    prisma.designSubmission.count({ where }),
-  ]);
+    const [items, totalItems] = await Promise.all([
+      prisma.designSubmission.findMany({
+        where,
+        include: {
+          client: { select: { id: true, business_name: true, phone_number: true } },
+          product: { select: { id: true, name: true } },
+          approvedDesign: { select: { designCode: true } },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { submittedAt: sort === "submittedAt.desc" ? "desc" : "asc" },
+      }),
+      prisma.designSubmission.count({ where }),
+    ]);
 
-  const totalPages = Math.ceil(totalItems / limit);
+    const totalPages = Math.ceil(totalItems / limit);
 
-  return { items, pagination: { page, limit, totalItems, totalPages } };
+    return { items, pagination: { page, limit, totalItems, totalPages } };
+  });
 };
 
 // getAdminSubmissionByIdService: Full technical details of a submission for administrative review
@@ -191,6 +195,8 @@ export const approveSubmissionService = async (
       return { submission: updatedSubmission, approvedDesign };
     });
 
+    void invalidateCacheByPrefix("admin:design-submissions:");
+
     // Send approval email (non-blocking)
     if (submissionWithClient.client) {
       sendDesignApproved({
@@ -238,6 +244,8 @@ export const rejectSubmissionService = async (
       },
     });
   });
+
+  void invalidateCacheByPrefix("admin:design-submissions:");
 
   // Send rejection email (non-blocking)
   if (submissionWithClient?.client) {

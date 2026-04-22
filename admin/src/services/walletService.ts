@@ -134,9 +134,9 @@ export const fetchAdminTopupRequests = async (params?: {
   const url = `/api/admin/wallet/topup-requests${query.toString() ? `?${query}` : ""}`;
   const cacheKey = query.toString() ? `${TOPUP_REQUESTS_CACHE_KEY}:${query}` : TOPUP_REQUESTS_CACHE_KEY;
 
-  const data = await cachedJsonFetch<any>(cacheKey, url, 15_000);
+  const data = await cachedJsonFetch<{ success: boolean; data: WalletTopupListResponseApi; message?: string }>(cacheKey, url, 15_000);
   if (!data?.success) throw new Error(data?.message || "Failed to load top-up requests.");
-  return data as { success: boolean; data: WalletTopupListResponseApi };
+  return data;
 };
 
 export const fetchAdminTopupRequestById = async (requestId: string) => {
@@ -280,9 +280,9 @@ export const fetchAdminWalletTransactions = async (params?: {
   const url = `/api/admin/wallet/transactions${query.toString() ? `?${query}` : ""}`;
   const cacheKey = query.toString() ? `${TRANSACTIONS_CACHE_KEY}:${query}` : TRANSACTIONS_CACHE_KEY;
 
-  const data = await cachedJsonFetch<any>(cacheKey, url, 30_000);
+  const data = await cachedJsonFetch<{ success: boolean; data: WalletTransactionResponseApi; message?: string }>(cacheKey, url, 30_000);
   if (!data?.success) throw new Error(data?.message || "Failed to load wallet transactions.");
-  return data as { success: boolean; data: WalletTransactionResponseApi };
+  return data;
 };
 
 export interface AdminPaymentDetailsApi {
@@ -297,9 +297,9 @@ export interface AdminPaymentDetailsApi {
 }
 
 export const fetchAdminPaymentDetails = async (): Promise<AdminPaymentDetailsApi | null> => {
-  const data = await cachedJsonFetch<any>(PAYMENT_DETAILS_CACHE_KEY, "/api/admin/wallet/payment-details", 60_000);
+  const data = await cachedJsonFetch<{ success: boolean; data: AdminPaymentDetailsApi }>(PAYMENT_DETAILS_CACHE_KEY, "/api/admin/wallet/payment-details", 60_000);
   if (!data?.success) return null;
-  return (data as { success: boolean; data: AdminPaymentDetailsApi }).data ?? null;
+  return data.data ?? null;
 };
 
 export const invalidatePaymentDetailsCache = () => invalidateCacheKey(PAYMENT_DETAILS_CACHE_KEY);

@@ -60,6 +60,41 @@ export const invalidateClientCache = (key: string) => {
   void idbDelete(key);
 };
 
+// focusRevalidationRegistry: url → { key, init, ttlMs, onUpdate }
+type FocusEntry = { key: string; url: string; init: RequestInit | undefined; ttlMs: number; onUpdate: (v: unknown) => void };
+const focusRegistry = new Map<string, FocusEntry>();
+
+/**
+ * registerFocusRevalidation
+ * Registers a key for automatic background revalidation when the tab regains focus.
+ * Call once per data source (e.g. in a useEffect). Deregister on unmount.
+ */
+export const registerFocusRevalidation = <T>(
+  key: string,
+  url: string,
+  init: RequestInit | undefined,
+  ttlMs: number,
+  onUpdate: (fresh: T) => void
+): (() => void) => {
+  focusRegistry.set(key, { key, url, init, ttlMs, onUpdate: onUpdate as (v: unknown) => void });
+  return () => focusRegistry.delete(key);
+};
+
+if (typeof window !== "undefined") {
+  window.addEventListener("focus", () => {
+    for (const entry of focusRegistry.values()) {
+      revalidateInBackground(entry.key, entry.url, entry.init, entry.ttlMs, l1Cache.get(entry.key)?.value, entry.onUpdate as (fresh: unknown) => void);
+    }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      for (const entry of focusRegistry.values()) {
+        revalidateInBackground(entry.key, entry.url, entry.init, entry.ttlMs, l1Cache.get(entry.key)?.value, entry.onUpdate as (fresh: unknown) => void);
+      }
+    }
+  });
+}
+
 /**
  * revalidateInBackground
  * Fires a network fetch for `url` without touching the cache read path.

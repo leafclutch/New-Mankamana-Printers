@@ -20,18 +20,10 @@ export const getVisitorStatsService = async () => {
       prisma.pageView.count({ where: { visitedAt: { gte: monthStart } } }),
     ]);
 
-    const [uniqueAllRows, uniqueTodayRows, onlineRows] = await Promise.all([
-      prisma.pageView.findMany({ distinct: ["sessionId"], select: { sessionId: true } }),
-      prisma.pageView.findMany({
-        where: { visitedAt: { gte: todayStart } },
-        distinct: ["sessionId"],
-        select: { sessionId: true },
-      }),
-      prisma.pageView.findMany({
-        where: { visitedAt: { gte: onlineThreshold } },
-        distinct: ["sessionId"],
-        select: { sessionId: true },
-      }),
+    const [uniqueAll, uniqueToday, onlineCount] = await Promise.all([
+      prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(DISTINCT "sessionId") AS count FROM "page_views"`,
+      prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(DISTINCT "sessionId") AS count FROM "page_views" WHERE "visitedAt" >= ${todayStart}`,
+      prisma.$queryRaw<[{ count: bigint }]>`SELECT COUNT(DISTINCT "sessionId") AS count FROM "page_views" WHERE "visitedAt" >= ${onlineThreshold}`,
     ]);
 
     return {
@@ -42,10 +34,10 @@ export const getVisitorStatsService = async () => {
         thisMonth: monthViews,
       },
       uniqueVisitors: {
-        total: uniqueAllRows.length,
-        today: uniqueTodayRows.length,
+        total: Number(uniqueAll[0].count),
+        today: Number(uniqueToday[0].count),
       },
-      currentlyOnline: onlineRows.length,
+      currentlyOnline: Number(onlineCount[0].count),
     };
   });
 };

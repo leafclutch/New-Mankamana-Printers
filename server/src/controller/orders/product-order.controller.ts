@@ -18,13 +18,14 @@ const toApiOrder = (order: any) => ({
 // createProductOrder: Handles the placement of a new order by a client, with optional payment proof upload
 export const createProductOrder = async (req: Request, res: Response) => {
   try {
-    // When sent as multipart FormData, options.configDetails arrives as a JSON string — parse it back to array
+    // Multipart FormData sends nested/array fields as JSON strings — parse before Zod validation
     if (req.body.options && typeof req.body.options.configDetails === "string") {
-      try {
-        req.body.options.configDetails = JSON.parse(req.body.options.configDetails);
-      } catch {
-        req.body.options.configDetails = [];
-      }
+      try { req.body.options.configDetails = JSON.parse(req.body.options.configDetails); }
+      catch { req.body.options.configDetails = []; }
+    }
+    if (req.body.attachmentUrls && typeof req.body.attachmentUrls === "string") {
+      try { req.body.attachmentUrls = JSON.parse(req.body.attachmentUrls); }
+      catch { req.body.attachmentUrls = []; }
     }
 
     const validated = createProductOrderSchema.safeParse(req.body);
@@ -187,10 +188,42 @@ export const setOrderDeliveryDate = async (req: Request, res: Response) => {
   }
 };
 
+// getOrderAttachmentFile: Admin proxy — streams a single attachment from the order-attachments bucket
+export const getOrderAttachmentFile = async (req: Request, res: Response) => {
+  try {
+    const orderId = req.params.orderId as string;
+    const fileKey = req.params.fileKey as string | undefined;
+    if (!fileKey) return res.status(400).json({ success: false, message: "Missing file key" });
+
+    // Reject path traversal attempts before any DB or storage lookup
+    if (fileKey.includes("..") || fileKey.includes("/") || fileKey.includes("\\")) {
+      return res.status(400).json({ success: false, message: "Invalid file key" });
+    }
+
+    const order = await orderService.getOrderDetailsService(orderId);
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+    const expectedPath = `orders/${orderId}/${fileKey}`;
+    const urls = (order.attachment_urls as string[] | null) ?? [];
+    if (!urls.includes(expectedPath)) {
+      return res.status(403).json({ success: false, message: "File not associated with this order" });
+    }
+
+    const { buffer, mimeType } = await downloadFromSupabase(expectedPath);
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Content-Disposition", `inline; filename="${fileKey}"`);
+    res.setHeader("Cache-Control", "private, max-age=300");
+    return res.send(buffer);
+  } catch (error) {
+    console.error("Error proxying order attachment:", error);
+    return res.status(500).end();
+  }
+};
+
 // getOrderPaymentProof: Admin proxy that downloads the payment proof from Supabase and streams it to the browser
 export const getOrderPaymentProof = async (req: Request, res: Response) => {
   try {
-    const { orderId } = req.params;
+    const orderId = req.params.orderId as string;
     const order = await orderService.getOrderDetailsService(orderId);
     if (!order?.payment_proof_url) return res.status(404).end();
 

@@ -73,6 +73,15 @@ interface PaymentDetails {
   note: string | null;
 }
 
+interface ApiResponse<T> { success: boolean; data: T }
+
+interface VariantOptionsResponse {
+  success: boolean;
+  option_groups: OptionGroup[];
+  pricing_rows: PricingRow[];
+  min_quantity: number;
+}
+
 function StepBar({ step }: { step: 1 | 2 }) {
   const steps = [{ n: 1, label: "Configure" }, { n: 2, label: "Payment" }];
   return (
@@ -130,9 +139,22 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const [attachmentPaths, setAttachmentPaths] = useState<string[]>([]);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
+  // Stable batch ID for this checkout session — used as the upload folder so files
+  // can be grouped per order on the server after order creation.
+  const [uploadBatchId] = useState(() => crypto.randomUUID());
   const [submitting, setSubmitting] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(true);
   const [loadingOptions, setLoadingOptions] = useState(false);
+  const [priceVerifying, setPriceVerifying] = useState(false);
+  interface PriceChangedInfo {
+    prevUnitPrice: number;
+    newUnitPrice: number;
+    newFinalUnitPrice: number;
+    newDiscount: number;
+    newTotal: number;
+    combinationKey: string;
+  }
+  const [priceChangedInfo, setPriceChangedInfo] = useState<PriceChangedInfo | null>(null);
 
   // In-memory Map storing pre-loaded variant option data — avoids any async on variant select
   type VariantData = { optionGroups: OptionGroup[]; pricingRows: PricingRow[]; minQuantity: number };
@@ -142,7 +164,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
 
   useEffect(() => {
     setLoadingProduct(true);
-    fetchJsonCached<any>(`catalog-product-${productId}`, `${API_BASE}/products/${productId}`, { headers: getAuthHeaders() }, 60000)
+    fetchJsonCached<ApiResponse<Product>>(`catalog-product-${productId}`, `${API_BASE}/products/${productId}`, { headers: getAuthHeaders() }, 120_000)
       .then((d) => {
         if (d.success || d.data) setProduct(d.data || d);
         else notify.error("Product not found");
@@ -150,7 +172,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       .catch(() => notify.error("Failed to load product"))
       .finally(() => setLoadingProduct(false));
 
-    fetchJsonCached<any>(`catalog-variants-${productId}`, `${API_BASE}/products/${productId}/variants`, { headers: getAuthHeaders() }, 60000)
+    fetchJsonCached<ApiResponse<Variant[]>>(`catalog-variants-${productId}`, `${API_BASE}/products/${productId}/variants`, { headers: getAuthHeaders() }, 120_000)
       .then((d) => {
         if (d.success) {
           const list: Variant[] = d.data || [];
@@ -158,7 +180,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           // Bulk-load ALL variant options in parallel; store in ref Map so variant
           // switching never needs to wait for a network round-trip.
           list.forEach((v) => {
-            fetchJsonCached<any>(`variant-options-${v.id}`, `${API_BASE}/variants/${v.id}/options`, { headers: getAuthHeaders() }, 60000)
+            fetchJsonCached<VariantOptionsResponse>(`variant-options-${v.id}`, `${API_BASE}/variants/${v.id}/options`, { headers: getAuthHeaders(), cache: "no-store" }, 5000)
               .then((od) => {
                 if (od.success) {
                   variantDataCache.current.set(v.id, {
@@ -178,7 +200,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   useEffect(() => {
     if (!product || !selectedVariantId) return;
     const url = `${API_BASE}/designs/my?productId=${encodeURIComponent(productId)}&productName=${encodeURIComponent(product.name)}`;
-    fetchJsonCached<any>(`approved-designs-${productId}`, url, { headers: getAuthHeaders() }, 20000)
+    fetchJsonCached<ApiResponse<{ designCode: string; title: string | null; approvedFileUrl: string | null; extraPrice: number }[]>>(`approved-designs-${productId}`, url, { headers: getAuthHeaders() }, 20000)
       .then((d) => {
         if (d.success) setApprovedDesigns(d.data || []);
         else setApprovedDesigns([]);
@@ -193,6 +215,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       setSelectedOptions({});
       setQuantity("");
       setPricingError(null);
+      setPriceChangedInfo(null);
       return;
     }
 
@@ -204,36 +227,87 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       setMinQty(cached.minQuantity);
       setQuantity("");
       setSelectedOptions({});
+      setPriceChangedInfo(null);
       setPricingError(null);
 
-      // Background revalidation: silently re-fetch and update if prices changed
       const cacheKey = `variant-options-${selectedVariantId}`;
       const optionsUrl = `${API_BASE}/variants/${selectedVariantId}/options`;
+      const optionsInit: RequestInit = { headers: getAuthHeaders(), cache: "no-store" };
+
+      const applyFresh = (fresh: VariantOptionsResponse) => {
+        if (!fresh?.success) return;
+        const freshData: VariantData = {
+          optionGroups: fresh.option_groups || [],
+          pricingRows: fresh.pricing_rows || [],
+          minQuantity: fresh.min_quantity || 1,
+        };
+        variantDataCache.current.set(selectedVariantId, freshData);
+        setPricingRows(freshData.pricingRows);
+        setOptionGroups(freshData.optionGroups);
+      };
+
+      // Immediate background revalidation on variant select
       revalidateInBackground(
         cacheKey,
         optionsUrl,
-        { headers: getAuthHeaders() },
-        60000,
-        // pass the raw cached API response shape for comparison
+        optionsInit,
+        5000,
         { success: true, option_groups: cached.optionGroups, pricing_rows: cached.pricingRows, min_quantity: cached.minQuantity },
-        (fresh: any) => {
-          if (!fresh?.success) return;
-          const freshData: VariantData = {
-            optionGroups: fresh.option_groups || [],
-            pricingRows: fresh.pricing_rows || [],
-            minQuantity: fresh.min_quantity || 1,
-          };
-          variantDataCache.current.set(selectedVariantId, freshData);
-          setPricingRows(freshData.pricingRows);
-          setOptionGroups(freshData.optionGroups);
-          notify.info("Prices updated — please review before proceeding.");
-        }
+        applyFresh
       );
-      return;
+
+      // Periodic polling: re-check pricing every 5s while this variant is active
+      const pollInterval = setInterval(() => {
+        revalidateInBackground(
+          cacheKey,
+          optionsUrl,
+          optionsInit,
+          5000,
+          variantDataCache.current.get(selectedVariantId)
+            ? { success: true, option_groups: variantDataCache.current.get(selectedVariantId)!.optionGroups, pricing_rows: variantDataCache.current.get(selectedVariantId)!.pricingRows, min_quantity: variantDataCache.current.get(selectedVariantId)!.minQuantity }
+            : { success: true, option_groups: [], pricing_rows: [], min_quantity: 1 },
+          applyFresh
+        );
+      }, 5000);
+
+      return () => clearInterval(pollInterval);
     }
 
+    const cacheKey = `variant-options-${selectedVariantId}`;
+    const optionsUrl = `${API_BASE}/variants/${selectedVariantId}/options`;
+    const optionsInit: RequestInit = { headers: getAuthHeaders(), cache: "no-store" };
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    const applyFresh = (fresh: VariantOptionsResponse) => {
+      if (!fresh?.success) return;
+      const freshData: VariantData = {
+        optionGroups: fresh.option_groups || [],
+        pricingRows: fresh.pricing_rows || [],
+        minQuantity: fresh.min_quantity || 1,
+      };
+      variantDataCache.current.set(selectedVariantId, freshData);
+      setPricingRows(freshData.pricingRows);
+      setOptionGroups(freshData.optionGroups);
+    };
+
+    const startPolling = () => {
+      pollInterval = setInterval(() => {
+        const current = variantDataCache.current.get(selectedVariantId);
+        revalidateInBackground(
+          cacheKey,
+          optionsUrl,
+          optionsInit,
+          5000,
+          current
+            ? { success: true, option_groups: current.optionGroups, pricing_rows: current.pricingRows, min_quantity: current.minQuantity }
+            : { success: true, option_groups: [], pricing_rows: [], min_quantity: 1 },
+          applyFresh
+        );
+      }, 5000);
+    };
+
     setLoadingOptions(true);
-    fetchJsonCached<any>(`variant-options-${selectedVariantId}`, `${API_BASE}/variants/${selectedVariantId}/options`, { headers: getAuthHeaders() }, 60000)
+    fetchJsonCached<VariantOptionsResponse>(cacheKey, optionsUrl, optionsInit, 5000)
       .then((d) => {
         if (d.success) {
           const data: VariantData = {
@@ -248,10 +322,13 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           setQuantity("");
           setSelectedOptions({});
           setPricingError(null);
+          startPolling();
         }
       })
       .catch(() => notify.error("Failed to load options"))
       .finally(() => setLoadingOptions(false));
+
+    return () => { if (pollInterval) clearInterval(pollInterval); };
   }, [selectedVariantId]);
 
   const quantityGroup = useMemo(
@@ -367,44 +444,60 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     };
   }, [isSelectionComplete, pricingMap, optionGroups, selectedOptions, effectiveQuantity, designCode, approvedDesigns]);
 
-  const handleUploadAttachments = async (): Promise<string[]> => {
-    if (attachmentFiles.length === 0) return attachmentPaths;
-    if (attachmentPaths.length === attachmentFiles.length) return attachmentPaths;
+  // Auto-upload new files as soon as they are selected.
+  // Runs whenever attachmentFiles grows — uploads only the newly added files.
+  const uploadingRef = useRef(false);
+  useEffect(() => {
+    const pending = attachmentFiles.slice(attachmentPaths.length);
+    if (pending.length === 0 || uploadingRef.current) return;
+
+    let cancelled = false;
+    uploadingRef.current = true;
     setUploadingAttachments(true);
-    try {
-      const uploaded: string[] = [];
-      for (const file of attachmentFiles) {
+
+    (async () => {
+      const newPaths: string[] = [];
+      for (const file of pending) {
+        if (cancelled) break;
         const fd = new FormData();
         fd.append("file", file);
-        fd.append("folder", "orders/attachments");
-        const res = await fetch(`${API_BASE}/uploads`, { method: "POST", headers: getAuthHeaders(), body: fd });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || data.message || "Upload failed");
-        if (data.data?.fileUrl) uploaded.push(data.data.fileUrl);
+        fd.append("folder", `orders/batch-${uploadBatchId}`);
+        try {
+          const res = await fetch(`${API_BASE}/uploads`, { method: "POST", headers: getAuthHeaders(), body: fd });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.message || "Upload failed");
+          if (data.data?.fileUrl) newPaths.push(data.data.fileUrl);
+        } catch (err) {
+          notify.error(`Could not upload "${file.name}": ${err instanceof Error ? err.message : "Upload failed"}`);
+        }
       }
-      setAttachmentPaths(uploaded);
-      return uploaded;
-    } catch (err: any) {
-      notify.error(err.message || "Failed to upload attachments");
-      return [];
-    } finally {
-      setUploadingAttachments(false);
+      if (!cancelled) {
+        setAttachmentPaths((prev) => [...prev, ...newPaths]);
+        setUploadingAttachments(false);
+        uploadingRef.current = false;
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [attachmentFiles.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Delete a selected file. If it was already uploaded, also remove it from the server.
+  const handleRemoveAttachment = async (index: number) => {
+    const pathToDelete = index < attachmentPaths.length ? attachmentPaths[index] : null;
+    setAttachmentFiles((prev) => prev.filter((_, i) => i !== index));
+    setAttachmentPaths((prev) => prev.filter((_, i) => i !== index));
+    if (pathToDelete) {
+      fetch(`${API_BASE}/uploads`, {
+        method: "DELETE",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ path: pathToDelete }),
+      }).catch(() => {}); // fire-and-forget
     }
   };
 
-  const handleProceedToPayment = async () => {
-    if (!selectedVariantId) { notify.error("Please select a variant"); return; }
-    if (!pricing) { notify.error("This option combination has no pricing. Please select different options."); return; }
-    if (!isQuantityValid) { notify.error(`Minimum quantity is ${minQty}`); return; }
-
-    // Upload attachments if any
-    if (attachmentFiles.length > 0 && attachmentPaths.length !== attachmentFiles.length) {
-      await handleUploadAttachments();
-    }
-
-    // Fetch bank details + wallet balance in parallel
+  const proceedToPaymentStep = async () => {
     await Promise.allSettled([
-      fetchJsonCached<any>("wallet-payment-details", `${API_BASE}/wallet/payment-details`, { headers: getAuthHeaders() }, 10_000)
+      fetchJsonCached<ApiResponse<PaymentDetails>>("wallet-payment-details", `${API_BASE}/wallet/payment-details`, { headers: getAuthHeaders() }, 10_000)
         .then((d) => { if (d.success) setPaymentDetails(d.data); })
         .catch(() => {}),
       fetch(`${API_BASE}/wallet/balance`, { headers: getAuthHeaders() })
@@ -413,6 +506,68 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         .catch(() => {}),
     ]);
     setStep(2);
+  };
+
+  const handleProceedToPayment = async () => {
+    if (!selectedVariantId) { notify.error("Please select a variant"); return; }
+    if (!pricing) { notify.error("This option combination has no pricing. Please select different options."); return; }
+    if (!isQuantityValid) { notify.error(`Minimum quantity is ${minQty}`); return; }
+    if (uploadingAttachments) { notify.error("Please wait for file uploads to complete"); return; }
+
+    setPriceVerifying(true);
+    setPriceChangedInfo(null);
+    try {
+      const res = await fetch(`${API_BASE}/pricing/calculate`, {
+        method: "POST",
+        headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({
+          variant_id: selectedVariantId,
+          selected_options: selectedOptions,
+          quantity: effectiveQuantity,
+        }),
+      });
+      if (res.ok) {
+        const json = await res.json() as { success: boolean; data: { unit_price: number; discount: number; final_unit_price: number; total_price: number } };
+        if (json.success && Math.abs(json.data.unit_price - pricing.unit_price) > 0.009) {
+          const pricingDimsEntries = optionGroups
+            .filter((g) => g.is_pricing_dimension && selectedOptions[g.name])
+            .map((g): [string, string] => [g.name, selectedOptions[g.name]])
+            .sort(([a], [b]) => a.localeCompare(b));
+          const combinationKey = pricingDimsEntries.length === 0
+            ? "__NO_OPTIONS__"
+            : pricingDimsEntries.map(([k, v]) => `${k}:${v}`).join("|");
+          setPriceChangedInfo({
+            prevUnitPrice: pricing.unit_price,
+            newUnitPrice: json.data.unit_price,
+            newFinalUnitPrice: json.data.final_unit_price,
+            newDiscount: json.data.discount,
+            newTotal: Number((json.data.final_unit_price * effectiveQuantity + (pricing.design_extra_total ?? 0)).toFixed(2)),
+            combinationKey,
+          });
+          return;
+        }
+      }
+    } catch {
+      // Verification network failure — don't block checkout, the server re-validates on submit
+    } finally {
+      setPriceVerifying(false);
+    }
+
+    await proceedToPaymentStep();
+  };
+
+  const handleConfirmNewPrice = async () => {
+    if (!priceChangedInfo) return;
+    setPricingRows((prev) =>
+      prev.map((r) =>
+        r.combination_key === priceChangedInfo.combinationKey
+          ? { ...r, price: priceChangedInfo.newUnitPrice, discount: priceChangedInfo.newDiscount }
+          : r
+      )
+    );
+    setPriceChangedInfo(null);
+    await proceedToPaymentStep();
   };
 
   const handleUploadProof = async (): Promise<string | null> => {
@@ -430,8 +585,8 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message || data.message || "Upload failed");
       return data.data?.fileUrl || null;
-    } catch (err: any) {
-      notify.error(err.message || "Failed to upload payment proof");
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : "Failed to upload payment proof");
       return null;
     } finally {
       setUploadingProof(false);
@@ -784,18 +939,62 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  {attachmentFiles.map((f, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-100 text-sm">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
-                        <span className="text-slate-700 font-medium truncate">{f.name}</span>
-                        <span className="text-slate-400 text-xs flex-shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                  {/* Upload progress summary badge */}
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <span className="text-xs font-semibold text-slate-500">
+                      {attachmentFiles.length} file{attachmentFiles.length !== 1 ? "s" : ""} selected
+                    </span>
+                    {attachmentFiles.length > 0 && (
+                      <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                        attachmentPaths.length === attachmentFiles.length
+                          ? "bg-emerald-50 text-emerald-600"
+                          : uploadingAttachments
+                          ? "bg-blue-50 text-blue-500"
+                          : "bg-amber-50 text-amber-600"
+                      }`}>
+                        {uploadingAttachments ? (
+                          <>
+                            <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                            Uploading…
+                          </>
+                        ) : attachmentPaths.length === attachmentFiles.length && attachmentPaths.length > 0 ? (
+                          <>{attachmentPaths.length}/{attachmentFiles.length} uploaded ✓</>
+                        ) : (
+                          <>{attachmentPaths.length}/{attachmentFiles.length} uploaded</>
+                        )}
+                      </span>
+                    )}
+                  </div>
+
+                  {attachmentFiles.map((f, i) => {
+                    const isUploaded = i < attachmentPaths.length;
+                    const isUploading = uploadingAttachments && i === attachmentPaths.length;
+                    return (
+                      <div key={i} className={`flex items-center justify-between rounded-lg px-3 py-2 border text-sm transition-colors ${
+                        isUploaded ? "bg-emerald-50 border-emerald-100" : isUploading ? "bg-blue-50 border-blue-100" : "bg-white border-slate-100"
+                      }`}>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {/* Status icon */}
+                          {isUploaded ? (
+                            <svg className="w-4 h-4 text-emerald-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+                          ) : isUploading ? (
+                            <svg className="w-4 h-4 text-blue-400 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                          ) : (
+                            <svg className="w-4 h-4 text-slate-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                          )}
+                          <span className={`font-medium truncate ${isUploaded ? "text-emerald-700" : isUploading ? "text-blue-600" : "text-slate-700"}`}>{f.name}</span>
+                          <span className="text-slate-400 text-xs flex-shrink-0">{(f.size / 1024).toFixed(0)} KB</span>
+                        </div>
+                        {!isUploading && (
+                          <button type="button" title={`Remove ${f.name}`} aria-label={`Remove ${f.name}`}
+                            onClick={(e) => { e.stopPropagation(); handleRemoveAttachment(i); }}
+                            className="text-slate-300 hover:text-red-400 ml-2 flex-shrink-0">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                          </button>
+                        )}
                       </div>
-                      <button type="button" title={`Remove ${f.name}`} aria-label={`Remove ${f.name}`} onClick={(e) => { e.stopPropagation(); setAttachmentFiles((prev) => prev.filter((_, j) => j !== i)); setAttachmentPaths([]); }} className="text-slate-300 hover:text-red-400 ml-2 flex-shrink-0">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <button type="button" onClick={(e) => { e.stopPropagation(); document.getElementById("attachment-files")?.click(); }} className="text-xs text-slate-400 hover:text-slate-600 mt-1">+ Add more files</button>
                 </div>
               )}
@@ -872,6 +1071,35 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           </div>
         )}
 
+        {priceChangedInfo && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm">
+            <p className="font-semibold text-amber-800">Price updated by admin</p>
+            <p className="mt-1 text-amber-700">
+              Unit price changed from{" "}
+              <span className="line-through">NPR {priceChangedInfo.prevUnitPrice.toLocaleString()}</span>
+              {" → "}
+              <span className="font-bold">NPR {priceChangedInfo.newUnitPrice.toLocaleString()}</span>.
+              New total: <span className="font-bold">NPR {priceChangedInfo.newTotal.toLocaleString()}</span>.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={handleConfirmNewPrice}
+                className="px-4 py-1.5 bg-amber-700 text-white text-xs font-bold rounded-md hover:bg-amber-800 transition-colors"
+              >
+                Confirm new price &amp; continue
+              </button>
+              <button
+                type="button"
+                onClick={() => setPriceChangedInfo(null)}
+                className="px-4 py-1.5 border border-amber-300 text-amber-800 text-xs font-semibold rounded-md hover:bg-amber-100 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3 pt-1">
           <button
             type="button"
@@ -883,11 +1111,11 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           <button
             type="button"
             onClick={handleProceedToPayment}
-            disabled={!pricing || uploadingAttachments}
+            disabled={!pricing || uploadingAttachments || priceVerifying || !!priceChangedInfo}
             className="flex-1 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {uploadingAttachments ? "Uploading files…" : "Continue"}
-            {!uploadingAttachments && (
+            {priceVerifying ? "Verifying price…" : uploadingAttachments ? "Uploading files…" : "Continue"}
+            {!priceVerifying && !uploadingAttachments && (
               <svg className="inline-block w-4 h-4 ml-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>

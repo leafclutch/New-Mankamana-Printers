@@ -14,41 +14,87 @@
 --   Only groups where is_pricing_dimension = true are included.
 --   Sort group names A→Z, join with "|".
 --   Format: "groupname:valuecode|groupname:valuecode"
---   Example: "paper-quality:90gsm|printing:single"
+--   Example: "quantity:2000"  or  "paper_quality:90gsm|printing:single"
+--
+-- BUCKET BASE URL:
+--   https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/
+--
+-- ─────────────────────────────────────────────────────────────────────────────
+-- RE-STRUCTURING AN EXISTING PRODUCT (e.g. changing variants)?
+--   variant_pricing has no ON DELETE CASCADE, so you must delete dependents
+--   manually before removing variants. Uncomment and run this block first,
+--   then run the main INSERT section below.
+--
+-- DELETE FROM variant_pricing
+-- WHERE variant_id IN (
+--     SELECT id FROM product_variants
+--     WHERE product_id = (SELECT id FROM products WHERE product_code = '<<PROD-CODE>>')
+-- );
+-- DELETE FROM option_groups
+-- WHERE variant_id IN (
+--     SELECT id FROM product_variants
+--     WHERE product_id = (SELECT id FROM products WHERE product_code = '<<PROD-CODE>>')
+-- );
+-- option_values cascade automatically from option_groups.
+-- DELETE FROM product_variants
+-- WHERE product_id = (SELECT id FROM products WHERE product_code = '<<PROD-CODE>>');
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 BEGIN;
 
+-- ─── 0. Product Group (OPTIONAL — skip for standalone 2-layer products) ──────
+-- Use this only when the product belongs to a family (e.g. "Card Holder" → "Business Card Holder").
+-- Leave out entirely for standalone products that appear directly on the services page.
+
+-- INSERT INTO product_groups (group_code, name, description, image_url, is_active)
+-- VALUES (
+--     '<<GRP-CODE>>',              -- unique group code e.g. 'CHD-001'
+--     '<<Group Name>>',            -- e.g. 'Card Holder'
+--     '<<Optional description>>',  -- or NULL
+--     NULL,                        -- optional: group thumbnail URL
+--     true
+-- )
+-- ON CONFLICT (group_code) DO UPDATE
+--     SET name        = EXCLUDED.name,
+--         description = EXCLUDED.description,
+--         image_url   = EXCLUDED.image_url;
+
 -- ─── 1. Product Category (skip if already exists) ────────────────────────────
-INSERT INTO product_categories (name, slug, description, is_active)
+INSERT INTO product_categories (name, slug, description, image_url, is_active)
 VALUES (
     '<<Category Name>>',         -- e.g. 'Brochures'
     '<<category-slug>>',         -- e.g. 'brochures'
     '<<Optional description>>',  -- or NULL
+    NULL,                        -- optional: category thumbnail URL, or NULL
     true
 )
 ON CONFLICT (slug) DO NOTHING;
 
 -- ─── 2. Product ───────────────────────────────────────────────────────────────
-INSERT INTO products (category_id, product_code, name, description, image_url, preview_images, is_active)
+-- If this product belongs to a group (step 0), set group_id; otherwise leave NULL.
+INSERT INTO products (category_id, group_id, product_code, name, description, image_url, preview_images, production_days, is_active)
 VALUES (
     (SELECT id FROM product_categories WHERE slug = '<<category-slug>>'),
+    (SELECT id FROM product_groups WHERE group_code = '<<GRP-CODE>>'), -- or NULL for standalone
     '<<PROD-CODE>>',             -- unique code e.g. 'BRO-001'
     '<<Product Name>>',          -- e.g. 'Brochure'
     '<<Optional description>>',  -- or NULL
-    'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/<<product-slug>>/thumb.jpeg',
+    'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/<<category-slug>>/<<product-slug>>/thumb.jpeg',
     ARRAY[
-        'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/<<product-slug>>/preview-1.jpeg',
-        'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/<<product-slug>>/preview-2.jpeg'
+        'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/<<category-slug>>/<<product-slug>>/preview-1.jpeg',
+        'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/<<category-slug>>/<<product-slug>>/preview-2.jpeg'
         -- add more preview URLs as needed
     ],
+    3,                           -- production_days: estimated fulfilment days (default 3)
     true
 )
 ON CONFLICT (product_code) DO UPDATE
-    SET name           = EXCLUDED.name,
-        description    = EXCLUDED.description,
-        image_url      = EXCLUDED.image_url,
-        preview_images = EXCLUDED.preview_images;
+    SET name            = EXCLUDED.name,
+        description     = EXCLUDED.description,
+        image_url       = EXCLUDED.image_url,
+        preview_images  = EXCLUDED.preview_images,
+        production_days = EXCLUDED.production_days,
+        group_id        = EXCLUDED.group_id;
 
 -- ─── 3. Variant(s) ───────────────────────────────────────────────────────────
 -- Repeat this block for each variant (e.g. A4, A3, Horizontal, Vertical …)
@@ -91,6 +137,7 @@ VALUES
 ON CONFLICT (variant_id, name) DO UPDATE
     SET label                = EXCLUDED.label,
         display_order        = EXCLUDED.display_order,
+        is_required          = EXCLUDED.is_required,
         is_pricing_dimension = EXCLUDED.is_pricing_dimension;
 
 -- ─── 5. Option Values ─────────────────────────────────────────────────────────
@@ -123,11 +170,13 @@ VALUES
 ON CONFLICT (group_id, code) DO UPDATE
     SET label         = EXCLUDED.label,
         display_order = EXCLUDED.display_order,
+        is_active     = EXCLUDED.is_active,
         image_url     = EXCLUDED.image_url;
 
 -- ─── 6. Variant Pricing ───────────────────────────────────────────────────────
 -- combination_key: pricing-dimension groups only, sorted A→Z by name, joined with "|"
 -- One row per unique combination.
+-- selected_options: flat JSON object { group_name: value_code } — must match combination_key values.
 
 INSERT INTO variant_pricing
     (variant_id, combination_key, selected_options, price, discount_type, discount_value, is_active)
@@ -135,25 +184,25 @@ VALUES
     (
         (SELECT id FROM product_variants WHERE variant_code = '<<PROD-CODE-V1>>'),
         'paper_quality:90gsm|printing:single',
-        '{"paper_quality":"90gsm","printing":"single"}',
+        '{"paper_quality":"90gsm","printing":"single"}'::jsonb,
         799.00, NULL, 0.00, true
     ),
     (
         (SELECT id FROM product_variants WHERE variant_code = '<<PROD-CODE-V1>>'),
         'paper_quality:90gsm|printing:both',
-        '{"paper_quality":"90gsm","printing":"both"}',
+        '{"paper_quality":"90gsm","printing":"both"}'::jsonb,
         999.00, NULL, 0.00, true
     ),
     (
         (SELECT id FROM product_variants WHERE variant_code = '<<PROD-CODE-V1>>'),
         'paper_quality:130gsm|printing:single',
-        '{"paper_quality":"130gsm","printing":"single"}',
+        '{"paper_quality":"130gsm","printing":"single"}'::jsonb,
         1099.00, NULL, 0.00, true
     ),
     (
         (SELECT id FROM product_variants WHERE variant_code = '<<PROD-CODE-V1>>'),
         'paper_quality:130gsm|printing:both',
-        '{"paper_quality":"130gsm","printing":"both"}',
+        '{"paper_quality":"130gsm","printing":"both"}'::jsonb,
         1399.00, NULL, 0.00, true
     )
 ON CONFLICT (variant_id, combination_key) DO UPDATE
@@ -166,6 +215,7 @@ ON CONFLICT (variant_id, combination_key) DO UPDATE
 SELECT
     p.product_code,
     p.name                    AS product,
+    p.production_days,
     pv.variant_code,
     pv.variant_name           AS variant,
     pv.min_quantity,
@@ -174,7 +224,7 @@ FROM products p
 JOIN product_variants pv      ON pv.product_id = p.id
 LEFT JOIN variant_pricing vpr ON vpr.variant_id = pv.id
 WHERE p.product_code = '<<PROD-CODE>>'
-GROUP BY p.product_code, p.name, pv.variant_code, pv.variant_name, pv.min_quantity
+GROUP BY p.product_code, p.name, p.production_days, pv.variant_code, pv.variant_name, pv.min_quantity
 ORDER BY pv.variant_code;
 
 COMMIT;
@@ -186,9 +236,15 @@ COMMIT;
 --   1. Only include groups where is_pricing_dimension = true
 --   2. Sort group names A→Z
 --   3. Join with "|"
+--   4. selected_options JSON must contain the same key→value pairs
 --
 -- Examples:
 --   1 dim:  "printing:single"
 --   2 dims: "paper_quality:90gsm|printing:single"
 --   3 dims: "paper_quality:90gsm|printing:single|size:a4"
+--
+-- DISCOUNT TYPES (discount_type column):
+--   NULL        → no discount
+--   'fixed'     → fixed NPR amount off per unit   (e.g. 50.00)
+--   'percentage'→ percentage off (admin panel only uses 'fixed'; avoid 'percentage' via SQL)
 -- ═══════════════════════════════════════════════════════════════════════════════

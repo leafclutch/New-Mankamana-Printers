@@ -8,6 +8,8 @@ import { formatDate, formatCurrency } from "@/utils/helpers";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
+interface ApiResponse<T> { success: boolean; data: T }
+
 interface WalletBalance {
     walletId: string;
     availableBalance: number;
@@ -98,11 +100,11 @@ export default function WalletPage() {
 
     const fetchBalance = useCallback(async () => {
         try {
-            const data = await fetchJsonCached<any>(
+            const data = await fetchJsonCached<ApiResponse<WalletBalance>>(
                 "wallet-balance",
                 `${API_BASE}/wallet/balance`,
                 { headers: getAuthHeaders() },
-                15_000
+                10_000
             );
             if (data.success) setBalance(data.data);
         } finally {
@@ -116,13 +118,16 @@ export default function WalletPage() {
             const params = new URLSearchParams({ page: "1", limit: "50" });
             if (txnFilter !== "ALL") params.set("type", txnFilter);
             const cacheKey = `wallet-txns-${txnFilter}`;
-            const data = await fetchJsonCached<any>(
+            const data = await fetchJsonCached<ApiResponse<{ items?: Transaction[]; transactions?: Transaction[] } | Transaction[]>>(
                 cacheKey,
                 `${API_BASE}/wallet/transactions?${params}`,
                 { headers: getAuthHeaders() },
-                20_000
+                10_000
             );
-            if (data.success) setTransactions(data.data?.items || data.data?.transactions || data.data || []);
+            if (data.success) {
+                const d = data.data;
+                setTransactions(Array.isArray(d) ? d : (d.items ?? d.transactions ?? []));
+            }
         } finally {
             setTxnLoading(false);
         }
@@ -134,13 +139,16 @@ export default function WalletPage() {
             const params = new URLSearchParams({ page: "1", limit: "50" });
             if (topupFilter !== "ALL") params.set("status", topupFilter);
             const cacheKey = `wallet-topups-${topupFilter}`;
-            const data = await fetchJsonCached<any>(
+            const data = await fetchJsonCached<ApiResponse<{ items?: TopupRequest[]; requests?: TopupRequest[] } | TopupRequest[]>>(
                 cacheKey,
                 `${API_BASE}/wallet/topup-requests?${params}`,
                 { headers: getAuthHeaders() },
                 20_000
             );
-            if (data.success) setTopups(data.data?.items || data.data?.requests || data.data || []);
+            if (data.success) {
+                const d = data.data;
+                setTopups(Array.isArray(d) ? d : (d.items ?? d.requests ?? []));
+            }
         } finally {
             setTopupLoading(false);
         }
@@ -148,12 +156,21 @@ export default function WalletPage() {
 
     useEffect(() => {
         fetchBalance();
-        const id = setInterval(fetchBalance, 30_000);
+        const id = setInterval(fetchBalance, 10_000);
         return () => clearInterval(id);
     }, [fetchBalance]);
 
-    useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
-    useEffect(() => { fetchTopups(); }, [fetchTopups]);
+    useEffect(() => {
+        fetchTransactions();
+        const id = setInterval(fetchTransactions, 10_000);
+        return () => clearInterval(id);
+    }, [fetchTransactions]);
+
+    useEffect(() => {
+        fetchTopups();
+        const id = setInterval(fetchTopups, 10_000);
+        return () => clearInterval(id);
+    }, [fetchTopups]);
 
     const filteredTxns = transactions;
     const filteredTopups = topups;

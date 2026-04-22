@@ -62,6 +62,10 @@ const formatDate = (isoDate: string) => {
   return date.toISOString().split("T")[0];
 };
 
+import { cachedJsonFetch, invalidateCacheKey } from "@/lib/requestCache";
+
+const REQUESTS_CACHE_KEY = "admin-registration-requests";
+
 const safeJson = async (response: Response) => {
   const raw = await response.text();
   if (!raw || raw.trim().length === 0) {
@@ -92,16 +96,10 @@ const mapRequest = (req: RegistrationRequestApi): RegistrationRequestUi => ({
 export const fetchRegistrationRequests = async (): Promise<
   RegistrationRequestUi[]
 > => {
-  const response = await fetch("/api/admin/registration-requests", {
-    method: "GET",
-    cache: "no-store",
-  });
-
-  const data = await safeJson(response);
-  if (!response.ok) {
+  const data = await cachedJsonFetch<{ success?: boolean; data?: RegistrationRequestApi[]; message?: string }>(REQUESTS_CACHE_KEY, "/api/admin/registration-requests", 20_000);
+  if (!data?.success && !data?.data) {
     throw new Error(data?.message || "Failed to load registration requests.");
   }
-
   return (data?.data || []).map(mapRequest);
 };
 
@@ -133,9 +131,10 @@ export const approveRegistrationRequest = async (
 
   const data = await safeJson(response) as ApproveBackendResponse;
   if (!response.ok) {
-    throw new Error((data as any)?.message || "Failed to approve request.");
+    throw new Error(data?.message || "Failed to approve request.");
   }
 
+  invalidateCacheKey(REQUESTS_CACHE_KEY);
   return {
     message: data.message,
     credentials: data.data
@@ -162,5 +161,6 @@ export const rejectRegistrationRequest = async (
     throw new Error(data?.message || "Failed to reject request.");
   }
 
+  invalidateCacheKey(REQUESTS_CACHE_KEY);
   return data as { message: string };
 };

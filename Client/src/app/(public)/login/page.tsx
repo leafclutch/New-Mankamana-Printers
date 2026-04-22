@@ -67,8 +67,8 @@ export default function LoginPage() {
                             <div className="form-group">
                                 <div className="flex justify-between items-center mb-1">
                                     <label htmlFor="password" className="form-label mb-0">Password</label>
-                                    <button type="button" className="bg-transparent border-none text-[#1a56db] text-[0.78rem] font-semibold cursor-pointer">
-                                        Forgot?
+                                    <button type="button" className="text-[#1a56db] text-[0.78rem] font-semibold hover:underline transition-colors">
+                                        Forgot password?
                                     </button>
                                 </div>
                                 <div className="relative">
@@ -85,24 +85,24 @@ export default function LoginPage() {
                                         type="button"
                                         onClick={() => setShowPassword(!showPassword)}
                                         aria-label={showPassword ? "Hide password" : "Show password"}
-                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer text-[#94a3b8] text-[0.75rem] font-semibold tracking-wide"
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#94a3b8] text-[0.75rem] font-semibold tracking-wide hover:text-slate-600 transition-colors"
                                     >
-                                        {showPassword ? "HIDE" : "SHOW"}
+                                        {showPassword ? "Hide" : "Show"}
                                     </button>
                                 </div>
                             </div>
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className={`btn-primary w-full p-3.5 text-[0.875rem] font-bold tracking-[0.08em] ${loading ? "opacity-70" : ""}`}
+                                className={`btn-primary w-full p-3.5 text-[0.875rem] font-bold ${loading ? "opacity-70" : ""}`}
                             >
-                                {loading ? "SIGNING IN…" : "SIGN IN"}
+                                {loading ? "Signing in…" : "Sign in"}
                             </button>
                         </form>
                     </div>
 
                     {/* Right: Gradient Panel */}
-                    <div className="gradient-card p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden">
+                    <div className="gradient-card p-6 sm:p-10 flex flex-col justify-between relative overflow-hidden rounded-b-[20px] md:rounded-l-none md:rounded-r-[20px]">
                         <div className="absolute -bottom-10 -right-10 w-[110px] sm:w-[150px] md:w-[180px] h-[110px] sm:h-[150px] md:h-[180px] rounded-full bg-white/[0.06] pointer-events-none" />
                         <div>
                             <h2 className="text-white text-[1.08rem] sm:text-[1.25rem] md:text-[1.35rem] font-extrabold tracking-[0.02em] mb-5 sm:mb-7">
@@ -126,28 +126,14 @@ export default function LoginPage() {
                         </div>
                         <Link
                             href="/register"
-                            className="block mt-6 sm:mt-8 border-2 border-white/70 rounded-[50px] p-2.5 sm:p-3 text-center text-white font-bold text-[0.84rem] sm:text-[0.85rem] tracking-[0.08em] no-underline transition-all duration-200 hover:bg-white/10"
+                            className="block mt-6 sm:mt-8 border-2 border-white/70 rounded-[50px] p-2.5 sm:p-3 text-center text-white font-bold text-[0.84rem] sm:text-[0.85rem] no-underline transition-all duration-200 hover:bg-white/10"
                         >
-                            CREATE ACCOUNT
+                            Create account
                         </Link>
                     </div>
                 </div>
             </div>
             <Footer />
-            <style jsx global>{`
-                @media (max-width: 850px) {
-                    .gradient-card {
-                        border-top-left-radius: 0 !important;
-                        border-bottom-left-radius: 0 !important;
-                    }
-                }
-                @media (max-width: 767px) {
-                    .gradient-card {
-                        border-radius: 0 0 20px 20px !important;
-                        min-height: unset !important;
-                    }
-                }
-            `}</style>
         </>
     );
 }

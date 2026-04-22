@@ -95,6 +95,8 @@ export default function RegistrationRequestsPage() {
 
   useEffect(() => {
     loadRequests();
+    const id = setInterval(loadRequests, 20_000);
+    return () => clearInterval(id);
   }, []);
 
   const handleApprove = async (id: string) => {

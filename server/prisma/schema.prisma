@@ -165,6 +165,23 @@ model Template {
 
 // PRODUCT CATALOG SYSTEM
 
+model ProductGroup {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_id  String?  @db.Uuid
+  group_code   String   @unique @db.VarChar(30)
+  name         String   @db.VarChar(100)
+  description  String?  @db.Text
+  image_url    String?  @db.Text
+  is_active    Boolean  @default(true)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt @default(now())
+
+  category ProductCategory? @relation(fields: [category_id], references: [id])
+  products Product[]
+
+  @@map("product_groups")
+}
+
 model ProductCategory {
   id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name        String   @db.VarChar(100)
@@ -175,7 +192,8 @@ model ProductCategory {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt @default(now())
 
-  products Product[]
+  products      Product[]
+  productGroups ProductGroup[]
 
   @@map("product_categories")
 }
@@ -183,6 +201,7 @@ model ProductCategory {
 model Product {
   id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   category_id     String?          @db.Uuid
+  group_id        String?          @db.Uuid
   product_code    String           @unique @db.VarChar(20)
   name            String           @db.VarChar(100)
   description     String?          @db.Text
@@ -194,6 +213,7 @@ model Product {
   updated_at      DateTime         @updatedAt @default(now())
 
   category ProductCategory? @relation(fields: [category_id], references: [id])
+  group    ProductGroup?     @relation(fields: [group_id], references: [id])
   variants ProductVariant[]
   designSubmissions DesignSubmission[]
   approvedDesigns   ApprovedDesign[]

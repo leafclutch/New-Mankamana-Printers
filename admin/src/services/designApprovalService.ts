@@ -73,7 +73,7 @@ const DESIGNS_CACHE_KEY = "admin-designs-submissions";
 // fetchAllDesignSubmissions: Loads ALL submissions (pending + approved + rejected) for the admin review page.
 // Cached for 15 s so the page loads instantly on revisit; invalidated after approve/reject.
 export const fetchAllDesignSubmissions = async (): Promise<DesignListItem[]> => {
-  const data = await cachedJsonFetch<any>(DESIGNS_CACHE_KEY, "/api/admin/designs/submissions?limit=200", 15_000);
+  const data = await cachedJsonFetch<{ data?: { items?: SubmissionApi[] }; message?: string }>(DESIGNS_CACHE_KEY, "/api/admin/designs/submissions?limit=200", 15_000);
   if (!data?.data) throw new Error(data?.message || "Failed to load design submissions.");
   return (data.data.items || []).map(mapSubmission);
 };

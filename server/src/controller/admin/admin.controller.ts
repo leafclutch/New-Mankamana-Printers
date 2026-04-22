@@ -151,7 +151,7 @@ export const getClientOrders = async (req: Request, res: Response, next: NextFun
 // updateClientProfile: Allows admin to update editable client fields and notifies the client via email
 export const updateClientProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { business_name, owner_name, email, phone_number, address } = req.body;
     const result = await adminService.updateClientProfileService(id, {
       business_name, owner_name, email, phone_number, address,

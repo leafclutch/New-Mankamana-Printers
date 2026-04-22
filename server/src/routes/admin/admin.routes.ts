@@ -7,6 +7,7 @@ import * as approvedDesignController from "../../controller/design/approved-desi
 import * as adminProductController from "../../controller/catalog/admin-product.controller";
 import * as adminPricingController from "../../controller/catalog/admin-pricing.controller";
 import * as adminCatalogController from "../../controller/admin/admin-catalog.controller";
+import * as productGroupController from "../../controller/catalog/product-group.controller";
 import * as productOrderController from "../../controller/orders/product-order.controller";
 import { getVisitorStats, getPerformanceStats } from "../../controller/analytics/analytics.controller";
 import { validate } from "../../middleware/validate.middleware";
@@ -93,6 +94,12 @@ router.post("/products/:productId/pricing", protect, restrictTo("ADMIN"), critic
 router.patch("/pricing/:pricingId", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminCatalogController.updatePricingRow);
 router.delete("/pricing/:pricingId/discount", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminCatalogController.removePricingDiscount);
 
+// PRODUCT GROUPS: 3-tier hierarchy (group → product → variant)
+router.get("/product-groups", protect, restrictTo("ADMIN"), productGroupController.adminListGroupsController);
+router.post("/product-groups", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productGroupController.adminCreateGroupController);
+router.patch("/product-groups/:groupId", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productGroupController.adminUpdateGroupController);
+router.patch("/products/:productId/group", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productGroupController.adminSetProductGroupController);
+
 // UNIVERSAL PRODUCT & PRICING MANAGEMENT: Low-level variant/group/value APIs (kept for backward compatibility)
 router.post("/products-raw", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminProductController.createProduct);
 router.post("/products-raw/:productId/variants", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminProductController.createVariant);
@@ -109,6 +116,7 @@ router.patch("/orders/:orderId/status", protect, restrictTo("ADMIN"), criticalAc
 router.patch("/orders/:orderId/delivery-date", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productOrderController.setOrderDeliveryDate);
 router.get("/orders/:orderId", protect, restrictTo("ADMIN"), productOrderController.getOrderDetails);
 router.get("/orders/:orderId/payment-proof", protect, restrictTo("ADMIN"), productOrderController.getOrderPaymentProof);
+router.get("/orders/:orderId/attachments/:fileKey", protect, restrictTo("ADMIN"), productOrderController.getOrderAttachmentFile);
 
 // ANALYTICS: Visitor and page-view stats for admin dashboard
 router.get("/analytics", protect, restrictTo("ADMIN"), getVisitorStats);

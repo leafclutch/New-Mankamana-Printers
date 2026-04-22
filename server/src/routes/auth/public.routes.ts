@@ -3,6 +3,7 @@ import { validate } from "../../middleware/validate.middleware";
 import { protect } from "../../middleware/auth.middleware";
 import * as adminController from "../../controller/admin/admin.controller";
 import * as publicCatalogController from "../../controller/catalog/public-catalog.controller";
+import * as productGroupController from "../../controller/catalog/product-group.controller";
 import { createRegistrationRequestSchema } from "../../validators/registration.validator";
 import { trackPageView, getPublicTotalVisits } from "../../controller/analytics/analytics.controller";
 import rateLimit from "express-rate-limit";
@@ -40,6 +41,8 @@ router.post(
 );
 
 // CLIENT CATALOG APIs: Browse products, variants, options, and calculate exact-match pricing
+router.get("/catalog", protect, productGroupController.getCatalogController);
+router.get("/product-groups/:groupId", protect, productGroupController.getGroupController);
 router.get("/products", protect, publicCatalogController.getProductsController);
 router.get("/products/:productId", protect, publicCatalogController.getProductByIdController);
 router.get("/products/:productId/variants", protect, publicCatalogController.getProductVariantsController);

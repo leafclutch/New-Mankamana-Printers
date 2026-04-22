@@ -44,7 +44,7 @@ const getCategoryTheme = (category: string) => {
 type Tab = "free" | "custom" | "mydesigns";
 
 function TemplatesContent() {
-    const { user } = useAuthStore();
+    useAuthStore();
     const router = useRouter();
     const searchParams = useSearchParams();
     const tabParam = (searchParams.get("tab") as Tab) ?? "free";
@@ -68,7 +68,7 @@ function TemplatesContent() {
 
     // Fetch product list for the custom design product selector
     useEffect(() => {
-        fetchJsonCached<any>(
+        fetchJsonCached<{ success: boolean; data?: { id: string; name: string }[] }>(
             "products-list",
             `${API_BASE}/products`,
             { headers: getAuthHeaders() },
@@ -90,8 +90,8 @@ function TemplatesContent() {
                 const json = await res.json();
                 if (!res.ok) throw new Error(json.error?.message || json.message || "Failed to load designs");
                 setMyDesigns(json.data?.items || []);
-            } catch (err: any) {
-                setMyDesignsError(err.message || "Failed to load designs");
+            } catch (err) {
+                setMyDesignsError(err instanceof Error ? err.message : "Failed to load designs");
             } finally {
                 setMyDesignsLoading(false);
             }
@@ -114,7 +114,7 @@ function TemplatesContent() {
         notify.success(`"${name}" download started!`);
     };
 
-    const handleViewDesignFile = async (submissionId: string, title: string | null) => {
+    const handleViewDesignFile = async (submissionId: string) => {
         try {
             const res = await fetch(`${API_BASE}/design-submissions/my/${submissionId}/file`, {
                 headers: getAuthHeaders(),
@@ -175,8 +175,8 @@ function TemplatesContent() {
             if (previewUrl) { URL.revokeObjectURL(previewUrl); setPreviewUrl(null); }
             if (fileInputRef.current) fileInputRef.current.value = "";
             router.push("/templates?tab=mydesigns");
-        } catch (err: any) {
-            notify.error(err.message || "Failed to submit design. Please try again.");
+        } catch (err) {
+            notify.error(err instanceof Error ? err.message : "Failed to submit design. Please try again.");
         } finally {
             setIsSending(false);
         }
@@ -415,7 +415,7 @@ function TemplatesContent() {
                                                                 </div>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => handleViewDesignFile(d.submissionId, d.title)}
+                                                                    onClick={() => handleViewDesignFile(d.submissionId)}
                                                                     className="flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-slate-200 bg-white text-[0.72rem] font-bold text-[#0061FF] hover:bg-slate-50 transition-colors"
                                                                 >
                                                                     <FiDownload className="w-3.5 h-3.5" />

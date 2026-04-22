@@ -38,7 +38,6 @@ const usefulLinks = [
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
 export default function Footer() {
-    const [email, setEmail] = useState("");
     const [totalVisits, setTotalVisits] = useState<number | null>(null);
 
     useEffect(() => {
@@ -102,15 +101,12 @@ export default function Footer() {
                     </div>
                 </div>
 
-                {/* Social Media */}
+                {/* Social Media + Visit Counter */}
                 <div>
                     <p className="footer-heading">Connect With Us</p>
                     <p className="text-[0.8rem] text-[color:var(--text-muted)] mb-4 leading-[1.6]">
                         Follow us for updates, tips, and offers.
                     </p>
-                    {/*
-                      Define dummy data for social media links and map over it
-                    */}
                     <div className="flex gap-3 mt-1">
                         {socialLinks.map((link) => (
                             <a
@@ -125,19 +121,26 @@ export default function Footer() {
                             </a>
                         ))}
                     </div>
+
+                    {/* Visit counter */}
+                    <div className="mt-6 pt-5 border-t border-[#1e293b]">
+                        <div className="flex items-baseline gap-2">
+                            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse mb-0.5 flex-shrink-0" />
+                            <span className="text-[2.4rem] font-extrabold text-white leading-none tracking-tight">
+                                {totalVisits !== null ? totalVisits.toLocaleString() : "—"}
+                            </span>
+                        </div>
+                        <p className="text-[0.65rem] font-bold tracking-[0.18em] uppercase text-[color:var(--text-muted)] mt-1.5">
+                            Total Site Visits
+                        </p>
+                    </div>
                 </div>
             </div>
 
-            <div className="border-t border-[#1e293b] py-5 px-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-center">
+            <div className="border-t border-[#1e293b] py-5 px-6 flex items-center justify-center text-center">
                 <p className="text-[0.75rem] text-[#475569]">
                     © 2024 New Mankamana Printers. All rights reserved.
                 </p>
-                {totalVisits !== null && (
-                    <p className="text-[0.72rem] text-[#334155] flex items-center gap-1.5">
-                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        {totalVisits.toLocaleString()} total site visits
-                    </p>
-                )}
             </div>
         </footer>
     );

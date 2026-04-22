@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadFile } from "../controller/upload.controller";
+import { uploadFile, deleteFile } from "../controller/upload.controller";
 import { protect } from "../middleware/auth.middleware";
 import multer from "multer";
 
@@ -27,5 +27,6 @@ const upload = multer({
 
 // Requires authentication — unauthenticated upload was a security hole
 router.post("/", protect, upload.single("file"), uploadFile);
+router.delete("/", protect, deleteFile);
 
 export default router;

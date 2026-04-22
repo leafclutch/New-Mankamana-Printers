@@ -63,10 +63,10 @@ const safeJson = async (response: Response) => {
   }
 };
 
-const unwrapData = <T>(payload: any, fallback: T): T => {
+const unwrapData = <T>(payload: unknown, fallback: T): T => {
   if (!payload) return fallback;
   if (Array.isArray(payload)) return payload as T;
-  if (payload.data !== undefined) return payload.data as T;
+  if (typeof payload === "object" && "data" in payload) return (payload as { data: T }).data;
   return payload as T;
 };
 
@@ -269,10 +269,13 @@ export const fetchAdminPricingRows = async (
   if (!response.ok) {
     throw new Error(data?.message || "Failed to load pricing rows.");
   }
-  const payload = unwrapData<any>(data, []);
+  const payload = unwrapData<unknown>(data, []);
   if (Array.isArray(payload)) return payload as PricingRow[];
-  if (Array.isArray(payload?.items)) return payload.items as PricingRow[];
-  if (Array.isArray(payload?.data)) return payload.data as PricingRow[];
+  if (payload !== null && typeof payload === "object") {
+    const p = payload as Record<string, unknown>;
+    if (Array.isArray(p.items)) return p.items as PricingRow[];
+    if (Array.isArray(p.data)) return p.data as PricingRow[];
+  }
   return [];
 };
 

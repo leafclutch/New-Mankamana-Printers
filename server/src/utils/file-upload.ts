@@ -22,20 +22,20 @@ const MIME_TO_EXT: Record<string, string> = {
 /**
  * Bucket routing table.
  * Maps a folder prefix to the correct Supabase bucket.
- * Private buckets must be accessed via signed URLs, never public URLs.
+ * More specific prefixes must come before less specific ones.
  */
 const FOLDER_TO_BUCKET: { prefix: string; bucket: string; isPrivate: boolean }[] = [
-  { prefix: "designs/submissions", bucket: "design-files",    isPrivate: true  },
-  { prefix: "designs/approved",    bucket: "design-files",    isPrivate: true  },
-  { prefix: "orders/payment-proofs", bucket: "payment-proofs", isPrivate: true },
-  { prefix: "wallet/payment-proofs", bucket: "payment-proofs", isPrivate: true },
-  { prefix: "templates",           bucket: "design-templates", isPrivate: false },
-  { prefix: "products",            bucket: "product-assets",   isPrivate: false },
-  { prefix: "banners",             bucket: "banners",          isPrivate: false },
-  { prefix: "company",             bucket: "product-assets",   isPrivate: false },
-  { prefix: "option-values",       bucket: "product-assets",   isPrivate: false },
-  // QR codes are public images shown to clients on the payment page
-  { prefix: "qr-codes",            bucket: "product-assets",   isPrivate: false },
+  { prefix: "designs/submissions",   bucket: "design-files",       isPrivate: true  },
+  { prefix: "designs/approved",      bucket: "design-files",       isPrivate: true  },
+  { prefix: "orders/payment-proofs", bucket: "payment-proofs",     isPrivate: true  },
+  { prefix: "orders/",               bucket: "order-attachments",  isPrivate: true  },
+  { prefix: "wallet/payment-proofs", bucket: "payment-proofs",     isPrivate: true  },
+  { prefix: "templates",             bucket: "design-templates",   isPrivate: false },
+  { prefix: "products",              bucket: "product-assets",     isPrivate: false },
+  { prefix: "banners",               bucket: "banners",            isPrivate: false },
+  { prefix: "company",               bucket: "product-assets",     isPrivate: false },
+  { prefix: "option-values",         bucket: "product-assets",     isPrivate: false },
+  { prefix: "qr-codes",              bucket: "product-assets",     isPrivate: false },
 ];
 
 const FALLBACK_BUCKET = process.env.SUPABASE_BUCKET || "printing-assets";
@@ -45,47 +45,60 @@ function resolveBucket(folder: string): { bucket: string; isPrivate: boolean } {
   return match ?? { bucket: FALLBACK_BUCKET, isPrivate: false };
 }
 
-/**
- * getSupabasePublicUrl
- * Returns a public CDN URL for files in public buckets.
- * Do NOT call this for private buckets (design-files, payment-proofs).
- */
+// ─── Bucket auto-provisioning ────────────────────────────────────────────────
+// Track which buckets have been verified this process lifetime so we only call
+// listBuckets/createBucket once per bucket, not on every upload.
+const provisionedBuckets = new Set<string>();
+
+async function ensureBucketExists(bucket: string, isPrivate: boolean): Promise<void> {
+  if (provisionedBuckets.has(bucket)) return;
+
+  const { data: list, error: listErr } = await supabase.storage.listBuckets();
+  if (listErr) {
+    // Cannot list buckets (permissions issue) — mark as provisioned to avoid
+    // hammering listBuckets on every upload; the upload itself will surface the real error.
+    console.warn(`[Storage] Cannot list buckets: ${listErr.message}`);
+    provisionedBuckets.add(bucket);
+    return;
+  }
+
+  const exists = list?.some((b) => b.name === bucket) ?? false;
+  if (!exists) {
+    console.log(`[Storage] Bucket '${bucket}' not found — creating it now`);
+    const { error: createErr } = await supabase.storage.createBucket(bucket, {
+      public: !isPrivate,
+    });
+    if (createErr && !createErr.message.toLowerCase().includes("already exists")) {
+      throw new Error(`Cannot create storage bucket '${bucket}': ${createErr.message}`);
+    }
+    console.log(`[Storage] Bucket '${bucket}' created (public=${!isPrivate})`);
+  }
+
+  provisionedBuckets.add(bucket);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const getSupabasePublicUrl = (filePath: string, bucket?: string): string => {
   const resolvedBucket = bucket ?? FALLBACK_BUCKET;
   const { data } = supabase.storage.from(resolvedBucket).getPublicUrl(filePath);
   return data.publicUrl;
 };
 
-/**
- * getPublicUrlForPath
- * Auto-resolves the correct bucket from the file path prefix, then returns
- * a public CDN URL. Use this instead of getSupabasePublicUrl when you only
- * have the stored path and don't know which bucket was used.
- */
 export const getPublicUrlForPath = (filePath: string): string => {
   const { bucket } = resolveBucket(filePath);
   const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
   return data.publicUrl;
 };
 
-/**
- * getSignedUrl
- * Generates a time-limited signed URL for files in private buckets.
- * Default expiry: 1 hour (3600 seconds).
- */
 export const getSignedUrl = async (
   filePath: string,
   bucket: string,
   expiresIn = 3600
 ): Promise<string> => {
   const { data, error } = await withRetry(
-    () =>
-      supabase.storage
-        .from(bucket)
-        .createSignedUrl(filePath, expiresIn),
+    () => supabase.storage.from(bucket).createSignedUrl(filePath, expiresIn),
     { retries: 2, timeoutMs: 8000, backoffMs: 250 }
   );
-
   if (error || !data?.signedUrl) {
     throw new Error(`Failed to generate signed URL: ${error?.message}`);
   }
@@ -95,8 +108,8 @@ export const getSignedUrl = async (
 /**
  * uploadToSupabasePath
  * Uploads a Multer file to the correct bucket based on the folder prefix.
- * Returns the file PATH only (e.g. "designs/submissions/uuid.png").
- * For private buckets, call getSignedUrl(path, bucket) to serve the file.
+ * Auto-creates the bucket if it doesn't exist.
+ * Returns the file PATH (not a URL) — callers use getSignedUrl for private files.
  */
 export const uploadToSupabasePath = async (
   file: Express.Multer.File,
@@ -104,66 +117,51 @@ export const uploadToSupabasePath = async (
 ): Promise<{ path: string; bucket: string; isPrivate: boolean }> => {
   const { bucket, isPrivate } = resolveBucket(folder);
 
+  // Ensure the destination bucket exists before attempting the upload.
+  // This is a no-op after the first successful check for a given bucket name.
+  await ensureBucketExists(bucket, isPrivate);
+
   const fileExtension = MIME_TO_EXT[file.mimetype] ?? "bin";
   const filePath = `${folder}/${randomUUID()}.${fileExtension}`;
 
+  // NOTE: Supabase SDK never throws — it returns {data, error}. withRetry only
+  // retries on thrown exceptions (i.e. timeouts). The error check below handles
+  // Supabase-level errors (wrong bucket, permission denied, etc.).
   const { error } = await withRetry(
     () =>
-      supabase.storage
-        .from(bucket)
-        .upload(filePath, file.buffer, {
-          contentType: file.mimetype,
-          upsert: false,
-        }),
+      supabase.storage.from(bucket).upload(filePath, file.buffer, {
+        contentType: file.mimetype,
+        upsert: false,
+      }),
     { retries: 2, timeoutMs: 10000, backoffMs: 300 }
   );
 
   if (error) {
-    console.error("Supabase upload error:", error);
-    throw new Error(`Failed to upload file to Supabase: ${error.message}`);
+    console.error(`[Storage] Upload failed [bucket=${bucket}, path=${filePath}]:`, error);
+    throw new Error(`Storage upload failed (bucket: ${bucket}): ${error.message}`);
   }
 
   return { path: filePath, bucket, isPrivate };
 };
 
-/**
- * deleteFromSupabase
- * Deletes a file from the correct bucket by folder-resolved path.
- */
 export const deleteFromSupabase = async (filePath: string, bucket?: string): Promise<void> => {
-  const resolvedBucket = bucket ?? resolveBucket(filePath.split("/")[0]).bucket;
+  // resolveBucket needs the full path prefix, not just the first segment
+  const resolvedBucket = bucket ?? resolveBucket(filePath).bucket;
   const { error } = await withRetry(
     () => supabase.storage.from(resolvedBucket).remove([filePath]),
     { retries: 1, timeoutMs: 8000, backoffMs: 200, fallback: async () => ({ data: null, error: null }) }
   );
   if (error) {
-    console.error("Supabase delete error:", error);
+    console.error("[Storage] Delete error:", error);
   }
 };
 
-/**
- * uploadToSupabase (legacy compat)
- * Returns full public URL. Only safe for public buckets.
- * New code should use uploadToSupabasePath directly.
- */
-export const uploadToSupabase = async (
-  file: Express.Multer.File,
-  folder: string = "general"
-): Promise<string> => {
-  const { path, bucket, isPrivate } = await uploadToSupabasePath(file, folder);
-  if (isPrivate) {
-    // For private buckets, return just the path — callers must use getSignedUrl
-    return path;
-  }
-  return getSupabasePublicUrl(path, bucket);
+export const moveInSupabase = async (fromPath: string, toPath: string): Promise<void> => {
+  const { bucket } = resolveBucket(fromPath);
+  const { error } = await supabase.storage.from(bucket).move(fromPath, toPath);
+  if (error) throw new Error(`Failed to move '${fromPath}' → '${toPath}': ${error.message}`);
 };
 
-/**
- * downloadFromSupabase
- * Downloads a file from the correct bucket by path and returns it as a Buffer.
- * Use this to proxy private or Supabase-hosted files through the backend so
- * browsers that cannot reach supabase.co directly can still receive the file.
- */
 export const downloadFromSupabase = async (
   filePath: string
 ): Promise<{ buffer: Buffer; mimeType: string }> => {
@@ -173,13 +171,23 @@ export const downloadFromSupabase = async (
     { retries: 2, timeoutMs: 10000, backoffMs: 300 }
   );
   if (error || !data) {
-    throw new Error(`Failed to download file from Supabase: ${error?.message}`);
+    throw new Error(`Failed to download '${filePath}' from bucket '${bucket}': ${error?.message}`);
   }
   const buffer = Buffer.from(await data.arrayBuffer());
   return { buffer, mimeType: data.type || "application/octet-stream" };
 };
 
-// uploadFileToSupabase: Thin alias used by the generic upload controller
+// uploadToSupabase: Returns public URL for public buckets, path for private buckets.
+export const uploadToSupabase = async (
+  file: Express.Multer.File,
+  folder: string = "general"
+): Promise<string> => {
+  const { path, bucket, isPrivate } = await uploadToSupabasePath(file, folder);
+  if (isPrivate) return path;
+  return getSupabasePublicUrl(path, bucket);
+};
+
+// uploadFileToSupabase: Thin alias kept for legacy callers.
 export const uploadFileToSupabase = async (
   file: Express.Multer.File,
   folder: string = "general"

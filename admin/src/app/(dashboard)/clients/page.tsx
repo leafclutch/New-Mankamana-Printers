@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Search, Users, Phone, Mail, Building2, RefreshCw, KeyRound, MapPin, User, Eye, Ban, CheckCircle, FileText, Download, ExternalLink, Pencil, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cachedJsonFetch, invalidateCacheKey } from "@/lib/requestCache";
 
 interface Client {
   id: string;
@@ -48,6 +49,9 @@ interface ClientDesign {
   approvedDesign?: { designCode: string } | null;
 }
 
+interface ApiResponse<T> { success?: boolean; data: T }
+type ClientListResponse = Client[] | ApiResponse<Client[]>
+
 const ORDER_STATUS_LABELS: Record<string, string> = {
   ORDER_PLACED: "Placed",
   ORDER_PROCESSING: "Processing",
@@ -83,8 +87,8 @@ export default function ClientsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Reset failed");
       setResetResult(json.credentials);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Reset failed", variant: "destructive" });
     } finally {
       setResettingId(null);
     }
@@ -97,33 +101,33 @@ export default function ClientsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to update status");
       toast({ title: "Success", description: json.message });
+      invalidateCacheKey("admin-clients-list");
       setClients((prev) => prev.map((c) => c.id === client.id ? { ...c, status: json.status } : c));
       if (selectedClient?.id === client.id) {
         setSelectedClient((prev) => prev ? { ...prev, status: json.status } : prev);
       }
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to update status", variant: "destructive" });
     } finally {
       setTogglingId(null);
     }
   };
 
-  const fetchClients = async () => {
+  const fetchClients = useCallback(async (fresh = false) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/clients", { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.message || "Failed to load clients");
+      if (fresh) invalidateCacheKey("admin-clients-list");
+      const json = await cachedJsonFetch<ClientListResponse>("admin-clients-list", "/api/admin/clients", 30_000);
       const data = Array.isArray(json) ? json : json.data ?? [];
       setClients(data);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to load clients", variant: "destructive" });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  useEffect(() => { fetchClients(); }, []);
+  useEffect(() => { fetchClients(); }, [fetchClients]);
 
   const handleUpdateClient = async () => {
     if (!selectedClient) return;
@@ -137,12 +141,13 @@ export default function ClientsPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to update client");
       const updated: Client = json.data;
+      invalidateCacheKey("admin-clients-list");
       setSelectedClient(updated);
       setClients((prev) => prev.map((c) => c.id === updated.id ? updated : c));
       setIsEditing(false);
       toast({ title: "Client Updated", description: "Profile saved and client notified by email." });
-    } catch (err: any) {
-      toast({ title: "Update Failed", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Update Failed", description: err instanceof Error ? err.message : "Failed to update client", variant: "destructive" });
     } finally {
       setSavingEdit(false);
     }
@@ -154,11 +159,10 @@ export default function ClientsPage() {
     setDetailTab("info");
     setDetailLoading(true);
     try {
-      const [ordersRes, designsRes] = await Promise.all([
-        fetch(`/api/admin/clients/${client.id}/orders`),
-        fetch(`/api/admin/clients/${client.id}/designs`),
+      const [ordersJson, designsJson] = await Promise.all([
+        cachedJsonFetch<ApiResponse<ClientOrder[]>>(`admin-client-orders-${client.id}`, `/api/admin/clients/${client.id}/orders`, 30_000),
+        cachedJsonFetch<ApiResponse<ClientDesign[]>>(`admin-client-designs-${client.id}`, `/api/admin/clients/${client.id}/designs`, 60_000),
       ]);
-      const [ordersJson, designsJson] = await Promise.all([ordersRes.json(), designsRes.json()]);
       setClientOrders(ordersJson.data || []);
       setClientDesigns(designsJson.data || []);
     } catch {
@@ -239,7 +243,7 @@ export default function ClientsPage() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <Button type="button" variant="outline" size="icon" onClick={fetchClients} title="Refresh">
+              <Button type="button" variant="outline" size="icon" onClick={() => fetchClients(true)} title="Refresh">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>

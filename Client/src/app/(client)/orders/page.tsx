@@ -69,6 +69,7 @@ interface ApiOrder {
     };
     approvedDesign?: { designCode: string } | null;
     statusHistory?: StatusHistoryEntry[];
+    attachment_urls?: string[] | null;
 }
 
 function OrderProgressBar({ status }: { status: string }) {
@@ -264,6 +265,30 @@ function OrderDetailModal({ order, onClose, onCancel, cancelling }: {
                         </div>
                     )}
 
+                    {/* Order Attachments */}
+                    {order.attachment_urls && order.attachment_urls.length > 0 && (
+                        <div>
+                            <p className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-2">
+                                Attached Files ({order.attachment_urls.length})
+                            </p>
+                            <div className="rounded-xl border border-slate-100 divide-y divide-slate-50 overflow-hidden">
+                                {order.attachment_urls.map((path) => {
+                                    const filename = path.split("/").pop() || path;
+                                    const ext = filename.split(".").pop()?.toLowerCase() || "";
+                                    const isPdf = ext === "pdf";
+                                    return (
+                                        <div key={path} className="flex items-center gap-3 px-4 py-3">
+                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${isPdf ? "bg-red-100 text-red-600" : "bg-blue-50 text-blue-500"}`}>
+                                                {ext.toUpperCase() || "?"}
+                                            </div>
+                                            <span className="flex-1 text-sm text-slate-600 truncate">{filename}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Payment proof */}
                     {order.payment_proof_url && (
                         <div>
@@ -316,11 +341,19 @@ export default function OrdersPage() {
 
     useEffect(() => {
         if (!selectedOrder) return;
-        fetch(`${API_BASE}/orders/${selectedOrder.id}`, { headers: getAuthHeaders() })
-            .then((r) => r.json())
+        fetchJsonCached<{ success: boolean; data: ApiOrder }>(
+            `client-order-detail-${selectedOrder.id}`,
+            `${API_BASE}/orders/${selectedOrder.id}`,
+            { headers: getAuthHeaders() },
+            10_000
+        )
             .then((d) => {
-                if (d.success && d.data?.statusHistory) {
-                    setSelectedOrder((prev) => prev ? { ...prev, statusHistory: d.data.statusHistory } : null);
+                if (d.success && d.data) {
+                    setSelectedOrder((prev) => prev ? {
+                        ...prev,
+                        statusHistory: d.data.statusHistory ?? prev.statusHistory,
+                        attachment_urls: d.data.attachment_urls ?? prev.attachment_urls,
+                    } : null);
                 }
             })
             .catch(() => {});
@@ -329,11 +362,11 @@ export default function OrdersPage() {
     const fetchOrders = useCallback(async (showLoader = false) => {
         if (showLoader) setLoading(true);
         try {
-            const data = await fetchJsonCached<any>(
+            const data = await fetchJsonCached<{ success: boolean; data?: ApiOrder[]; error?: { message: string }; message?: string }>(
                 "client-orders",
                 `${API_BASE}/orders`,
                 { headers: { ...getAuthHeaders(), "Content-Type": "application/json" } },
-                30_000
+                10_000
             );
             if (!data.success) { setError(data.error?.message || data.message || "Failed to load orders"); return; }
             setOrders(data.data || []);
@@ -346,7 +379,7 @@ export default function OrdersPage() {
 
     useEffect(() => {
         void fetchOrders(true);
-        const id = setInterval(() => void fetchOrders(false), 30_000);
+        const id = setInterval(() => void fetchOrders(false), 10_000);
         return () => clearInterval(id);
     }, [fetchOrders]);
 

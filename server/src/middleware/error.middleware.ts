@@ -1,13 +1,20 @@
 import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 
+interface AppError {
+  statusCode?: number;
+  code?: string;
+  message?: string;
+  stack?: string;
+}
+
 export const globalErrorHandler = (
-  err: any,
+  err: AppError,
   req: Request,
   res: Response,
   _next: NextFunction
 ) => {
-  const requestId = (req as any).requestId;
+  const requestId = (req as { requestId?: string }).requestId;
 
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === "P2002") {

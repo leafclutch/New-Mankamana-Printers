@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Clock,
   AlertTriangle,
   Palette,
   Fingerprint,
@@ -66,10 +65,14 @@ interface RecentOrder {
   id: string;
   status: OrderStatus;
   final_amount: number;
+  quantity: number;
+  payment_status: string;
   created_at: string;
   client?: { business_name: string };
   variant?: { variant_name: string; product?: { name: string } };
 }
+
+type OrdersApiResponse = RecentOrder[] | { data: RecentOrder[] }
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -81,25 +84,38 @@ export default function DashboardPage() {
   const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
 
   useEffect(() => {
-    cachedJsonFetch<any>("dashboard-stats", "/api/admin/dashboard/stats", 8000)
-      .then((j) => { if (j.data) setStats(j.data); })
-      .catch(() => {});
-
-    cachedJsonFetch<any>("dashboard-orders", "/api/admin/orders", 8000)
-      .then((j) => {
-        const data: RecentOrder[] = Array.isArray(j) ? j : j.data ?? [];
-        setRecentOrders(data.slice(0, 5));
-      })
-      .catch(() => {});
-
+    const loadStats = () => {
+      cachedJsonFetch<{ success: boolean; data: DashboardStats }>("dashboard-stats", "/api/admin/dashboard/stats", 15_000)
+        .then((j) => { if (j.data) setStats(j.data); })
+        .catch(() => {});
+    };
+    const loadOrders = () => {
+      cachedJsonFetch<OrdersApiResponse>("dashboard-orders", "/api/admin/orders", 20_000)
+        .then((j) => {
+          const data: RecentOrder[] = Array.isArray(j) ? j : j.data ?? [];
+          setRecentOrders(data.slice(0, 5));
+        })
+        .catch(() => {});
+    };
     const loadVisitors = () => {
-      cachedJsonFetch<any>("dashboard-analytics", "/api/admin/analytics", 15000)
+      cachedJsonFetch<{ success: boolean; data: VisitorStats }>("dashboard-analytics", "/api/admin/analytics", 30_000)
         .then((j) => { if (j.data) setVisitorStats(j.data); })
         .catch(() => {});
     };
+
+    loadStats();
+    loadOrders();
     loadVisitors();
-    const interval = setInterval(loadVisitors, 30000); // refresh every 30s
-    return () => clearInterval(interval);
+
+    const statsInterval = setInterval(loadStats, 15_000);
+    const ordersInterval = setInterval(loadOrders, 20_000);
+    const visitorsInterval = setInterval(loadVisitors, 30_000);
+
+    return () => {
+      clearInterval(statsInterval);
+      clearInterval(ordersInterval);
+      clearInterval(visitorsInterval);
+    };
   }, []);
 
   const handleGenerateId = () => {
@@ -119,7 +135,7 @@ export default function DashboardPage() {
       toast({ title: "Generating Report…", description: "Fetching order data." });
 
       invalidateCacheKey("dashboard-orders");
-      const json = await cachedJsonFetch<any>("dashboard-orders", "/api/admin/orders", 5000);
+      const json = await cachedJsonFetch<OrdersApiResponse>("dashboard-orders", "/api/admin/orders", 5000);
       const allOrders: RecentOrder[] = Array.isArray(json) ? json : json.data ?? [];
 
       // Filter to current month
@@ -144,9 +160,9 @@ export default function DashboardPage() {
         "Client": o.client?.business_name ?? "",
         "Product": o.variant?.product?.name ?? "",
         "Variant": o.variant?.variant_name ?? "",
-        "Quantity": (o as any).quantity ?? "",
+        "Quantity": o.quantity ?? "",
         "Amount (NPR)": Number(o.final_amount).toFixed(2),
-        "Payment": (o as any).payment_status ?? "",
+        "Payment": o.payment_status ?? "",
         "Order Date": fmtDate(o.created_at),
       });
 

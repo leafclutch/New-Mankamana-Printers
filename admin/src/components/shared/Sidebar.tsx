@@ -33,7 +33,7 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const json = await cachedJsonFetch<any>("dashboard-stats", "/api/admin/dashboard/stats", 8000);
+        const json = await cachedJsonFetch<{ data?: { pending_registrations?: number; pending_designs?: number; pending_orders?: number } }>("dashboard-stats", "/api/admin/dashboard/stats", 8000);
         const d = json?.data;
         if (d) {
           setPendingRegistrations(d.pending_registrations || 0);

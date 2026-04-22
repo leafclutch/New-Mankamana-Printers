@@ -35,7 +35,7 @@ export default function TopUpPage() {
     const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
-        fetchJsonCached<any>(
+        fetchJsonCached<{ success: boolean; data: PaymentDetail | PaymentDetail[] }>(
             "wallet-payment-details",
             `${API_BASE}/wallet/payment-details`,
             { headers: getAuthHeaders() },

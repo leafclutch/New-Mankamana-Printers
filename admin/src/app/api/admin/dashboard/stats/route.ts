@@ -36,8 +36,9 @@ export async function GET() {
     parseJson(clientsRes),
   ]);
 
-  const ordersData = Array.isArray(orders?.data) ? orders.data : [];
-  const registrationsData = Array.isArray(registrations?.data) ? registrations.data : [];
+  interface OrderItem { status: string }
+  const ordersData: OrderItem[] = Array.isArray(orders?.data) ? orders.data : [];
+  const registrationsData: unknown[] = Array.isArray(registrations?.data) ? registrations.data : [];
   // design-submissions returns { data: { items: [], pagination: {} } }
   const designsData = Array.isArray(designs?.data?.items) ? designs.data.items : [];
   const clientsData = Array.isArray(clients?.data) ? clients.data : [];
@@ -47,9 +48,9 @@ export async function GET() {
   return NextResponse.json({
     success: true,
     data: {
-      active_orders: ordersData.filter((o: any) => activeStatuses.includes(o.status)).length,
+      active_orders: ordersData.filter((o) => activeStatuses.includes(o.status)).length,
       total_orders: ordersData.length,
-      pending_orders: ordersData.filter((o: any) => o.status === "ORDER_PLACED").length,
+      pending_orders: ordersData.filter((o) => o.status === "ORDER_PLACED").length,
       pending_registrations: registrationsData.length,
       pending_designs: designsData.length,
       total_clients: clientsData.length,

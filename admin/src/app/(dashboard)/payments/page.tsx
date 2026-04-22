@@ -24,7 +24,6 @@ import {
   approveAdminTopupRequest,
   createAdminPaymentDetails,
   fetchAdminClientWalletSummary,
-  fetchAdminPaymentDetails,
   fetchAdminTopupRequestById,
   fetchAdminTopupRequests,
   fetchAdminWalletNotifications,
@@ -184,6 +183,8 @@ export default function PaymentsPage() {
   useEffect(() => {
     void loadData();
     void loadPaymentDetails();
+    const id = setInterval(() => void loadData(), 15_000);
+    return () => clearInterval(id);
   }, [loadData, loadPaymentDetails]);
 
   const filteredTopups = useMemo(() => {

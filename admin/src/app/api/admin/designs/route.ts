@@ -28,7 +28,7 @@ async function toJsonResponse(apiResponse: Response) {
   return NextResponse.json(data, { status: apiResponse.status });
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   const token = await getAuthToken();
   if (!token) {
     return NextResponse.json(

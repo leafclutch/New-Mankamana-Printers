@@ -96,7 +96,7 @@ export const getVariantOptionsController = async (req: Request, res: Response) =
   try {
     const params = variantIdParamSchema.parse(req.params);
     const options = await listVariantOptionsService(params.variantId);
-    res.setHeader("Cache-Control", "private, max-age=60");
+    res.setHeader("Cache-Control", "no-store");
 
     return res.status(200).json({
       success: true,
@@ -116,7 +116,7 @@ export const calculatePricingController = async (req: Request, res: Response) =>
   try {
     const body = calculatePricingBodySchema.parse(req.body);
     const pricing = await calculateCatalogPricingService(body);
-    res.setHeader("Cache-Control", "private, max-age=15");
+    res.setHeader("Cache-Control", "no-store");
 
     return res.status(200).json({
       success: true,

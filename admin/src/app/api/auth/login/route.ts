@@ -25,10 +25,11 @@ export async function POST(request: Request) {
 
     const contentType = apiResponse.headers.get("content-type") || "";
     const rawBody = await apiResponse.text();
-    let data: any = null;
+    interface LoginApiResponse { message?: string; admin?: unknown; token?: string }
+    let data: LoginApiResponse | null = null;
     if (contentType.includes("application/json")) {
       try {
-        data = JSON.parse(rawBody);
+        data = JSON.parse(rawBody) as LoginApiResponse;
       } catch (parseError) {
         console.error("Login API route JSON parse error:", parseError);
       }
@@ -62,6 +63,10 @@ export async function POST(request: Request) {
       return errorResponse;
     }
 
+    if (!data?.token) {
+      return NextResponse.json({ message: "Authentication failed." }, { status: 500 });
+    }
+
     // On successful login, set the token in a secure cookie
     const response = NextResponse.json({
       success: true,
@@ -70,14 +75,14 @@ export async function POST(request: Request) {
 
     response.cookies.set(AUTH_TOKEN_COOKIE, data.token, {
       httpOnly: true,
-      sameSite: "lax",
+      sameSite: "strict",
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24, // 24 hours
     });
     response.cookies.set(AUTH_FLAG_COOKIE, "true", {
       httpOnly: false,
-      sameSite: "lax",
+      sameSite: "strict",
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24, // 24 hours

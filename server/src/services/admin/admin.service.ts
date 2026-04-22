@@ -3,29 +3,33 @@ import { AppError } from "../../utils/apperror";
 import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 import { sendClientCredentials, sendPasswordReset, sendClientDeactivated, sendClientProfileUpdated } from "../../utils/email";
+import { withCache, invalidateCacheKey, invalidateCacheByPrefix } from "../../utils/cache";
 
 // getRegistrationRequestsService: Logic to fetch registration requests with optional status and search filtering
 export const getRegistrationRequestsService = async (filters: { status?: string; search?: string } = {}) => {
   const { status, search } = filters;
-  
-  const where: any = {};
-  if (status) where.status = status;
-  if (search) {
-    where.OR = [
-      { business_name: { contains: search, mode: "insensitive" } },
-      { phone_number: { contains: search } },
-    ];
-  }
+  const cacheKey = `admin:reg-requests:${status ?? "all"}:${search ?? ""}`;
 
-  const data = await prisma.registrationRequest.findMany({
-    where,
-    orderBy: { createdAt: "desc" },
+  return withCache(cacheKey, 20_000, async () => {
+    const where: any = {};
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { business_name: { contains: search, mode: "insensitive" } },
+        { phone_number: { contains: search } },
+      ];
+    }
+
+    const data = await prisma.registrationRequest.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      message: "Registration requests fetched successfully",
+      data,
+    };
   });
-
-  return {
-    message: "Registration requests fetched successfully",
-    data,
-  };
 };
 
 // createRegistrationRequestService: Validates and persists a new client registration attempt
@@ -53,9 +57,9 @@ export const createRegistrationRequestService = async (data: {
     throw new AppError("This email address is already registered as a client. Please log in.", 400);
   }
 
-  // Check for any existing request with this phone number (any status)
+  // Check for any non-rejected request with this phone number
   const existingRequest = await prisma.registrationRequest.findFirst({
-    where: { phone_number: data.phone_number }
+    where: { phone_number: data.phone_number, status: { in: ["PENDING", "APPROVED"] } }
   });
   if (existingRequest) {
     if (existingRequest.status === "PENDING") {
@@ -63,9 +67,6 @@ export const createRegistrationRequestService = async (data: {
     }
     if (existingRequest.status === "APPROVED") {
       throw new AppError("This phone number has already been approved. Please log in with your credentials.", 400);
-    }
-    if (existingRequest.status === "REJECTED") {
-      throw new AppError("A previous registration request for this phone number was rejected. Please contact New Mankamana Printers for assistance.", 400);
     }
   }
 
@@ -161,6 +162,9 @@ export const approveRegistrationRequestService = async (request_id: string, admi
     return { newClient, updatedRequest };
   });
 
+  void invalidateCacheKey("admin:clients:list");
+  void invalidateCacheByPrefix("admin:reg-requests:");
+
   // Send credentials to client via email (non-blocking — failure doesn't roll back approval)
   sendClientCredentials({
     to: request.email,
@@ -197,6 +201,7 @@ export const rejectRegistrationRequestService = async (request_id: string, admin
     },
   });
 
+  void invalidateCacheByPrefix("admin:reg-requests:");
   return { message: "Registration request rejected" };
 };
 
@@ -204,41 +209,45 @@ export const rejectRegistrationRequestService = async (request_id: string, admin
 
 // getClientsService: Fetches all clients from the database (password excluded)
 export const getClientsService = async () => {
-  const data = await prisma.client.findMany({
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      client_code: true,
-      phone_number: true,
-      business_name: true,
-      owner_name: true,
-      email: true,
-      address: true,
-      status: true,
-      createdAt: true,
-    },
+  return withCache("admin:clients:list", 60_000, async () => {
+    const data = await prisma.client.findMany({
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        client_code: true,
+        phone_number: true,
+        business_name: true,
+        owner_name: true,
+        email: true,
+        address: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+    return { message: "Clients fetched", data };
   });
-  return { message: "Clients fetched", data };
 };
 
 // getClientByIdService: Retrieves a detailed client record including their profile info (password excluded)
 export const getClientByIdService = async (id: string) => {
-  const data = await prisma.client.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      client_code: true,
-      phone_number: true,
-      business_name: true,
-      owner_name: true,
-      email: true,
-      address: true,
-      status: true,
-      createdAt: true,
-    },
+  return withCache(`admin:client:${id}`, 30_000, async () => {
+    const data = await prisma.client.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        client_code: true,
+        phone_number: true,
+        business_name: true,
+        owner_name: true,
+        email: true,
+        address: true,
+        status: true,
+        createdAt: true,
+      },
+    });
+    if (!data) throw new AppError("Client not found", 404);
+    return { message: "Client fetched", data };
   });
-  if (!data) throw new AppError("Client not found", 404);
-  return { message: "Client fetched", data };
 };
 
 // updateClientProfileService: Allows admin to update mutable client fields; sends a diff email to the client
@@ -290,6 +299,9 @@ export const updateClientProfileService = async (
       owner_name: true, email: true, address: true, status: true, createdAt: true,
     },
   });
+
+  void invalidateCacheKey("admin:clients:list");
+  void invalidateCacheKey(`admin:client:${clientId}`);
 
   // Send notification email (non-blocking)
   sendClientProfileUpdated({
@@ -345,6 +357,9 @@ export const toggleClientStatusService = async (clientId: string, reason?: strin
     data: { status: newStatus },
   });
 
+  void invalidateCacheKey("admin:clients:list");
+  void invalidateCacheKey(`admin:client:${clientId}`);
+
   if (newStatus === "inactive") {
     sendClientDeactivated({
       to: client.email,
@@ -362,30 +377,34 @@ export const toggleClientStatusService = async (clientId: string, reason?: strin
 
 // getClientOrdersAdminService: Returns all orders placed by a specific client for admin view
 export const getClientOrdersAdminService = async (clientId: string) => {
-  return await prisma.order.findMany({
-    where: { user_id: clientId },
-    include: {
-      variant: { select: { variant_name: true, product: { select: { name: true } } } },
-      approvedDesign: { select: { designCode: true } },
-    },
-    orderBy: { created_at: "desc" },
-  });
+  return withCache(`admin:client-orders:${clientId}`, 30_000, () =>
+    prisma.order.findMany({
+      where: { user_id: clientId },
+      include: {
+        variant: { select: { variant_name: true, product: { select: { name: true } } } },
+        approvedDesign: { select: { designCode: true } },
+      },
+      orderBy: { created_at: "desc" },
+    })
+  );
 };
 
 // getClientDesignsAdminService: Returns all design submissions by a specific client for admin view
 export const getClientDesignsAdminService = async (clientId: string) => {
-  return await prisma.designSubmission.findMany({
-    where: { clientId },
-    select: {
-      id: true,
-      title: true,
-      status: true,
-      submittedAt: true,
-      fileUrl: true,
-      fileType: true,
-      feedbackMessage: true,
-      approvedDesign: { select: { designCode: true } },
-    },
-    orderBy: { submittedAt: "desc" },
-  });
+  return withCache(`admin:client-designs:${clientId}`, 60_000, () =>
+    prisma.designSubmission.findMany({
+      where: { clientId },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        submittedAt: true,
+        fileUrl: true,
+        fileType: true,
+        feedbackMessage: true,
+        approvedDesign: { select: { designCode: true } },
+      },
+      orderBy: { submittedAt: "desc" },
+    })
+  );
 };

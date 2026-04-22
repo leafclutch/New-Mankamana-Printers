@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -81,7 +81,7 @@ export default function DesignApprovalPage() {
   const [approveTargetId, setApproveTargetId] = useState<string | null>(null);
   const [extraPrice, setExtraPrice] = useState("");
 
-  const loadDesigns = async () => {
+  const loadDesigns = useCallback(async () => {
     setIsLoading(true);
     setLoadError(null);
     try {
@@ -97,11 +97,13 @@ export default function DesignApprovalPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadDesigns();
-  }, []);
+    const id = setInterval(loadDesigns, 20_000);
+    return () => clearInterval(id);
+  }, [loadDesigns]);
 
   const openApproveDialog = (id: string) => {
     setApproveTargetId(id);

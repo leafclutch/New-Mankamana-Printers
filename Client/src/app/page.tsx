@@ -80,30 +80,37 @@ export default function HomePage() {
       <Navbar />
 
       {/* ─── Hero Section ─── */}
-      <section
-        className="relative overflow-hidden min-h-[350px] md:min-h-[480px]"
-        style={{ background: heroSlides[activeSlide].background }}
-      >
+      <section className="relative overflow-hidden min-h-[350px] md:min-h-[480px]">
+        {/* Slide backgrounds — fade between them */}
+        {heroSlides.map((slide, i) => (
+          <div
+            key={i}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${i === activeSlide ? "opacity-100" : "opacity-0"}`}
+            style={{ background: slide.background }}
+          />
+        ))}
         {/* Decorative shapes */}
-        <div className="absolute -top-16 -right-16 w-[180px] h-[180px] sm:w-[260px] sm:h-[260px] md:w-[300px] md:h-[300px] bg-white/5 rounded-full pointer-events-none" />
-        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 md:left-[30%] md:translate-x-0 w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] md:w-[400px] md:h-[400px] bg-white/[0.04] rounded-full pointer-events-none" />
+        <div className="absolute -top-16 -right-16 w-[180px] h-[180px] sm:w-[260px] sm:h-[260px] md:w-[300px] md:h-[300px] bg-white/5 rounded-full pointer-events-none z-[1]" />
+        <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 md:left-[30%] md:translate-x-0 w-[260px] h-[260px] sm:w-[340px] sm:h-[340px] md:w-[400px] md:h-[400px] bg-white/[0.04] rounded-full pointer-events-none z-[1]" />
 
         {/* Slide nav arrows (hide on mobile) */}
         <button
+          type="button"
           onClick={() =>
             setActiveSlide((p) => (p - 1 + heroSlides.length) % heroSlides.length)
           }
-          className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 bg-white/15 border-none text-white w-10 h-10 rounded-full text-[1.1rem] cursor-pointer backdrop-blur-sm z-10 items-center justify-center"
+          className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 bg-white/15 border-none text-white w-10 h-10 rounded-full text-[1.1rem] cursor-pointer backdrop-blur-sm z-10 items-center justify-center hover:bg-white/25 transition-colors"
           tabIndex={-1}
           aria-label="Previous slide"
         >
           ‹
         </button>
         <button
+          type="button"
           onClick={() =>
             setActiveSlide((p) => (p + 1) % heroSlides.length)
           }
-          className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 bg-white/15 border-none text-white w-10 h-10 rounded-full text-[1.1rem] cursor-pointer backdrop-blur-sm z-10 items-center justify-center"
+          className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 bg-white/15 border-none text-white w-10 h-10 rounded-full text-[1.1rem] cursor-pointer backdrop-blur-sm z-10 items-center justify-center hover:bg-white/25 transition-colors"
           tabIndex={-1}
           aria-label="Next slide"
         >
@@ -121,14 +128,14 @@ export default function HomePage() {
             {heroSlides[activeSlide].subtitle}
           </p>
           <div className="flex gap-2 sm:gap-4 justify-center flex-wrap">
+            <Link
+              href={isAuthenticated ? "/services" : "/register"}
+              className="inline-flex items-center px-7 py-3 bg-white text-[#0f172a] font-bold text-sm rounded-lg hover:bg-white/90 transition-colors"
+            >
+              {isAuthenticated ? "Browse Services" : "Register Free"}
+            </Link>
             <Link href="/services" className="btn-white-outline">
               Our Services
-            </Link>
-            <Link
-              href="/register"
-              className="btn-white-outline bg-white/20"
-            >
-              Learn More
             </Link>
           </div>
 
@@ -160,7 +167,7 @@ export default function HomePage() {
           <div className="max-w-full sm:max-w-[1200px] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-6">
             {/* Printing Services */}
             <div
-              className="card overflow-hidden cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+              className="card overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               onClick={() => router.push('/services')}
             >
               <div className="h-[110px] sm:h-[160px] md:h-[180px] bg-gradient-to-br from-[#ffecd2] to-[#fcb69f] flex items-center justify-center">
@@ -182,6 +189,7 @@ export default function HomePage() {
                   with committed turnaround time.
                 </p>
                 <button
+                  type="button"
                   onClick={() => router.push('/services')}
                   className="mt-3 sm:mt-4 bg-transparent border-none text-[#1a56db] font-semibold text-[0.8rem] sm:text-[0.82rem] cursor-pointer flex items-center gap-1 p-0 hover:underline"
                 >
@@ -192,7 +200,7 @@ export default function HomePage() {
 
             {/* Free Design Files */}
             <div
-              className="card overflow-hidden cursor-pointer transition-transform duration-200 hover:scale-[1.02]"
+              className="card overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               onClick={() => router.push('/templates')}
             >
               <div className="h-[110px] sm:h-[160px] md:h-[180px] bg-gradient-to-br from-[#a8edea] to-[#fed6e3] flex items-center justify-center">
@@ -214,8 +222,9 @@ export default function HomePage() {
                   Perfect for print-ready templates.
                 </p>
                 <button
+                  type="button"
                   onClick={() => router.push('/templates')}
-                  className="mt-3 sm:mt-4 bg-transparent border-none text-[color:var(--gradient-start)] font-semibold text-[0.8rem] sm:text-[0.82rem] cursor-pointer flex items-center gap-1 p-0 hover:underline"
+                  className="mt-3 sm:mt-4 bg-transparent border-none text-[#1a56db] font-semibold text-[0.8rem] sm:text-[0.82rem] cursor-pointer flex items-center gap-1 p-0 hover:underline"
                 >
                   Browse Library →
                 </button>
@@ -240,7 +249,7 @@ export default function HomePage() {
             {howItWorks.map((step) => (
               <div
                 key={step.step}
-                className="text-center shadow-lg rounded-lg p-3 sm:p-4 cursor-pointer hover:scale-105 transition-all bg-white"
+                className="text-center shadow-md rounded-lg p-3 sm:p-4 bg-white transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
               >
                 <div className="w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] md:w-[72px] md:h-[72px] rounded-full bg-gradient-to-br from-[#1a56db] to-[#2563eb] flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-md">
                   <span className="text-white font-black text-[1rem] sm:text-[1.1rem]">{step.step}</span>
@@ -264,7 +273,7 @@ export default function HomePage() {
       <section
         id="contact"
         className="py-10 sm:py-16 px-3 sm:px-6 text-center"
-        style={{ background: heroSlides[0].background }}
+        style={{ background: "linear-gradient(135deg, #0b1f4b 0%, #123c97 30%, #1b63e0 60%, #0f172a 100%)" }}
       >
         <div className="max-w-full sm:max-w-[600px] mx-auto">
           <h2 className="text-white text-[1.35rem] sm:text-[1.7rem] md:text-[2rem] font-black mb-3 sm:mb-4">
@@ -275,23 +284,26 @@ export default function HomePage() {
             printing rates, free templates, and dedicated support.
           </p>
           <div className="flex gap-2 sm:gap-4 justify-center flex-wrap">
-              {isAuthenticated ? (
-                <Link href="/services" className="btn-white-outline bg-white/20">
-                  Our Services
+            {isAuthenticated ? (
+              <Link
+                href="/services"
+                className="inline-flex items-center px-7 py-3 bg-white text-[#0f172a] font-bold text-sm rounded-lg hover:bg-white/90 transition-colors"
+              >
+                Browse Services
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/register"
+                  className="inline-flex items-center px-7 py-3 bg-white text-[#0f172a] font-bold text-sm rounded-lg hover:bg-white/90 transition-colors"
+                >
+                  Register Now
                 </Link>
-              ) : (
-                <>
-                  <Link
-                    href="/register"
-                    className="btn-white-outline bg-white/20"
-                  >
-                    Register Now
-                  </Link>
-                  <Link href="/login" className="btn-white-outline">
-                    Login
-                  </Link>
-                </>
-              )}
+                <Link href="/login" className="btn-white-outline">
+                  Sign In
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>

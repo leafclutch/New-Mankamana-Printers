@@ -1,9 +1,11 @@
 import prisma from "../../connect";
-import { getVariantPricingCombination, calculateOrderAmount, normalizeSelectedOptions } from "../catalog/product-pricing.service";
+import { getVariantPricingCombinationFresh, calculateOrderAmount, normalizeSelectedOptions } from "../catalog/product-pricing.service";
 import { sendOrderPlaced, sendOrderStatusUpdate, sendOrderInvoice } from "../../utils/email";
 import { withCache, invalidateCacheKey } from "../../utils/cache";
+import { moveInSupabase, downloadFromSupabase } from "../../utils/file-upload";
 
-const ORDER_LIST_TTL_MS = 30_000; // 30 s — balances freshness vs DB load
+const ORDER_LIST_TTL_MS = 60_000;  // client order list: 1 min per caching guide
+const ADMIN_ORDER_LIST_TTL_MS = 30_000; // admin order list: 30 s for faster refresh
 const clientOrdersCacheKey = (userId: string) => `orders:client:${userId}`;
 const ADMIN_ORDERS_CACHE_KEY = "orders:admin:all";
 
@@ -94,7 +96,7 @@ export const createProductOrderService = async (data: {
     paymentProofUrl, paymentProofFileName, paymentProofMimeType, paymentProofFileSize, attachmentUrls } = data;
   const selectedOptions = normalizeSelectedOptions(options);
 
-  const pricingRow = await getVariantPricingCombination(variantId, selectedOptions);
+  const pricingRow = await getVariantPricingCombinationFresh(variantId, selectedOptions);
   if (!pricingRow) {
     throw new Error("Invalid combination of options for this product variant.");
   }
@@ -253,6 +255,26 @@ export const createProductOrderService = async (data: {
     return order;
   }, { timeout: 15000 });
 
+  // Move attachment files from temp batch folder → orders/{orderId}/ for organised storage
+  if (attachmentUrls && attachmentUrls.length > 0) {
+    const movedPaths: string[] = [];
+    for (const oldPath of attachmentUrls) {
+      const filename = oldPath.split("/").pop()!;
+      const newPath = `orders/${newOrder.id}/${filename}`;
+      try {
+        await moveInSupabase(oldPath, newPath);
+        movedPaths.push(newPath);
+      } catch (err) {
+        console.error(`[Order Attachments] Failed to move ${oldPath}:`, err);
+        movedPaths.push(oldPath); // keep original path as fallback
+      }
+    }
+    await prisma.order.update({
+      where: { id: newOrder.id },
+      data: { attachment_urls: movedPaths },
+    });
+  }
+
   // Schedule automatic transition ORDER_PLACED → ORDER_PROCESSING after the delay
   // setTimeout intentionally removed: lifecycle requires explicit admin acceptance.
 
@@ -336,7 +358,7 @@ export const invalidateClientOrdersCache = (userId: string) =>
 // getAllOrdersService: Provides an administrative overview of every order in the system
 // L1+L2 (in-process + Redis) cached for 30 s; invalidated on any status change.
 export const getAllOrdersService = async () => {
-  return withCache(ADMIN_ORDERS_CACHE_KEY, ORDER_LIST_TTL_MS, async () => {
+  return withCache(ADMIN_ORDERS_CACHE_KEY, ADMIN_ORDER_LIST_TTL_MS, async () => {
   const orders = await prisma.order.findMany({
     include: {
       client: { select: { business_name: true, phone_number: true } },

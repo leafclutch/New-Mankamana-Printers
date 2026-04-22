@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-const prisma = new PrismaClient();
+import prisma from "../../connect";
+import { withCache } from "../../utils/cache";
 
 type PricingOptionsInput = Record<string, unknown> | undefined;
 
@@ -24,33 +24,74 @@ export const buildCombinationKey = (selectedOptions: Record<string, string>) => 
     : entries.map(([k, v]) => `${k}:${v}`).join("|");
 };
 
-// getVariantPricingCombination: Queries the database for a price record matching the specific chosen options.
-// Only pricing-dimension groups are included in the combination key — display-only groups are ignored.
+// getVariantPricingCombination: Resolves the price row for a chosen option set.
+// Caches pricing-dimension names per variant (2 min) to avoid repeated DB round-trips
+// on every order validation call.
 export const getVariantPricingCombination = async (
   variantId: string,
   options: PricingOptionsInput
 ) => {
   const selectedOptions = normalizeSelectedOptions(options);
 
-  // Fetch which groups are pricing dimensions so non-dimension selections don't break the key lookup
-  const pricingGroups = await prisma.optionGroup.findMany({
-    where: { variant_id: variantId, is_pricing_dimension: true },
-    select: { name: true },
-  });
-  const pricingDimNames = new Set(pricingGroups.map((g) => g.name));
-
-  const pricingOptions = Object.fromEntries(
-    Object.entries(selectedOptions).filter(([k]) => pricingDimNames.has(k))
+  // Cache the set of pricing-dimension group names — stable until admin changes config
+  const pricingDimNames = await withCache(
+    `catalog:pricing-dims:${variantId}`,
+    120_000,
+    async () => {
+      const groups = await prisma.optionGroup.findMany({
+        where: { variant_id: variantId, is_pricing_dimension: true },
+        select: { name: true },
+      });
+      return groups.map((g) => g.name);
+    }
   );
 
+  const dimSet = new Set(pricingDimNames);
+  const pricingOptions = Object.fromEntries(
+    Object.entries(selectedOptions).filter(([k]) => dimSet.has(k))
+  );
   const combinationKey = buildCombinationKey(pricingOptions);
 
-  return await prisma.variantPricing.findFirst({
-    where: {
-      variant_id: variantId,
-      combination_key: combinationKey,
-      is_active: true,
-    },
+  // Cache each pricing row by variant + combination key (2 min — prices change occasionally)
+  return withCache(
+    `catalog:pricing:${variantId}:${combinationKey}`,
+    120_000,
+    () =>
+      prisma.variantPricing.findFirst({
+        where: { variant_id: variantId, combination_key: combinationKey, is_active: true },
+      })
+  );
+};
+
+// getVariantPricingCombinationFresh: Same as above but bypasses the pricing-row cache.
+// Use this at order-creation time so the charged price is always current, regardless of
+// whether in-memory or Redis caches on this instance have been invalidated yet.
+export const getVariantPricingCombinationFresh = async (
+  variantId: string,
+  options: PricingOptionsInput
+) => {
+  const selectedOptions = normalizeSelectedOptions(options);
+
+  const pricingDimNames = await withCache(
+    `catalog:pricing-dims:${variantId}`,
+    120_000,
+    async () => {
+      const groups = await prisma.optionGroup.findMany({
+        where: { variant_id: variantId, is_pricing_dimension: true },
+        select: { name: true },
+      });
+      return groups.map((g) => g.name);
+    }
+  );
+
+  const dimSet = new Set(pricingDimNames);
+  const pricingOptions = Object.fromEntries(
+    Object.entries(selectedOptions).filter(([k]) => dimSet.has(k))
+  );
+  const combinationKey = buildCombinationKey(pricingOptions);
+
+  return prisma.variantPricing.findFirst({
+    where: { variant_id: variantId, combination_key: combinationKey, is_active: true },
   });
 };
 

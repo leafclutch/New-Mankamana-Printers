@@ -43,13 +43,17 @@ interface Order {
   payment_proof_url?: string | null;
   payment_proof_file_name?: string | null;
   payment_proof_mime_type?: string | null;
-  pricing_snapshot?: unknown;
+  pricing_snapshot?: { unit_price?: number; designExtraPrice?: number } | null;
   configurations?: OrderConfig[];
   client?: { business_name: string; phone_number?: string; client_code?: string; email?: string };
   variant?: { variant_name: string; product?: { name: string } };
   approvedDesign?: { designCode: string } | null;
   statusHistory?: StatusHistoryEntry[];
+  attachment_urls?: string[] | null;
 }
+
+type OrdersListResponse = Order[] | { data: Order[] }
+interface OrderDetailResponse { success: boolean; data: Order }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   ORDER_PLACED: "Order Placed", ORDER_PROCESSING: "Processing",
@@ -310,7 +314,7 @@ function OrderDetailModal({
                 </div>
                 <div className="bg-white dark:bg-slate-800 divide-y divide-slate-50 dark:divide-slate-700">
                   {(() => {
-                    const snap = order.pricing_snapshot as any;
+                    const snap = order.pricing_snapshot;
                     const unitPrice = order.unit_price ?? (snap?.unit_price ? Number(snap.unit_price) : 0);
                     const baseTotal = Number((unitPrice * order.quantity).toFixed(2));
                     const discount = Number(order.discount_amount ?? 0);
@@ -345,6 +349,42 @@ function OrderDetailModal({
                   <span>Payment: {order.payment_status === "PAID" ? "Wallet" : "Bank Transfer"}</span>
                   <span>Placed: {new Date(order.created_at).toLocaleString("en-NP", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Order Attachments */}
+          {order.attachment_urls && order.attachment_urls.length > 0 && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                Order Attachments ({order.attachment_urls.length})
+              </p>
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-800 overflow-hidden">
+                {order.attachment_urls.map((path) => {
+                  const filename = path.split("/").pop() || path;
+                  // Strip UUID prefix (uuid.ext → show just ext + index context)
+                  const ext = filename.split(".").pop()?.toLowerCase() || "";
+                  const isPdfFile = ext === "pdf";
+                  const isImageFile = ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+                  const proxyUrl = `/api/admin/orders/${order.id}/attachments/${filename}`;
+                  return (
+                    <a
+                      key={path}
+                      href={proxyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors group"
+                    >
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${isPdfFile ? "bg-red-100 text-red-600 dark:bg-red-900/30" : isImageFile ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30" : "bg-slate-100 text-slate-500 dark:bg-slate-800"}`}>
+                        {ext.toUpperCase() || "?"}
+                      </div>
+                      <span className="flex-1 text-sm text-blue-600 dark:text-blue-400 font-medium truncate group-hover:underline">
+                        {filename}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                    </a>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -506,11 +546,16 @@ export default function OrderManagementPage() {
 
   useEffect(() => {
     if (!detailOrder) return;
-    fetch(`/api/admin/orders/${detailOrder.id}`)
-      .then((r) => r.json())
+    cachedJsonFetch<OrderDetailResponse>(`admin-order-detail-${detailOrder.id}`, `/api/admin/orders/${detailOrder.id}`, 20_000)
       .then((d) => {
         if (d.success && d.data) {
-          setDetailOrder((prev) => prev ? { ...prev, statusHistory: d.data.statusHistory, configurations: d.data.configurations ?? prev.configurations, unit_price: d.data.unit_price ?? prev.unit_price } : null);
+          setDetailOrder((prev) => prev ? {
+            ...prev,
+            statusHistory: d.data.statusHistory,
+            configurations: d.data.configurations ?? prev.configurations,
+            unit_price: d.data.unit_price ?? prev.unit_price,
+            attachment_urls: d.data.attachment_urls ?? prev.attachment_urls,
+          } : null);
         }
       })
       .catch(() => {});
@@ -523,23 +568,25 @@ export default function OrderManagementPage() {
     setLoading(true);
     try {
       if (forceRefresh) invalidateCacheKey(ORDERS_CACHE_KEY);
-      const json = await cachedJsonFetch<any>(ORDERS_CACHE_KEY, "/api/admin/orders", 20_000);
+      const json = await cachedJsonFetch<OrdersListResponse>(ORDERS_CACHE_KEY, "/api/admin/orders", 15_000);
       setOrders(Array.isArray(json) ? json : json.data ?? []);
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to load orders", variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => {
+    fetchOrders();
+    const id = setInterval(() => fetchOrders(false), 15_000);
+    return () => clearInterval(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const openDetail = async (order: Order) => {
-    // Fetch full details (includes configurations + payment_proof_url)
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}`, { cache: "no-store" });
-      const json = await res.json();
-      setDetailOrder(json.data ?? json ?? order);
+      const json = await cachedJsonFetch<OrderDetailResponse>(`admin-order-detail-${order.id}`, `/api/admin/orders/${order.id}`, 20_000);
+      setDetailOrder(json.data ?? order);
     } catch {
       setDetailOrder(order);
     }
@@ -558,12 +605,13 @@ export default function OrderManagementPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to update status");
       invalidateCacheKey(ORDERS_CACHE_KEY);
+      invalidateCacheKey(`admin-order-detail-${order.id}`);
       setOrders((prev) => prev.map((o) => o.id === order.id ? { ...o, status: next } : o));
       setDetailOrder((prev) => prev?.id === order.id ? { ...prev, status: next } : prev);
       toast({ title: "Status Updated", description: `Order moved to ${STATUS_LABELS[next]}` });
       window.dispatchEvent(new Event("stats-updated"));
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Action failed", variant: "destructive" });
     } finally {
       setAdvancingId(null);
     }
@@ -586,8 +634,8 @@ export default function OrderManagementPage() {
       setDetailOrder((prev) => prev?.id === cancelTarget.id ? updated : prev);
       toast({ title: "Order Cancelled" });
       window.dispatchEvent(new Event("stats-updated"));
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Action failed", variant: "destructive" });
     } finally {
       setActionLoading(false);
       setCancelTarget(null);
@@ -610,8 +658,8 @@ export default function OrderManagementPage() {
       setOrders((prev) => prev.map((o) => o.id === dateTarget.id ? updated : o));
       setDetailOrder((prev) => prev?.id === dateTarget.id ? updated : prev);
       toast({ title: "Delivery Date Set", description: new Date(date).toLocaleDateString() });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Error", description: err instanceof Error ? err.message : "Action failed", variant: "destructive" });
     } finally {
       setActionLoading(false);
       setDateTarget(null);

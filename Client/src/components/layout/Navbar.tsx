@@ -16,6 +16,15 @@ export default function Navbar() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
 
+    // Close mobile menu and profile dropdown on route change — adjust during render
+    // to avoid an extra render cycle from setState-in-effect.
+    const [prevPathname, setPrevPathname] = useState(pathname);
+    if (prevPathname !== pathname) {
+        setPrevPathname(pathname);
+        setMenuOpen(false);
+        setIsProfileOpen(false);
+    }
+
     // Close profile dropdown on outside click
     useEffect(() => {
         const handler = (e: MouseEvent) => {
@@ -26,12 +35,6 @@ export default function Navbar() {
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
-
-    // Close mobile menu on route change
-    useEffect(() => {
-        setMenuOpen(false);
-        setIsProfileOpen(false);
-    }, [pathname]);
 
     const handleLogout = () => {
         logout();
@@ -95,13 +98,16 @@ export default function Navbar() {
                             <Link
                                 key={link.href}
                                 href={link.href}
-                                className={`px-3.5 py-2 rounded-lg text-[0.84rem] font-medium transition-colors ${
+                                className={`relative px-3.5 py-2 text-[0.84rem] font-medium transition-colors ${
                                     isActive
-                                        ? "bg-[#0f172a] text-white"
-                                        : "text-slate-600 hover:text-[#0f172a] hover:bg-slate-50"
+                                        ? "text-[#1a56db] font-semibold"
+                                        : "text-slate-600 hover:text-[#0f172a] hover:bg-slate-50 rounded-lg"
                                 }`}
                             >
                                 {link.label}
+                                {isActive && (
+                                    <span className="absolute bottom-0 left-3.5 right-3.5 h-0.5 bg-[#2563eb] rounded-full" />
+                                )}
                             </Link>
                         );
                     })}

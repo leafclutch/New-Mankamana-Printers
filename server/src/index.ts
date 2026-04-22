@@ -117,7 +117,7 @@ app.get("/", (req: Request, res: Response) => {
 // Vercel Cron — sweeps stale ORDER_PLACED orders every 5 minutes
 app.get("/api/v1/admin/sweep", (req: Request, res: Response) => {
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && req.headers["authorization"] !== `Bearer ${cronSecret}`) {
+  if (!cronSecret || req.headers["authorization"] !== `Bearer ${cronSecret}`) {
     return res.status(401).json({ message: "Unauthorized" });
   }
   sweepStalePlacedOrders()

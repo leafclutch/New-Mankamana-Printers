@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { uploadToSupabasePath, getSupabasePublicUrl } from "../utils/file-upload";
+import { uploadToSupabasePath, getSupabasePublicUrl, deleteFromSupabase } from "../utils/file-upload";
 
 // Folders that callers are permitted to upload into via the generic /uploads endpoint
 const ALLOWED_FOLDERS = new Set([
@@ -23,7 +23,9 @@ export const uploadFile = async (req: Request, res: Response) => {
     }
 
     const requestedFolder = String(req.body.folder || "general");
-    const folder = ALLOWED_FOLDERS.has(requestedFolder) ? requestedFolder : "general";
+    // Also allow order attachment batches: orders/batch-{uuid}
+    const isOrderBatch = /^orders\/batch-[0-9a-f-]{36}$/.test(requestedFolder);
+    const folder = ALLOWED_FOLDERS.has(requestedFolder) || isOrderBatch ? requestedFolder : "general";
 
     const { path: filePath, bucket, isPrivate } = await uploadToSupabasePath(req.file, folder);
     const fileUrl = isPrivate ? filePath : getSupabasePublicUrl(filePath, bucket);
@@ -35,6 +37,24 @@ export const uploadFile = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error("Upload Error:", error.message);
-    res.status(500).json({ success: false, message: "Failed to upload file" });
+    res.status(500).json({ success: false, message: error.message || "Failed to upload file" });
+  }
+};
+
+// deleteFile: Removes a previously uploaded order-attachment batch file.
+// Only allows deletion of paths under orders/batch-{uuid}/ to prevent abuse.
+export const deleteFile = async (req: Request, res: Response) => {
+  try {
+    const filePath = req.body?.path as string | undefined;
+    if (!filePath || typeof filePath !== "string") {
+      return res.status(400).json({ success: false, message: "path is required" });
+    }
+    if (!/^orders\/batch-[0-9a-f-]{36}\//.test(filePath)) {
+      return res.status(403).json({ success: false, message: "Deletion not permitted for this path" });
+    }
+    await deleteFromSupabase(filePath);
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

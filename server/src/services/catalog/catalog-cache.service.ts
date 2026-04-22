@@ -5,6 +5,12 @@ export const invalidateAllCatalogCaches = async () => {
   await invalidateCacheByPrefix("catalog:");
 };
 
+export const invalidateCatalogGroupCache = async (groupId?: string) => {
+  const keys: Promise<void>[] = [invalidateCacheKey("catalog:browse")];
+  if (groupId) keys.push(invalidateCacheKey(`catalog:group:${groupId}`));
+  await Promise.all(keys);
+};
+
 export const invalidateCatalogCachesForProduct = async (productId: string) => {
   await Promise.all([
     invalidateCacheKey("catalog:active-products"),
