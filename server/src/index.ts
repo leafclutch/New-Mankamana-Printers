@@ -72,21 +72,39 @@ const exactAllowedOrigins = allowedOrigins.filter((o) => !o.includes("*"));
 const wildcardAllowedOriginRegexes = allowedOrigins
   .filter((o) => o.includes("*"))
   .map((o) => wildcardToRegex(o));
+
+// If a concrete Vercel project origin is allowlisted (e.g. https://project.vercel.app),
+// automatically allow its preview deployments (e.g. https://project-branch-user.vercel.app).
+// This prevents intermittent CORS failures when frontend preview URLs rotate.
+const vercelPreviewOriginRegexes = exactAllowedOrigins
+  .map((origin) => {
+    const match = origin.match(/^https:\/\/([a-z0-9-]+)\.vercel\.app$/i);
+    if (!match) return null;
+    const projectSlug = escapeRegex(match[1]);
+    return new RegExp(`^https://${projectSlug}(?:-[a-z0-9-]+)?\\.vercel\\.app$`, "i");
+  })
+  .filter((rx): rx is RegExp => Boolean(rx));
 app.use(
   cors({
     origin: (origin, cb) => {
       // allow server-to-server or same-origin requests (no Origin header)
       if (!origin) return cb(null, true);
+      const normalizedOrigin = origin.trim().replace(/\/$/, "");
 
       // exact match from ALLOWED_ORIGINS
-      if (exactAllowedOrigins.includes(origin)) return cb(null, true);
+      if (exactAllowedOrigins.includes(normalizedOrigin)) return cb(null, true);
 
       // wildcard match from ALLOWED_ORIGINS (e.g. https://project-*.vercel.app)
-      if (wildcardAllowedOriginRegexes.some((rx) => rx.test(origin))) {
+      if (wildcardAllowedOriginRegexes.some((rx) => rx.test(normalizedOrigin))) {
         return cb(null, true);
       }
 
-      cb(new Error(`CORS: origin ${origin} not allowed`));
+      // derived Vercel preview match based on an allowlisted project origin
+      if (vercelPreviewOriginRegexes.some((rx) => rx.test(normalizedOrigin))) {
+        return cb(null, true);
+      }
+
+      cb(new Error(`CORS: origin ${normalizedOrigin} not allowed`));
     },
     credentials: true,
   })
