@@ -3,12 +3,14 @@ import { db } from "@/lib/db";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_: Request, { params }: Ctx) {
+export async function GET(req: Request, { params }: Ctx) {
   const { id } = await params;
-  const variant = await db.productVariant.findFirst({
-    where: { product_id: id },
-    include: { option_groups: { include: { values: true } }, pricing: { where: { is_active: true }, orderBy: { created_at: "asc" } } },
-  });
+  const variantId = new URL(req.url).searchParams.get("variantId");
+
+  const variant = await (variantId
+    ? db.productVariant.findUnique({ where: { id: variantId }, include: { option_groups: { include: { values: true } }, pricing: { where: { is_active: true }, orderBy: { created_at: "asc" } } } })
+    : db.productVariant.findFirst({ where: { product_id: id }, include: { option_groups: { include: { values: true } }, pricing: { where: { is_active: true }, orderBy: { created_at: "asc" } } } }));
+
   if (!variant) return NextResponse.json([]);
 
   const groupMap: Record<string, { label: string; values: Record<string, string> }> = {};
@@ -28,9 +30,12 @@ export async function GET(_: Request, { params }: Ctx) {
 
 export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
-  const { selectedOptions, unit_price } = await req.json();
+  const { variant_id, selectedOptions, unit_price } = await req.json();
 
-  const variant = await db.productVariant.findFirst({ where: { product_id: id }, include: { option_groups: true } });
+  const variant = await (variant_id
+    ? db.productVariant.findUnique({ where: { id: variant_id }, include: { option_groups: true } })
+    : db.productVariant.findFirst({ where: { product_id: id }, include: { option_groups: true } }));
+
   if (!variant) return NextResponse.json({ error: "No variant" }, { status: 404 });
 
   const idToName: Record<string, string> = {};

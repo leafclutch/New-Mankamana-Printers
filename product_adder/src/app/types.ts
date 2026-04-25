@@ -10,13 +10,25 @@ export interface Option {
   choices: Choice[];
 }
 
+export interface Variant {
+  id: string;
+  variant_code: string;
+  variant_name: string;
+  options: Option[];
+}
+
+export interface Group { id: string; name: string; group_code: string }
+
 export interface Product {
   id: string;
   name: string;
   product_code: string;
   description: string | null;
   service_id: string;
-  options: Option[];
+  group_id: string | null;
+  image_url: string | null;
+  preview_images: string[];
+  variants: Variant[];
 }
 
 export interface PriceRow {
