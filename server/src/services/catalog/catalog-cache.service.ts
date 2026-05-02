@@ -11,12 +11,29 @@ export const invalidateCatalogGroupCache = async (groupId?: string) => {
   await Promise.all(keys);
 };
 
-export const invalidateCatalogCachesForProduct = async (productId: string) => {
-  await Promise.all([
+const resolveProductGroupId = async (productId: string): Promise<string | null> => {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { group_id: true },
+  });
+  return product?.group_id ?? null;
+};
+
+export const invalidateCatalogCachesForProduct = async (productId: string, groupId?: string | null) => {
+  const resolvedGroupId = groupId !== undefined ? groupId : await resolveProductGroupId(productId);
+
+  const keys: Promise<void>[] = [
+    invalidateCacheKey("catalog:browse"),
     invalidateCacheKey("catalog:active-products"),
     invalidateCacheKey(`catalog:product:${productId}`),
     invalidateCacheKey(`catalog:variants:${productId}`),
-  ]);
+  ];
+
+  if (resolvedGroupId) {
+    keys.push(invalidateCacheKey(`catalog:group:${resolvedGroupId}`));
+  }
+
+  await Promise.all(keys);
 };
 
 export const invalidateCatalogPricingForVariant = async (variantId: string) => {

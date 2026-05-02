@@ -4,7 +4,16 @@
       "Bash(find \"u:/Leafclutch/printing press/code/Manakamana-Printing-E-commerce-platform/Client/src\" -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) -exec grep -l \"[^\\\\x00-\\\\x7F]\" {} \\\\;)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|js|jsx\\)$\")",
       "Bash(npm install:*)",
-      "Bash(find 'U:/Leafclutch/printing press/code/Manakamana-Printing-E-commerce-platform/Client/src' -name *.tsx -path *service* -o -name *.tsx -path *product*)"
+      "Bash(find 'U:/Leafclutch/printing press/code/Manakamana-Printing-E-commerce-platform/Client/src' -name *.tsx -path *service* -o -name *.tsx -path *product*)",
+      "Read(//mnt/**)",
+      "Read(//u//**)",
+      "Bash(find \"U:/Leafclutch/printing press/code/Manakamana-Printing-E-commerce-platform/Client/src/app/\\(client\\)\" -type f -name \"*.tsx\")",
+      "Bash(xargs grep:*)",
+      "Bash(ls:*)",
+      "Bash(grep -r input.*type.*file 'U:/Leafclutch/printing press/code/Manakamana-Printing-E-commerce-platform/Client/src' --include=*.tsx --include=*.ts)",
+      "Bash(grep -r \"FormData\\\\|new File\\\\|upload\" 'U:/Leafclutch/printing press/code/Manakamana-Printing-E-commerce-platform/Client/src' --include=*.tsx --include=*.ts)",
+      "Bash(find:*)",
+      "Bash(node -e \"require\\(''pdfkit''\\); console.log\\(''pdfkit ok''\\)\")"
     ]
   }
 }

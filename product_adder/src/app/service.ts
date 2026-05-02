@@ -1,4 +1,13 @@
-import type { Product, Option, PriceRow, Service, Variant, Group } from "./types";
+import type {
+  Product,
+  Option,
+  PriceRow,
+  Service,
+  Variant,
+  Group,
+  TemplateCategory,
+  FreeDesignTemplate,
+} from "./types";
 
 async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -13,11 +22,26 @@ async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> 
 }
 
 export const getServices    = () => api<Service[]>("/services");
+export const addService     = (name: string) => api<Service>("/services", "POST", { name });
+export const renameService  = (id: string, name: string) => api<Service>("/services", "PATCH", { id, name });
+export const removeService  = (id: string) => api("/services", "DELETE", { id });
+export const uploadServicePreview = (serviceId: string, file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return fetch(`/api/services/${serviceId}/preview-image`, { method: "POST", body: form })
+    .then(async r => {
+      const j = await r.json();
+      if (!r.ok) throw new Error(j?.error ?? `Error ${r.status}`);
+      return j as { id: string; image_url: string };
+    });
+};
+
 export const getGroups      = () => api<Group[]>("/groups");
+export const addGroup       = (name: string) => api<Group>("/groups", "POST", { name });
+export const renameGroup    = (id: string, name: string) => api<Group>(`/groups/${id}`, "PATCH", { name });
+export const removeGroup    = (id: string) => api(`/groups/${id}`, "DELETE");
 export const setProductGroup = (productId: string, groupId: string | null) =>
   api<{ id: string; group_id: string | null }>(`/products/${productId}/group`, "PATCH", { group_id: groupId });
-export const addService     = (name: string) => api<Service>("/services", "POST", { name });
-export const removeService  = (id: string) => api("/services", "DELETE", { id });
 
 export const getProducts  = () => api<Product[]>("/products");
 export const addProduct   = (service_id: string, name: string, description?: string) =>
@@ -52,6 +76,30 @@ export const uploadImage  = (productId: string, file: File) => {
 };
 export const deleteImage  = (productId: string, path: string) =>
   api(`/products/${productId}/images`, "DELETE", { path });
+
+// Free design templates
+export const getTemplateCategories = () => api<TemplateCategory[]>("/template-categories");
+export const addTemplateCategory = (name: string) => api<TemplateCategory>("/template-categories", "POST", { name });
+export const getFreeTemplates = () => api<FreeDesignTemplate[]>("/templates");
+export const removeFreeTemplate = (id: string) => api(`/templates/${id}`, "DELETE");
+
+export async function uploadFreeTemplate(payload: {
+  title: string;
+  categoryId: string;
+  description?: string;
+  file: File;
+}): Promise<FreeDesignTemplate> {
+  const form = new FormData();
+  form.append("title", payload.title);
+  form.append("categoryId", payload.categoryId);
+  if (payload.description?.trim()) form.append("description", payload.description.trim());
+  form.append("file", payload.file);
+
+  const res = await fetch("/api/templates", { method: "POST", body: form });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(json?.error ?? json?.message ?? `Error ${res.status}`);
+  return json as FreeDesignTemplate;
+}
 
 const getPricing = (productId: string, variantId: string) =>
   api<Array<{ id: string; unit_price: number; selected_options: Array<{ field_id: string; field_key: string; value: string; display_value: string }> }>>(`/products/${productId}/pricing?variantId=${variantId}`);

@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -13,7 +17,19 @@ const nextConfig: NextConfig = {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
   // Turbopack: dramatically faster HMR and cold starts in dev
-  turbopack: {},
+  // Explicit root prevents monorepo lockfile auto-detection from resolving
+  // CSS imports (e.g. "tailwindcss") against the workspace root.
+  turbopack: {
+    root: projectRoot,
+  },
+  webpack: (config) => {
+    config.resolve ??= {};
+    config.resolve.modules = [
+      path.join(projectRoot, "node_modules"),
+      ...(config.resolve.modules ?? []),
+    ];
+    return config;
+  },
 
   images: {
     remotePatterns: [

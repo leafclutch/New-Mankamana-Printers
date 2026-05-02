@@ -1,4 +1,8 @@
-export interface Service { id: string; name: string }
+export interface Service {
+  id: string;
+  name: string;
+  image_url?: string | null;
+}
 
 export interface Choice { id: string; value: string; label: string }
 
@@ -17,7 +21,29 @@ export interface Variant {
   options: Option[];
 }
 
-export interface Group { id: string; name: string; group_code: string }
+export interface Group {
+  id: string;
+  name: string;
+  group_code: string;
+  image_url?: string | null;
+}
+
+export interface TemplateCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface FreeDesignTemplate {
+  id: string;
+  title: string;
+  description: string | null;
+  fileUrl: string;
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  createdAt: string;
+}
 
 export interface Product {
   id: string;

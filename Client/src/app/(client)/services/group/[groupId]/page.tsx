@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { getAuthHeaders } from "@/store/authStore";
 import { fetchJsonCached, registerFocusRevalidation } from "@/utils/requestCache";
+import { normalizeImageUrl } from "@/utils/image";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
@@ -36,6 +36,32 @@ function SkeletonCard() {
                 <div className="h-10 bg-slate-100 rounded-xl mt-4" />
             </div>
         </div>
+    );
+}
+
+function CatalogCardImage({ imageUrl, alt }: { imageUrl: string | null; alt: string }) {
+    const [failed, setFailed] = useState(false);
+    const safeUrl = normalizeImageUrl(imageUrl);
+
+    if (!safeUrl || failed) {
+        return (
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 px-3 text-center">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                    No preview available
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+            src={safeUrl}
+            alt={alt}
+            loading="lazy"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setFailed(true)}
+        />
     );
 }
 
@@ -131,28 +157,14 @@ export default function GroupPage() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {group.products.map((product, index) => (
+                        {group.products.map((product) => (
                             <Link
                                 key={product.id}
                                 href={`/services/${product.id}`}
                                 className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col"
                             >
                                 <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
-                                    {product.image_url ? (
-                                        <Image
-                                            src={product.image_url}
-                                            alt={product.name}
-                                            fill
-                                            priority={index < 3}
-                                            quality={70}
-                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                                            className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 text-5xl">
-                                            🖨️
-                                        </div>
-                                    )}
+                                    <CatalogCardImage imageUrl={product.image_url} alt={product.name} />
                                     <span className="absolute top-3 left-3 bg-amber-400 text-[#0f172a] text-[0.62rem] font-black tracking-[0.1em] uppercase px-2 py-0.5 rounded-md shadow-sm">
                                         B2B
                                     </span>
@@ -189,3 +201,4 @@ export default function GroupPage() {
         </div>
     );
 }
+

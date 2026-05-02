@@ -97,7 +97,7 @@ export function ProductList({ products, services, selectedId, onSelect, onCreate
           <div className="flex flex-col items-center gap-2 py-14 text-slate-400 text-sm text-center">
             <Box className="h-8 w-8 opacity-30" />
             <p>No products yet.</p>
-            <p className="text-xs">Click "Add" to create one.</p>
+            <p className="text-xs">Click &quot;Add&quot; to create one.</p>
           </div>
         ) : products.map(p => (
           <button key={p.id} type="button" onClick={() => onSelect(p.id)}

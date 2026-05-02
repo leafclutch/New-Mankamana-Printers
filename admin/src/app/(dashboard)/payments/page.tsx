@@ -23,6 +23,7 @@ import {
   adjustAdminTopupRequest,
   approveAdminTopupRequest,
   createAdminPaymentDetails,
+  deleteAdminPaymentDetails,
   fetchAdminClientWalletSummary,
   fetchAdminTopupRequestById,
   fetchAdminTopupRequests,
@@ -113,6 +114,7 @@ export default function PaymentsPage() {
   const [adjustReason, setAdjustReason] = useState("");
   const [decisionLoading, setDecisionLoading] = useState<"approve" | "reject" | "adjust" | null>(null);
 
+  const [paymentMethods, setPaymentMethods] = useState<AdminPaymentDetailsApi[]>([]);
   const [paymentForm, setPaymentForm] = useState({
     companyName: "",
     bankName: "",
@@ -123,8 +125,8 @@ export default function PaymentsPage() {
     note: "",
   });
   const [qrFile, setQrFile] = useState<File | null>(null);
-  const [existingQrUrl, setExistingQrUrl] = useState<string | null>(null);
   const [paymentFormLoading, setPaymentFormLoading] = useState(true);
+  const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
 
   const [clientLookupId, setClientLookupId] = useState("");
   const [clientSummary, setClientSummary] =
@@ -154,27 +156,17 @@ export default function PaymentsPage() {
     }
   }, []);
 
-  // Direct fetch (no cache) so the form always shows current DB values on load and after save
+  // Direct fetch (no cache) so the list always reflects current DB values
   const loadPaymentDetails = useCallback(async () => {
     setPaymentFormLoading(true);
     try {
       const res = await fetch("/api/admin/wallet/payment-details", { cache: "no-store" });
       if (!res.ok) return;
       const json = await res.json();
-      const details: AdminPaymentDetailsApi | undefined = json?.data;
-      if (!details) return;
-      setPaymentForm({
-        companyName: details.companyName ?? "",
-        bankName: details.bankName ?? "",
-        accountName: details.accountName ?? "",
-        accountNumber: details.accountNumber ?? "",
-        branch: details.branch ?? "",
-        paymentId: details.paymentId ?? "",
-        note: details.note ?? "",
-      });
-      setExistingQrUrl(details.qrImageUrl ?? null);
+      const list: AdminPaymentDetailsApi[] = Array.isArray(json?.data) ? json.data : [];
+      setPaymentMethods(list);
     } catch {
-      // silently ignore — form stays blank, user can still fill manually
+      // silently ignore
     } finally {
       setPaymentFormLoading(false);
     }
@@ -374,7 +366,7 @@ export default function PaymentsPage() {
     }
   };
 
-  const handleSavePaymentDetails = async () => {
+  const handleAddPaymentMethod = async () => {
     try {
       await createAdminPaymentDetails({
         companyName: paymentForm.companyName,
@@ -385,23 +377,29 @@ export default function PaymentsPage() {
         paymentId: paymentForm.paymentId || undefined,
         qrFile: qrFile || undefined,
         note: paymentForm.note || undefined,
-        isActive: true,
       });
       invalidatePaymentDetailsCache();
       setQrFile(null);
-      toast({
-        title: "Payment details saved",
-        description: "Clients will see the updated details immediately.",
-        variant: "success",
-      });
-      // Re-fetch all fields so the form always reflects what's actually in the DB
+      setPaymentForm({ companyName: "", bankName: "", accountName: "", accountNumber: "", branch: "", paymentId: "", note: "" });
+      toast({ title: "Payment method added", description: "Clients will see it immediately.", variant: "success" });
       void loadPaymentDetails();
     } catch (err) {
-      toast({
-        title: "Save failed",
-        description: err instanceof Error ? err.message : "Try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Save failed", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
+    }
+  };
+
+  const handleDeletePaymentMethod = async (id: string) => {
+    if (!confirm("Remove this payment method? Clients will no longer see it.")) return;
+    setDeletingPaymentId(id);
+    try {
+      await deleteAdminPaymentDetails(id);
+      invalidatePaymentDetailsCache();
+      setPaymentMethods((prev) => prev.filter((m) => m.id !== id));
+      toast({ title: "Payment method removed", variant: "success" });
+    } catch (err) {
+      toast({ title: "Delete failed", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
+    } finally {
+      setDeletingPaymentId(null);
     }
   };
 
@@ -531,200 +529,111 @@ export default function PaymentsPage() {
 
       <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
         <CardHeader>
-          <CardTitle className="text-base font-semibold">
-            Payment Details
-          </CardTitle>
+          <CardTitle className="text-base font-semibold">Payment Methods</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <CardContent className="space-y-6">
+          {/* Active payment methods list */}
           {paymentFormLoading ? (
-            <>
-              {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="space-y-2">
-                  <div className="h-4 w-24 rounded bg-slate-100 animate-pulse" />
-                  <div className="h-9 w-full rounded-md bg-slate-100 animate-pulse" />
+            <div className="space-y-3">
+              {[1, 2].map((i) => <div key={i} className="h-24 w-full rounded-xl bg-slate-100 animate-pulse" />)}
+            </div>
+          ) : paymentMethods.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">No payment methods yet. Add one below.</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paymentMethods.map((m) => (
+                <div key={m.id} className="relative border border-slate-200 rounded-xl p-4 bg-white flex gap-4 items-start shadow-sm">
+                  {m.qrImageUrl && (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={`${API_BASE}/wallet/qr-image?id=${m.id}`}
+                      alt="QR"
+                      className="h-20 w-20 object-contain rounded border border-slate-100 bg-slate-50 p-1 shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-slate-900 text-sm truncate">{m.companyName}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{m.bankName}</p>
+                    <p className="text-xs text-slate-500">{m.accountName} · {m.accountNumber}</p>
+                    {m.branch && <p className="text-xs text-slate-400">{m.branch}</p>}
+                    {m.paymentId && <p className="text-xs text-slate-400">UPI: {m.paymentId}</p>}
+                    {m.note && <p className="text-xs text-amber-600 mt-1">{m.note}</p>}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={deletingPaymentId === m.id}
+                    onClick={() => handleDeletePaymentMethod(m.id)}
+                    className="absolute top-3 right-3 p-1 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    title="Remove"
+                  >
+                    {deletingPaymentId === m.id ? "…" : "✕"}
+                  </button>
                 </div>
               ))}
-              <div className="space-y-2 md:col-span-2">
-                <div className="h-4 w-20 rounded bg-slate-100 animate-pulse" />
-                <div className="h-24 w-full rounded-lg bg-slate-100 animate-pulse" />
+            </div>
+          )}
+
+          {/* Add new payment method form */}
+          <div className="border-t border-slate-100 pt-5">
+            <p className="text-sm font-semibold text-slate-700 mb-4">Add Payment Method</p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Label / Company Name</Label>
+                <Input value={paymentForm.companyName} onChange={(e) => setPaymentForm((p) => ({ ...p, companyName: e.target.value }))} placeholder="e.g. PhonePay / eSewa" />
+              </div>
+              <div className="space-y-2">
+                <Label>Bank Name</Label>
+                <Input value={paymentForm.bankName} onChange={(e) => setPaymentForm((p) => ({ ...p, bankName: e.target.value }))} placeholder="Himalayan Bank" />
+              </div>
+              <div className="space-y-2">
+                <Label>Account Name</Label>
+                <Input value={paymentForm.accountName} onChange={(e) => setPaymentForm((p) => ({ ...p, accountName: e.target.value }))} placeholder="New Mankamana Printers" />
+              </div>
+              <div className="space-y-2">
+                <Label>Account Number</Label>
+                <Input value={paymentForm.accountNumber} onChange={(e) => setPaymentForm((p) => ({ ...p, accountNumber: e.target.value }))} placeholder="0012345678" />
+              </div>
+              <div className="space-y-2">
+                <Label>Branch</Label>
+                <Input value={paymentForm.branch} onChange={(e) => setPaymentForm((p) => ({ ...p, branch: e.target.value }))} placeholder="Kathmandu (optional)" />
+              </div>
+              <div className="space-y-2">
+                <Label>Payment ID / UPI</Label>
+                <Input value={paymentForm.paymentId} onChange={(e) => setPaymentForm((p) => ({ ...p, paymentId: e.target.value }))} placeholder="company@upi (optional)" />
               </div>
               <div className="space-y-2 md:col-span-2">
-                <div className="h-4 w-16 rounded bg-slate-100 animate-pulse" />
-                <div className="h-9 w-full rounded-md bg-slate-100 animate-pulse" />
+                <Label>QR Image</Label>
+                {qrFile ? (
+                  <div className="flex items-center gap-4 p-3 rounded-lg border border-emerald-200 bg-emerald-50">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={URL.createObjectURL(qrFile)} alt="Preview" className="h-20 w-20 object-contain rounded border border-emerald-200 bg-white p-1 shrink-0" />
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-sm font-medium text-emerald-700">{qrFile.name}</p>
+                      <p className="text-xs text-emerald-500">({(qrFile.size / 1024).toFixed(1)} KB)</p>
+                      <div className="flex gap-2">
+                        <label htmlFor="qr-file-input" className="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-emerald-300 text-xs font-medium text-emerald-700 cursor-pointer hover:bg-emerald-100">Change</label>
+                        <button type="button" onClick={() => setQrFile(null)} className="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-red-200 text-xs font-medium text-red-600 hover:bg-red-50">Remove</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label htmlFor="qr-file-input" className="flex items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer transition-colors text-sm border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-500">
+                    Click to upload QR image (PNG, JPG, WebP…)
+                  </label>
+                )}
+                <input id="qr-file-input" type="file" accept="image/*" className="hidden" onChange={(e) => setQrFile(e.target.files?.[0] || null)} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Notes</Label>
+                <Input value={paymentForm.note} onChange={(e) => setPaymentForm((p) => ({ ...p, note: e.target.value }))} placeholder="Optional instructions for clients" />
               </div>
               <div className="md:col-span-2 flex justify-end">
-                <div className="h-9 w-40 rounded-md bg-slate-100 animate-pulse" />
+                <Button onClick={handleAddPaymentMethod} disabled={!paymentForm.companyName || !paymentForm.bankName || !paymentForm.accountName || !paymentForm.accountNumber}>
+                  + Add Payment Method
+                </Button>
               </div>
-            </>
-          ) : (
-          <>
-          <div className="space-y-2">
-            <Label>Company Name</Label>
-            <Input
-              value={paymentForm.companyName}
-              onChange={(event) =>
-                setPaymentForm((prev) => ({
-                  ...prev,
-                  companyName: event.target.value,
-                }))
-              }
-              placeholder="New Mankamana Printers"
-            />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>Bank Name</Label>
-            <Input
-              value={paymentForm.bankName}
-              onChange={(event) =>
-                setPaymentForm((prev) => ({
-                  ...prev,
-                  bankName: event.target.value,
-                }))
-              }
-              placeholder="Himalayan Bank"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Account Name</Label>
-            <Input
-              value={paymentForm.accountName}
-              onChange={(event) =>
-                setPaymentForm((prev) => ({
-                  ...prev,
-                  accountName: event.target.value,
-                }))
-              }
-              placeholder="New Mankamana Printers"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Account Number</Label>
-            <Input
-              value={paymentForm.accountNumber}
-              onChange={(event) =>
-                setPaymentForm((prev) => ({
-                  ...prev,
-                  accountNumber: event.target.value,
-                }))
-              }
-              placeholder="0012345678"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Branch</Label>
-            <Input
-              value={paymentForm.branch}
-              onChange={(event) =>
-                setPaymentForm((prev) => ({
-                  ...prev,
-                  branch: event.target.value,
-                }))
-              }
-              placeholder="Kathmandu"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Payment ID</Label>
-            <Input
-              value={paymentForm.paymentId}
-              onChange={(event) =>
-                setPaymentForm((prev) => ({
-                  ...prev,
-                  paymentId: event.target.value,
-                }))
-              }
-              placeholder="company@upi"
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>QR Image</Label>
-            {/* Show existing QR preview if no new file is selected */}
-            {existingQrUrl && !qrFile && (
-              <div className="flex items-start gap-4 p-3 rounded-lg border border-blue-200 bg-blue-50">
-                <img
-                  src={`${API_BASE}/wallet/qr-image`}
-                  alt="Current QR Code"
-                  className="h-28 w-28 object-contain rounded border border-blue-200 bg-white p-1 shrink-0"
-                />
-                <div className="flex flex-col gap-1.5 min-w-0">
-                  <p className="text-sm font-medium text-blue-700">Current QR Code</p>
-                  <p className="text-xs text-blue-500 break-all">{existingQrUrl.split("/").pop()}</p>
-                  <label
-                    htmlFor="qr-file-input"
-                    className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white border border-blue-300 text-xs font-medium text-blue-700 cursor-pointer hover:bg-blue-100 transition-colors w-fit"
-                  >
-                    Replace QR Image
-                  </label>
-                </div>
-              </div>
-            )}
-            {/* Show new file preview if a file is selected */}
-            {qrFile && (
-              <div className="flex items-start gap-4 p-3 rounded-lg border border-emerald-200 bg-emerald-50">
-                <img
-                  src={URL.createObjectURL(qrFile)}
-                  alt="New QR Code Preview"
-                  className="h-28 w-28 object-contain rounded border border-emerald-200 bg-white p-1 shrink-0"
-                />
-                <div className="flex flex-col gap-1.5 min-w-0">
-                  <p className="text-sm font-medium text-emerald-700">New QR Code (Preview)</p>
-                  <p className="text-xs text-emerald-600">{qrFile.name}</p>
-                  <p className="text-xs text-emerald-500">({(qrFile.size / 1024).toFixed(1)} KB)</p>
-                  <div className="flex gap-2 mt-1">
-                    <label
-                      htmlFor="qr-file-input"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white border border-emerald-300 text-xs font-medium text-emerald-700 cursor-pointer hover:bg-emerald-100 transition-colors w-fit"
-                    >
-                      Change File
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setQrFile(null)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white border border-red-200 text-xs font-medium text-red-600 cursor-pointer hover:bg-red-50 transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-            {/* Upload prompt when no existing QR and no new file */}
-            {!existingQrUrl && !qrFile && (
-              <label
-                htmlFor="qr-file-input"
-                className="flex items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer transition-colors text-sm border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-500"
-              >
-                Click to upload QR image (PNG, JPG, GIF, WebP, SVG, PDF…)
-              </label>
-            )}
-            <input
-              id="qr-file-input"
-              type="file"
-              accept="image/*,application/pdf,.doc,.docx"
-              className="hidden"
-              onChange={(e) => setQrFile(e.target.files?.[0] || null)}
-            />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Notes</Label>
-            <Input
-              value={paymentForm.note}
-              onChange={(event) =>
-                setPaymentForm((prev) => ({
-                  ...prev,
-                  note: event.target.value,
-                }))
-              }
-              placeholder="Optional instructions for clients"
-            />
-          </div>
-          <div className="md:col-span-2 flex justify-end">
-            <Button className="gap-2" onClick={handleSavePaymentDetails}>
-              Save Payment Details
-            </Button>
-          </div>
-          </>
-          )}
         </CardContent>
       </Card>
 

@@ -1,15 +1,27 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, Fragment } from "react";
-import type { Product, Option, PriceRow, Service, Variant, Group } from "./types";
+import type {
+  Product,
+  Option,
+  PriceRow,
+  Service,
+  Variant,
+  Group,
+  TemplateCategory,
+  FreeDesignTemplate,
+} from "./types";
 import {
   getServices, getProducts, getGroups, setProductGroup,
-  addProduct, addService, removeService, removeProduct,
+  addProduct, saveProduct, addService, renameService, removeService, removeProduct,
+  addGroup, renameGroup, removeGroup,
   addVariant, renameVariant, removeVariant,
   addField, removeField, addChoice, removeChoice,
   getOptionSuggestions,
   loadPricing, addPricing, savePrice, removePrice,
+  uploadServicePreview,
   listImages, uploadImage, deleteImage,
+  getTemplateCategories, addTemplateCategory, getFreeTemplates, uploadFreeTemplate, removeFreeTemplate,
   cartesian,
 } from "./service";
 
@@ -38,9 +50,9 @@ const inp = "w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ou
 
 function useToast() {
   const [msg, setMsg] = useState<{ text: string; type: "ok" | "err" } | null>(null);
-  const t = useRef<ReturnType<typeof setTimeout>>();
+  const t = useRef<ReturnType<typeof setTimeout> | null>(null);
   function toast(text: string, type: "ok" | "err" = "ok") {
-    clearTimeout(t.current);
+    if (t.current) clearTimeout(t.current);
     setMsg({ text, type });
     t.current = setTimeout(() => setMsg(null), 3500);
   }
@@ -73,22 +85,58 @@ function CardGrid({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">{children}</div>;
 }
 
-function ItemCard({ title, sub, meta, onClick, onDelete, deleting }: {
+// Generic editable card — shows rename input on edit mode, delete + edit buttons on hover
+function EditableCard({ title, sub, meta, onClick, onRename, onDelete, deleting }: {
   title: string; sub?: string; meta?: string;
-  onClick: () => void; onDelete?: () => void; deleting?: boolean;
+  onClick: () => void;
+  onRename?: (name: string) => Promise<void>;
+  onDelete?: () => void; deleting?: boolean;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(title);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!name.trim() || name.trim() === title) { setEditing(false); setName(title); return; }
+    setSaving(true);
+    try { await onRename!(name.trim()); setEditing(false); }
+    finally { setSaving(false); }
+  }
+
+  if (editing) {
+    return (
+      <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4 space-y-2">
+        <input className={inp} value={name} autoFocus
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setName(title); setEditing(false); } }} />
+        <div className="flex gap-2">
+          <Btn small onClick={save} disabled={saving || !name.trim()}>{saving ? <Spinner /> : "Save"}</Btn>
+          <Btn small variant="ghost" onClick={() => { setName(title); setEditing(false); }}>Cancel</Btn>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div role="button" tabIndex={0} onClick={onClick} onKeyDown={e => e.key === "Enter" && onClick()}
       className="group relative bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer">
-      <p className="font-semibold text-gray-900 truncate pr-5 leading-snug">{title}</p>
+      <p className="font-semibold text-gray-900 truncate pr-14 leading-snug">{title}</p>
       {sub  && <p className="text-sm text-gray-500 mt-1">{sub}</p>}
       {meta && <p className="text-xs text-gray-400 font-mono mt-2">{meta}</p>}
-      {onDelete && (
-        <button type="button" onClick={e => { e.stopPropagation(); onDelete(); }} disabled={deleting}
-          className="absolute top-3 right-3 p-1 rounded-full text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-          {deleting ? <Spinner /> : "✕"}
-        </button>
-      )}
+      <div className="absolute top-3 right-3 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+        {onRename && (
+          <button type="button" onClick={e => { e.stopPropagation(); setEditing(true); }}
+            className="p-1 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Rename">
+            ✎
+          </button>
+        )}
+        {onDelete && (
+          <button type="button" onClick={e => { e.stopPropagation(); onDelete(); }} disabled={deleting}
+            className="p-1 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+            {deleting ? <Spinner /> : "✕"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -146,14 +194,20 @@ function Breadcrumb({ crumbs }: { crumbs: { label: string; onClick?: () => void 
 
 // ── Level 1: Categories ───────────────────────────────────────────────────────
 
-function CategoriesView({ services, products, onSelect, onCreated, onDeleted }: {
+function CategoriesView({ services, products, onSelect, onCreated, onRenamed, onDeleted, onPreviewUpdated, onManageGroups, onManageTemplates }: {
   services: Service[]; products: Product[];
-  onSelect: (s: Service) => void; onCreated: (s: Service) => void; onDeleted: (id: string) => void;
+  onSelect: (s: Service) => void; onCreated: (s: Service) => void;
+  onRenamed: (id: string, name: string) => void; onDeleted: (id: string) => void;
+  onPreviewUpdated: (id: string, imageUrl: string) => void;
+  onManageGroups: () => void;
+  onManageTemplates: () => void;
 }) {
   const { msg, toast } = useToast();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState(""); const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [previewCategoryId, setPreviewCategoryId] = useState<string>(services[0]?.id ?? "");
+  const [uploadingPreview, setUploadingPreview] = useState(false);
 
   async function create() {
     if (!name.trim()) return;
@@ -176,16 +230,104 @@ function CategoriesView({ services, products, onSelect, onCreated, onDeleted }: 
     finally { setDeletingId(null); }
   }
 
+  async function rename(s: Service, newName: string) {
+    try { await renameService(s.id, newName); onRenamed(s.id, newName); toast(`Renamed to "${newName}"`); }
+    catch (e) { toast((e as Error).message, "err"); throw e; }
+  }
+
   const countFor = (id: string) => products.filter(p => p.service_id === id).length;
+  const previewCategory = services.find((s) => s.id === previewCategoryId) ?? null;
+
+  useEffect(() => {
+    if (!previewCategoryId && services.length > 0) {
+      setPreviewCategoryId(services[0].id);
+      return;
+    }
+    if (previewCategoryId && !services.some((s) => s.id === previewCategoryId)) {
+      setPreviewCategoryId(services[0]?.id ?? "");
+    }
+  }, [services, previewCategoryId]);
+
+  async function onPreviewFile(file: File | null) {
+    if (!file) return;
+    if (!previewCategoryId) return toast("Select a category first", "err");
+    setUploadingPreview(true);
+    try {
+      const updated = await uploadServicePreview(previewCategoryId, file);
+      onPreviewUpdated(updated.id, updated.image_url);
+      toast("Category preview image updated");
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setUploadingPreview(false);
+    }
+  }
 
   return (
     <>
       <Toast msg={msg} />
+      <div className="flex items-center justify-between mb-6">
+        <p className="text-sm text-gray-500">Click a category to manage its products.</p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onManageTemplates}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition-colors"
+          >
+            Free Templates
+          </button>
+          <button
+            type="button"
+            onClick={onManageGroups}
+            className="text-sm font-medium text-blue-600 hover:text-blue-800 border border-blue-200 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition-colors"
+          >
+            Manage Groups
+          </button>
+        </div>
+      </div>
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 mb-6">
+        <p className="text-sm font-semibold text-gray-900">Category Preview Image</p>
+        <p className="text-xs text-gray-500 mt-0.5">This image is shown as the category cover preview.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+          <select
+            className={inp}
+            value={previewCategoryId}
+            onChange={(e) => setPreviewCategoryId(e.target.value)}
+            aria-label="Select category for preview image"
+          >
+            {services.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <label className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-sm rounded-lg border border-gray-300 bg-white ${uploadingPreview ? "opacity-60" : "cursor-pointer hover:bg-gray-50"}`}>
+            {uploadingPreview ? <Spinner /> : "Upload image"}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingPreview || !previewCategoryId}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                void onPreviewFile(file);
+                e.currentTarget.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {previewCategory?.image_url && (
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 mb-2">Current preview</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewCategory.image_url} alt={`${previewCategory.name} preview`} className="h-24 w-40 rounded-xl object-cover border border-gray-200" />
+          </div>
+        )}
+      </div>
       <CardGrid>
         {services.map(s => (
-          <ItemCard key={s.id} title={s.name}
+          <EditableCard key={s.id} title={s.name}
             sub={`${countFor(s.id)} product${countFor(s.id) !== 1 ? "s" : ""}`}
             onClick={() => onSelect(s)}
+            onRename={newName => rename(s, newName)}
             onDelete={() => del(s)} deleting={deletingId === s.id} />
         ))}
         {creating
@@ -197,15 +339,298 @@ function CategoriesView({ services, products, onSelect, onCreated, onDeleted }: 
   );
 }
 
+// ── Groups management ─────────────────────────────────────────────────────────
+
+function GroupsView({ groups, products, onBack, onCreated, onRenamed, onDeleted }: {
+  groups: Group[]; products: Product[];
+  onBack: () => void;
+  onCreated: (g: Group) => void; onRenamed: (id: string, name: string) => void; onDeleted: (id: string) => void;
+}) {
+  const { msg, toast } = useToast();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState(""); const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function create() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try { const g = await addGroup(name.trim()); onCreated(g); setName(""); setCreating(false); toast(`"${g.name}" created`); }
+    catch (e) { toast((e as Error).message, "err"); }
+    finally { setSaving(false); }
+  }
+
+  async function del(g: Group) {
+    const count = products.filter(p => p.group_id === g.id).length;
+    if (count > 0) return toast(`Cannot delete — ${count} product${count > 1 ? "s" : ""} still in this group`, "err");
+    if (!confirm(`Delete group "${g.name}"?`)) return;
+    setDeletingId(g.id);
+    try { await removeGroup(g.id); onDeleted(g.id); toast(`"${g.name}" deleted`); }
+    catch (e) { toast((e as Error).message, "err"); }
+    finally { setDeletingId(null); }
+  }
+
+  async function rename(g: Group, newName: string) {
+    try { await renameGroup(g.id, newName); onRenamed(g.id, newName); toast(`Renamed to "${newName}"`); }
+    catch (e) { toast((e as Error).message, "err"); throw e; }
+  }
+
+  const countFor = (id: string) => products.filter(p => p.group_id === id).length;
+
+  return (
+    <>
+      <Toast msg={msg} />
+      <BackButton label="Back to Categories" onClick={onBack} />
+      <CardGrid>
+        {groups.map(g => (
+          <EditableCard key={g.id} title={g.name}
+            sub={`${countFor(g.id)} product${countFor(g.id) !== 1 ? "s" : ""}`}
+            meta={g.group_code}
+            onClick={() => {}}
+            onRename={newName => rename(g, newName)}
+            onDelete={() => del(g)} deleting={deletingId === g.id} />
+        ))}
+        {creating
+          ? <CreateCard title="New group" fields={[{ placeholder: "Group name", value: name, onChange: setName }]}
+              onSubmit={create} onCancel={() => { setCreating(false); setName(""); }} saving={saving} />
+          : <NewCard label="New Group" onClick={() => setCreating(true)} />}
+      </CardGrid>
+    </>
+  );
+}
+
 // ── Level 2: Products ─────────────────────────────────────────────────────────
 
-function ProductCard({ product, groups, onSelect, onDeleted, onGroupChanged }: {
+function TemplatesView({
+  categories,
+  templates,
+  onBack,
+  onCategoryCreated,
+  onTemplateCreated,
+  onTemplateDeleted,
+}: {
+  categories: TemplateCategory[];
+  templates: FreeDesignTemplate[];
+  onBack: () => void;
+  onCategoryCreated: (category: TemplateCategory) => void;
+  onTemplateCreated: (template: FreeDesignTemplate) => void;
+  onTemplateDeleted: (id: string) => void;
+}) {
+  const { msg, toast } = useToast();
+  const [categoryName, setCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!categoryId && categories.length > 0) setCategoryId(categories[0].id);
+  }, [categories, categoryId]);
+
+  async function createCategory() {
+    if (!categoryName.trim()) return;
+    setCreatingCategory(true);
+    try {
+      const category = await addTemplateCategory(categoryName.trim());
+      onCategoryCreated(category);
+      setCategoryName("");
+      if (!categoryId) setCategoryId(category.id);
+      toast(`"${category.name}" category created`);
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setCreatingCategory(false);
+    }
+  }
+
+  async function uploadTemplate() {
+    if (!title.trim()) return toast("Template title required", "err");
+    if (!categoryId) return toast("Pick a category first", "err");
+    if (!file) return toast("Choose a file to upload", "err");
+
+    setUploading(true);
+    try {
+      const created = await uploadFreeTemplate({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        categoryId,
+        file,
+      });
+      onTemplateCreated(created);
+      setTitle("");
+      setDescription("");
+      setFile(null);
+      toast("Template uploaded");
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function delTemplate(template: FreeDesignTemplate) {
+    if (!confirm(`Delete template "${template.title}"?`)) return;
+    setDeletingId(template.id);
+    try {
+      await removeFreeTemplate(template.id);
+      onTemplateDeleted(template.id);
+      toast("Template deleted");
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <>
+      <Toast msg={msg} />
+      <BackButton label="Back to Categories" onClick={onBack} />
+
+      <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+            <p className="text-sm font-semibold text-gray-900">Template Categories</p>
+            <div className="flex gap-2">
+              <input
+                className={inp}
+                placeholder="Category name"
+                value={categoryName}
+                onChange={(e) => setCategoryName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createCategory()}
+              />
+              <Btn onClick={createCategory} disabled={creatingCategory || !categoryName.trim()}>
+                {creatingCategory ? <Spinner /> : "Add"}
+              </Btn>
+            </div>
+            {categories.length === 0 ? (
+              <p className="text-xs text-gray-400">Create at least one category to upload templates.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setCategoryId(c.id)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      categoryId === c.id
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3">
+            <p className="text-sm font-semibold text-gray-900">Upload Free Template</p>
+            <input
+              className={inp}
+              placeholder="Template title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <textarea
+              className={`${inp} min-h-24`}
+              placeholder="Description (optional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+            <select
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className={`${inp} py-2`}
+              disabled={categories.length === 0}
+            >
+              {categories.length === 0 ? (
+                <option value="">No categories available</option>
+              ) : (
+                categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))
+              )}
+            </select>
+            <div className="space-y-1">
+              <input
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-sm text-gray-600 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border file:border-gray-200 file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100"
+              />
+              <p className="text-xs text-gray-400">Allowed size: up to 20 MB (image, PDF, or print file).</p>
+            </div>
+            <Btn onClick={uploadTemplate} disabled={uploading || categories.length === 0}>
+              {uploading ? <Spinner /> : null}
+              Upload
+            </Btn>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-semibold text-gray-900">Uploaded Templates</p>
+            <p className="text-xs text-gray-400">{templates.length} total</p>
+          </div>
+
+          {templates.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">No templates uploaded yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {templates.map((t) => (
+                <div key={t.id} className="rounded-xl border border-gray-200 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 truncate">{t.title}</p>
+                    {t.description && <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{t.description}</p>}
+                    <div className="flex flex-wrap gap-2 mt-2 text-xs text-gray-500">
+                      <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{t.categoryName}</span>
+                      <span>{new Date(t.createdAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={t.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      View
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => delTemplate(t)}
+                      disabled={deletingId === t.id}
+                      className="inline-flex items-center rounded-lg border border-red-200 px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deletingId === t.id ? <Spinner /> : "Delete"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ProductCard({ product, groups, onSelect, onDeleted, onGroupChanged, onRenamed }: {
   product: Product; groups: Group[];
   onSelect: () => void; onDeleted: () => void; onGroupChanged: (groupId: string | null) => void;
+  onRenamed?: (name: string) => void;
 }) {
   const { toast } = useToast();
   const [deleting, setDeleting] = useState(false);
   const [assigningGroup, setAssigningGroup] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(product.name);
+  const [savingName, setSavingName] = useState(false);
 
   async function del(e: React.MouseEvent) {
     e.stopPropagation();
@@ -227,14 +652,38 @@ function ProductCard({ product, groups, onSelect, onDeleted, onGroupChanged }: {
     finally { setAssigningGroup(false); }
   }
 
-  const groupName = groups.find(g => g.id === product.group_id)?.name;
+  async function saveName() {
+    if (!editName.trim() || editName.trim() === product.name) { setEditing(false); setEditName(product.name); return; }
+    setSavingName(true);
+    try {
+      await saveProduct(product.id, editName.trim());
+      onRenamed?.(editName.trim());
+      setEditing(false);
+      toast(`Renamed to "${editName.trim()}"`);
+    } catch (e) { toast((e as Error).message, "err"); }
+    finally { setSavingName(false); }
+  }
+
+  if (editing) {
+    return (
+      <div className="bg-blue-50 border-2 border-blue-300 rounded-2xl p-4 space-y-2">
+        <input className={inp} value={editName} autoFocus
+          onChange={e => setEditName(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setEditName(product.name); setEditing(false); } }} />
+        <div className="flex gap-2">
+          <Btn small onClick={saveName} disabled={savingName || !editName.trim()}>{savingName ? <Spinner /> : "Save"}</Btn>
+          <Btn small variant="ghost" onClick={() => { setEditName(product.name); setEditing(false); }}>Cancel</Btn>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="group relative bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-400 hover:shadow-md transition-all flex flex-col gap-3">
       {/* clickable title area */}
       <div role="button" tabIndex={0} onClick={onSelect} onKeyDown={e => e.key === "Enter" && onSelect()}
         className="cursor-pointer flex-1 min-w-0">
-        <p className="font-semibold text-gray-900 truncate pr-6 leading-snug">{product.name}</p>
+        <p className="font-semibold text-gray-900 truncate pr-14 leading-snug">{product.name}</p>
         <p className="text-sm text-gray-500 mt-1">{product.variants.length} variant{product.variants.length !== 1 ? "s" : ""}</p>
         <p className="text-xs text-gray-400 font-mono mt-1">{product.product_code}</p>
       </div>
@@ -258,11 +707,19 @@ function ProductCard({ product, groups, onSelect, onDeleted, onGroupChanged }: {
         </div>
       </div>
 
-      {/* delete button */}
-      <button type="button" onClick={del} disabled={deleting}
-        className="absolute top-3 right-3 p-1 rounded-full text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all">
-        {deleting ? <Spinner /> : "✕"}
-      </button>
+      {/* rename + delete buttons */}
+      <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        {onRenamed && (
+          <button type="button" onClick={e => { e.stopPropagation(); setEditing(true); }}
+            className="p-1 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Rename">
+            ✎
+          </button>
+        )}
+        <button type="button" onClick={del} disabled={deleting}
+          className="p-1 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors" title="Delete">
+          {deleting ? <Spinner /> : "✕"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -270,8 +727,7 @@ function ProductCard({ product, groups, onSelect, onDeleted, onGroupChanged }: {
 function ProductsView({ category, products, groups, onSelect, onCreated, onDeleted, onProductChanged, onBack }: {
   category: Service; products: Product[]; groups: Group[];
   onSelect: (p: Product) => void; onCreated: (p: Product) => void; onDeleted: (id: string) => void;
-  onProductChanged: (p: Product) => void;
-  onBack: () => void;
+  onProductChanged: (p: Product) => void; onBack: () => void;
 }) {
   const { msg, toast } = useToast();
   const [creating, setCreating] = useState(false);
@@ -298,7 +754,8 @@ function ProductsView({ category, products, groups, onSelect, onCreated, onDelet
           <ProductCard key={p.id} product={p} groups={groups}
             onSelect={() => onSelect(p)}
             onDeleted={() => onDeleted(p.id)}
-            onGroupChanged={groupId => onProductChanged({ ...p, group_id: groupId })} />
+            onGroupChanged={groupId => onProductChanged({ ...p, group_id: groupId })}
+            onRenamed={name => onProductChanged({ ...p, name })} />
         ))}
         {creating
           ? <CreateCard title="New product"
@@ -413,6 +870,9 @@ function VariantsView({ product, onSelect, onAdded, onRenamed, onDeleted, onBack
     <>
       <Toast msg={msg} />
       <BackButton label={`Back to ${product.name} products`} onClick={onBack} />
+      <div className="max-w-2xl mb-8">
+        <ImagesSection product={product} />
+      </div>
       <CardGrid>
         {product.variants.map(v => (
           <VariantCard key={v.id} variant={v} totalVariants={product.variants.length}
@@ -465,14 +925,20 @@ function ImagesSection({ product }: { product: Product }) {
     finally { setDeletingPath(null); }
   }
 
-  const folderPath = product.image_url?.replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/public\/[^/]+\//, "") ?? null;
+  const imagePathFromUrl = product.image_url?.replace(/^https?:\/\/[^/]+\/storage\/v1\/object\/public\/[^/]+\//, "") ?? null;
+  const folderPath = images[0]?.path
+    ? images[0].path.replace(/\/[^/]+$/, "")
+    : imagePathFromUrl
+      ? (/\.[a-z0-9]+$/i.test(imagePathFromUrl.split("/").pop() ?? "") ? imagePathFromUrl.replace(/\/[^/]+$/, "") : imagePathFromUrl)
+      : null;
 
   return (
     <div className="space-y-4">
       <Toast msg={msg} />
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="font-semibold text-gray-900">Images</h3>
+          <h3 className="font-semibold text-gray-900">Product Gallery</h3>
+          <p className="text-sm text-gray-500 mt-0.5">Upload product preview images and additional product gallery images here.</p>
           {folderPath && <p className="text-xs text-gray-400 font-mono mt-0.5 break-all">{folderPath}</p>}
         </div>
         <div className="shrink-0">
@@ -876,8 +1342,6 @@ function VariantDetailView({ product, variant, onOptionsChange, onBack }: {
   return (
     <div className="max-w-2xl space-y-10">
       <BackButton label={`Back to ${product.name} variants`} onClick={onBack} />
-      <ImagesSection product={product} />
-      <hr className="border-gray-100" />
       <OptionsSection productId={product.id} variantId={variant.id} options={options} onChange={handleOptions} />
       <hr className="border-gray-100" />
       <PricingSection productId={product.id} variantId={variant.id} options={options} />
@@ -891,6 +1355,8 @@ export default function Home() {
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [templateCategories, setTemplateCategories] = useState<TemplateCategory[]>([]);
+  const [freeTemplates, setFreeTemplates] = useState<FreeDesignTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -898,17 +1364,35 @@ export default function Home() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [productId,  setProductId]  = useState<string | null>(null);
   const [variantId,  setVariantId]  = useState<string | null>(null);
+  const [showGroups, setShowGroups] = useState(false);
+  const [showTemplates, setShowTemplates] = useState(false);
 
   // Derived objects
   const category = services.find(s => s.id === categoryId) ?? null;
   const product  = products.find(p => p.id === productId)  ?? null;
   const variant  = product?.variants.find(v => v.id === variantId) ?? null;
 
-  const level = variantId ? "detail" : productId ? "variants" : categoryId ? "products" : "categories";
+  const level = showGroups
+    ? "groups"
+    : showTemplates
+      ? "templates"
+      : variantId
+        ? "detail"
+        : productId
+          ? "variants"
+          : categoryId
+            ? "products"
+            : "categories";
 
   useEffect(() => {
-    Promise.all([getProducts(), getServices(), getGroups()])
-      .then(([prods, svcs, grps]) => { setProducts(prods); setServices(svcs); setGroups(grps); })
+    Promise.all([getProducts(), getServices(), getGroups(), getTemplateCategories(), getFreeTemplates()])
+      .then(([prods, svcs, grps, templateCats, templates]) => {
+        setProducts(prods);
+        setServices(svcs);
+        setGroups(grps);
+        setTemplateCategories(templateCats);
+        setFreeTemplates(templates);
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -918,16 +1402,55 @@ export default function Home() {
   }
 
   // Breadcrumb crumbs for each level
-  const crumbs = [
-    { label: "Categories", onClick: level !== "categories" ? () => { setCategoryId(null); setProductId(null); setVariantId(null); } : undefined },
-    ...(category ? [{ label: category.name, onClick: level !== "products" ? () => { setProductId(null); setVariantId(null); } : undefined }] : []),
-    ...(product  ? [{ label: product.name,  onClick: level !== "variants" ? () => { setVariantId(null); } : undefined }] : []),
-    ...(variant  ? [{ label: variant.variant_name }] : []),
-  ];
+  const crumbs = showGroups
+    ? [
+        {
+          label: "Categories",
+          onClick: () => {
+            setShowGroups(false);
+            setShowTemplates(false);
+            setCategoryId(null);
+            setProductId(null);
+            setVariantId(null);
+          },
+        },
+        { label: "Groups" },
+      ]
+    : showTemplates
+      ? [
+          {
+            label: "Categories",
+            onClick: () => {
+              setShowTemplates(false);
+              setShowGroups(false);
+              setCategoryId(null);
+              setProductId(null);
+              setVariantId(null);
+            },
+          },
+          { label: "Free Templates" },
+        ]
+      : [
+          {
+            label: "Categories",
+            onClick: level !== "categories"
+              ? () => {
+                  setCategoryId(null);
+                  setProductId(null);
+                  setVariantId(null);
+                }
+              : undefined,
+          },
+          ...(category ? [{ label: category.name, onClick: level !== "products" ? () => { setProductId(null); setVariantId(null); } : undefined }] : []),
+          ...(product  ? [{ label: product.name,  onClick: level !== "variants" ? () => { setVariantId(null); } : undefined }] : []),
+          ...(variant  ? [{ label: variant.variant_name }] : []),
+        ];
 
   // Page title for each level
   const subtitle: Record<typeof level, string> = {
     categories: "Select a category to get started",
+    groups:     "Add, rename, or remove product groups",
+    templates:  "Upload and manage free design templates",
     products:   `Products in ${category?.name ?? ""}`,
     variants:   `Variants of ${product?.name ?? ""}`,
     detail:     `${variant?.variant_name ?? ""} — ${product?.name ?? ""}`,
@@ -965,7 +1488,32 @@ export default function Home() {
             services={services} products={products}
             onSelect={s => setCategoryId(s.id)}
             onCreated={s => setServices(prev => [...prev, s])}
+            onRenamed={(id, name) => setServices(prev => prev.map(s => s.id === id ? { ...s, name } : s))}
             onDeleted={id => setServices(prev => prev.filter(s => s.id !== id))}
+            onPreviewUpdated={(id, imageUrl) => setServices(prev => prev.map(s => s.id === id ? { ...s, image_url: imageUrl } : s))}
+            onManageGroups={() => { setShowTemplates(false); setShowGroups(true); }}
+            onManageTemplates={() => { setShowGroups(false); setShowTemplates(true); }}
+          />
+        )}
+
+        {level === "groups" && (
+          <GroupsView
+            groups={groups} products={products}
+            onBack={() => setShowGroups(false)}
+            onCreated={g => setGroups(prev => [...prev, g])}
+            onRenamed={(id, name) => setGroups(prev => prev.map(g => g.id === id ? { ...g, name } : g))}
+            onDeleted={id => setGroups(prev => prev.filter(g => g.id !== id))}
+          />
+        )}
+
+        {level === "templates" && (
+          <TemplatesView
+            categories={templateCategories}
+            templates={freeTemplates}
+            onBack={() => setShowTemplates(false)}
+            onCategoryCreated={(category) => setTemplateCategories((prev) => [...prev, category])}
+            onTemplateCreated={(template) => setFreeTemplates((prev) => [template, ...prev])}
+            onTemplateDeleted={(id) => setFreeTemplates((prev) => prev.filter((template) => template.id !== id))}
           />
         )}
 

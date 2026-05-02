@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { generateInvoicePdf } from "./pdf";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -545,10 +546,18 @@ export const sendOrderInvoice = async (opts: {
 
   const baseTotal = Number((unitPrice * quantity).toFixed(2));
 
+  // Generate PDF attachment
+  const pdfBuffer = await generateInvoicePdf({
+    orderId, businessName, clientCode, phone, productName, variantName, quantity,
+    unitPrice, discountAmount, designSurcharge, finalAmount, configurations,
+    designCode, notes, paymentMethod, acceptedAt,
+  }).catch(() => null);
+
   await transporter.sendMail({
     from: FROM,
     to,
     subject: `Invoice ${invoiceNumber} — Order Accepted`,
+    attachments: pdfBuffer ? [{ filename: `${invoiceNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }] : undefined,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:640px;margin:0 auto;color:#1e293b;">
         <div style="background:#0f172a;padding:32px 40px;display:flex;align-items:center;justify-content:space-between;">

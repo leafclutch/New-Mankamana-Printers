@@ -3,11 +3,14 @@ import { ApiError } from "../../utils/api-error";
 import { withCache } from "../../utils/cache";
 import { invalidateCatalogGroupCache } from "./catalog-cache.service";
 
+const CATALOG_GROUP_BROWSE_TTL_MS = 60_000;
+const CATALOG_GROUP_DETAIL_TTL_MS = 60_000;
+
 // Returns the unified catalog for the client browse page:
 // - active groups (with their sub-product count)
 // - active standalone products (no group_id)
 export const listCatalogService = async () => {
-  return withCache("catalog:browse", 120_000, async () => {
+  return withCache("catalog:browse", CATALOG_GROUP_BROWSE_TTL_MS, async () => {
     const [groups, standaloneProducts] = await Promise.all([
       prisma.productGroup.findMany({
         where: { is_active: true },
@@ -59,7 +62,7 @@ export const listCatalogService = async () => {
 
 // Returns a group with all its active sub-products
 export const getProductGroupService = async (groupId: string) => {
-  return withCache(`catalog:group:${groupId}`, 120_000, async () => {
+  return withCache(`catalog:group:${groupId}`, CATALOG_GROUP_DETAIL_TTL_MS, async () => {
     const group = await prisma.productGroup.findFirst({
       where: { id: groupId, is_active: true },
       select: {

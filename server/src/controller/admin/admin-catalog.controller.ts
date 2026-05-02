@@ -84,6 +84,8 @@ export const listProducts = async (req: Request, res: Response) => {
         product_code: p.product_code,
         name: p.name,
         description: p.description,
+        image_url: p.image_url,
+        preview_images: p.preview_images,
         fields: variant
           ? variant.option_groups.map((g) => ({
               id: g.id,
@@ -149,6 +151,8 @@ export const createProductUnderService = async (req: Request, res: Response) => 
         product_code: product.product_code,
         name: product.name,
         description: product.description,
+        image_url: product.image_url,
+        preview_images: product.preview_images,
         fields: [],
       },
     });
@@ -189,6 +193,8 @@ export const getProductById = async (req: Request, res: Response) => {
         product_code: product.product_code,
         name: product.name,
         description: product.description,
+        image_url: product.image_url,
+        preview_images: product.preview_images,
         fields: variant
           ? variant.option_groups.map((g) => ({
               id: g.id,
@@ -216,7 +222,23 @@ export const getProductById = async (req: Request, res: Response) => {
 export const updateProduct = async (req: Request, res: Response) => {
   try {
     const productId = req.params.productId as string;
-    const { name, description, product_code } = req.body;
+    const { name, description, product_code, image_url, preview_images } = req.body;
+
+    const nextImageUrl =
+      image_url === undefined
+        ? undefined
+        : typeof image_url === "string"
+          ? image_url.trim() || null
+          : null;
+
+    const nextPreviewImages =
+      preview_images === undefined
+        ? undefined
+        : Array.isArray(preview_images)
+          ? preview_images
+            .map((value) => String(value).trim())
+            .filter((value) => value.length > 0)
+          : [];
 
     const product = await prisma.product.update({
       where: { id: productId },
@@ -224,6 +246,8 @@ export const updateProduct = async (req: Request, res: Response) => {
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
         ...(product_code !== undefined && { product_code }),
+        ...(nextImageUrl !== undefined && { image_url: nextImageUrl }),
+        ...(nextPreviewImages !== undefined && { preview_images: nextPreviewImages }),
       },
     });
     await invalidateCatalogCachesForProduct(product.id);
@@ -235,6 +259,8 @@ export const updateProduct = async (req: Request, res: Response) => {
         product_code: product.product_code,
         name: product.name,
         description: product.description,
+        image_url: product.image_url,
+        preview_images: product.preview_images,
       },
     });
   } catch (error: any) {

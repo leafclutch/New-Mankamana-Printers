@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 
 export async function GET() {
   const data = await db.productCategory.findMany({ where: { is_active: true }, orderBy: { created_at: "asc" } });
-  return NextResponse.json(data.map(c => ({ id: c.id, name: c.name })));
+  return NextResponse.json(data.map(c => ({ id: c.id, name: c.name, image_url: c.image_url })));
 }
 
 export async function DELETE(req: Request) {
@@ -16,6 +16,13 @@ export async function DELETE(req: Request) {
 
   await db.productCategory.update({ where: { id }, data: { is_active: false } });
   return NextResponse.json({ ok: true });
+}
+
+export async function PATCH(req: Request) {
+  const { id, name } = await req.json();
+  if (!id || !name?.trim()) return NextResponse.json({ error: "id and name required" }, { status: 400 });
+  const category = await db.productCategory.update({ where: { id }, data: { name: name.trim() } });
+  return NextResponse.json({ id: category.id, name: category.name, image_url: category.image_url });
 }
 
 export async function POST(req: Request) {
@@ -31,5 +38,5 @@ export async function POST(req: Request) {
   while (slugs.has(slug)) slug = `${base}-${i++}`;
 
   const category = await db.productCategory.create({ data: { name: name.trim(), slug } });
-  return NextResponse.json({ id: category.id, name: category.name }, { status: 201 });
+  return NextResponse.json({ id: category.id, name: category.name, image_url: category.image_url }, { status: 201 });
 }

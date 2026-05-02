@@ -19,6 +19,11 @@ type PricingRowLike = {
   selected_options: unknown;
 };
 
+const CATALOG_PRODUCTS_TTL_MS = 60_000;
+const CATALOG_PRODUCT_DETAIL_TTL_MS = 60_000;
+const CATALOG_VARIANTS_TTL_MS = 60_000;
+const CATALOG_VARIANT_OPTIONS_TTL_MS = 120_000;
+
 const toSelectedOptions = (value: unknown): SelectedOptions => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};
@@ -65,7 +70,7 @@ const mapCatalogPricingRow = (pricingRow: PricingRowLike) => {
 
 // listActiveProductsService: Fetches the active product catalog for authenticated users
 export const listActiveProductsService = async () => {
-  return withCache("catalog:active-products", 600_000, async () => {
+  return withCache("catalog:active-products", CATALOG_PRODUCTS_TTL_MS, async () => {
     const products = await prisma.product.findMany({
       where: { is_active: true },
       select: {
@@ -88,7 +93,7 @@ export const listActiveProductsService = async () => {
 
 // getActiveProductByIdService: Returns a single active product by id
 export const getActiveProductByIdService = async (productId: string) => {
-  return withCache(`catalog:product:${productId}`, 600_000, async () => {
+  return withCache(`catalog:product:${productId}`, CATALOG_PRODUCT_DETAIL_TTL_MS, async () => {
     const product = await prisma.product.findFirst({
       where: { id: productId, is_active: true },
       select: {
@@ -108,7 +113,7 @@ export const getActiveProductByIdService = async (productId: string) => {
 
 // listActiveVariantsByProductService: Returns active variants for a specific active product
 export const listActiveVariantsByProductService = async (productId: string) => {
-  return withCache(`catalog:variants:${productId}`, 300_000, async () => {
+  return withCache(`catalog:variants:${productId}`, CATALOG_VARIANTS_TTL_MS, async () => {
     const product = await prisma.product.findFirst({
       where: {
         id: productId,
@@ -153,7 +158,7 @@ export const listActiveVariantsByProductService = async (productId: string) => {
 // Also returns all active pricing rows so the client can compute prices locally
 // without a separate API round-trip.
 export const listVariantOptionsService = async (variantId: string) => {
-  return withCache(`catalog:variant-options:${variantId}`, 300_000, async () => {
+  return withCache(`catalog:variant-options:${variantId}`, CATALOG_VARIANT_OPTIONS_TTL_MS, async () => {
     const variant = await prisma.productVariant.findFirst({
       where: {
         id: variantId,

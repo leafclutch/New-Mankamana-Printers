@@ -3,6 +3,8 @@ import * as orderService from "../../services/orders/product-order.service";
 import { createProductOrderSchema, updateOrderStatusSchema, setDeliveryDateSchema } from "../../validators/order.validator";
 import { uploadToSupabase, downloadFromSupabase } from "../../utils/file-upload";
 import { withRequestDedupe } from "../../utils/request-dedupe";
+import { generateInvoicePdf } from "../../utils/pdf";
+import prisma from "../../connect";
 
 // Converts raw Prisma Decimal fields to numbers for any single order object
 // returned by service calls that don't go through serializeOrder() in the service layer.
@@ -238,5 +240,63 @@ export const getOrderPaymentProof = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Error proxying order payment proof:", error);
     return res.status(500).end();
+  }
+};
+
+// downloadOrderInvoice: Admin-only — generates and streams a PDF invoice for any order
+export const downloadOrderInvoice = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        client: { select: { business_name: true, client_code: true, phone_number: true } },
+        variant: { include: { product: true } },
+        configurations: true,
+        approvedDesign: { select: { designCode: true } },
+        statusHistory: { orderBy: { changed_at: "asc" } },
+      },
+    });
+
+    if (!order) return res.status(404).json({ success: false, message: "Order not found" });
+
+    // Find when order was accepted (moved to ORDER_PROCESSING)
+    const acceptedEntry = order.statusHistory.find((h) => h.status === "ORDER_PROCESSING");
+    const acceptedAt = acceptedEntry?.changed_at ?? order.created_at;
+
+    const snap = order.pricing_snapshot as any;
+    const designSurcharge = snap?.designExtraPrice ? Number(snap.designExtraPrice) * order.quantity : 0;
+
+    const pdfBuffer = await generateInvoicePdf({
+      orderId: order.id,
+      businessName: order.client.business_name,
+      clientCode: order.client.client_code || "",
+      phone: order.client.phone_number,
+      productName: order.variant.product.name,
+      variantName: order.variant.variant_name,
+      quantity: order.quantity,
+      unitPrice: Number(order.unit_price),
+      discountAmount: Number(order.discount_amount ?? 0),
+      designSurcharge,
+      finalAmount: Number(order.final_amount),
+      configurations: order.configurations.map((c) => ({
+        group_label: c.group_label,
+        selected_label: c.selected_label,
+      })),
+      designCode: order.approvedDesign?.designCode ?? null,
+      notes: order.notes ?? null,
+      paymentMethod: order.walletTransactionId ? "Wallet" : "Bank Transfer",
+      acceptedAt,
+    });
+
+    const invoiceNumber = `INV-${order.id.slice(0, 8).toUpperCase()}`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${invoiceNumber}.pdf"`);
+    res.setHeader("Cache-Control", "private, no-store");
+    return res.send(pdfBuffer);
+  } catch (error) {
+    console.error("Error generating order invoice PDF:", error);
+    return res.status(500).json({ success: false, message: "Failed to generate invoice" });
   }
 };

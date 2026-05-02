@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Search, Package, Clock, CheckCircle2, Printer, Truck,
   RefreshCw, Calendar, XCircle, ChevronRight, AlertTriangle,
-  Eye, FileText, X, Wallet,
+  Eye, FileText, X, Wallet, Receipt,
 } from "lucide-react";
 
 type OrderStatus =
@@ -432,31 +432,37 @@ function OrderDetailModal({
         </div>
 
         {/* Footer actions */}
-        {!isFinal && (
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
-            {isPending ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                onClick={() => onCancel(order)}
-              >
-                <XCircle className="h-3.5 w-3.5 mr-1.5" /> Cancel Order
-              </Button>
-            ) : null}
-            <div className="flex-1" />
-            {nextStatus && nextLabel && (
-              <Button
-                size="sm"
-                disabled={advancing}
-                onClick={() => onAdvance(order)}
-                className="bg-[#0061FF] text-white hover:bg-[#0052d9] px-5"
-              >
-                {advancing ? "Updating…" : nextLabel} →
-              </Button>
-            )}
-          </div>
-        )}
+        <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 flex-wrap">
+          {!isFinal && isPending && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              onClick={() => onCancel(order)}
+            >
+              <XCircle className="h-3.5 w-3.5 mr-1.5" /> Cancel Order
+            </Button>
+          )}
+          <a
+            href={`/api/admin/orders/${order.id}/invoice-pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <Receipt className="h-3.5 w-3.5" /> Download Invoice PDF
+          </a>
+          <div className="flex-1" />
+          {!isFinal && nextStatus && nextLabel && (
+            <Button
+              size="sm"
+              disabled={advancing}
+              onClick={() => onAdvance(order)}
+              className="bg-[#0061FF] text-white hover:bg-[#0052d9] px-5"
+            >
+              {advancing ? "Updating…" : nextLabel} →
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

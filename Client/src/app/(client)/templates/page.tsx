@@ -526,6 +526,7 @@ function TemplatesContent() {
                                             ) : (
                                                 <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4 flex gap-4 items-start">
                                                     {previewUrl && (
+                                                        /* eslint-disable-next-line @next/next/no-img-element */
                                                         <img
                                                             src={previewUrl}
                                                             alt="Design preview"

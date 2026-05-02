@@ -1,11 +1,11 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import prisma from "../../connect";
 import { buildCombinationKey, normalizeSelectedOptions } from "./product-pricing.service";
 import {
   invalidateCatalogCachesForProduct,
   invalidateCatalogCachesForVariant,
   invalidateCatalogPricingForVariant,
 } from "./catalog-cache.service";
-const prisma = new PrismaClient();
 
 // Product Management
 // createProductService: Logic to add a new base product to the catalog

@@ -121,6 +121,7 @@ router.patch("/orders/:orderId/status", protect, restrictTo("ADMIN"), criticalAc
 router.patch("/orders/:orderId/delivery-date", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productOrderController.setOrderDeliveryDate);
 router.get("/orders/:orderId", protect, restrictTo("ADMIN"), productOrderController.getOrderDetails);
 router.get("/orders/:orderId/payment-proof", protect, restrictTo("ADMIN"), productOrderController.getOrderPaymentProof);
+router.get("/orders/:orderId/invoice-pdf", protect, restrictTo("ADMIN"), productOrderController.downloadOrderInvoice);
 router.get("/orders/:orderId/attachments/:fileKey", protect, restrictTo("ADMIN"), productOrderController.getOrderAttachmentFile);
 
 // ANALYTICS: Visitor and page-view stats for admin dashboard

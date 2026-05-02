@@ -157,6 +157,7 @@ export default function TopUpPage() {
                                 {pd.qrImageUrl && (
                                     <div className="mt-4 flex flex-col items-center gap-2">
                                         <p className="text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-400">Scan to Pay</p>
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
                                             src={`${API_BASE}/wallet/qr-image`}
                                             alt="QR Code"

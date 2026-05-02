@@ -2,10 +2,10 @@
 
 import { useState, useEffect, use, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { useAuthStore, getAuthHeaders } from "@/store/authStore";
 import { notify } from "@/utils/notifications";
 import { fetchJsonCached, revalidateInBackground } from "@/utils/requestCache";
+import { uniqueImageUrls } from "@/utils/image";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
@@ -63,6 +63,7 @@ interface PricingResult {
 }
 
 interface PaymentDetails {
+  id: string;
   companyName: string;
   bankName: string;
   accountName: string;
@@ -123,6 +124,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [failedPreviewUrls, setFailedPreviewUrls] = useState<Record<string, true>>({});
   const [product, setProduct] = useState<Product | null>(null);
   const [variants, setVariants] = useState<Variant[]>([]);
   const [selectedVariantId, setSelectedVariantId] = useState("");
@@ -135,7 +137,8 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const [notes, setNotes] = useState("");
   const [pricingRows, setPricingRows] = useState<PricingRow[]>([]);
   const [pricingError, setPricingError] = useState<string | null>(null);
-  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentDetails[]>([]);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"proof" | "wallet">("proof");
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -168,8 +171,22 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     setLoadingProduct(true);
     fetchJsonCached<ApiResponse<Product>>(`catalog-product-${productId}`, `${API_BASE}/products/${productId}`, { headers: getAuthHeaders() }, 120_000)
       .then((d) => {
-        if (d.success || d.data) setProduct(d.data || d);
-        else notify.error("Product not found");
+        if (d.success && d.data) {
+          setProduct(d.data);
+          setPreviewIndex(0);
+          setFailedPreviewUrls({});
+          return;
+        }
+
+        const legacyProduct = d as unknown as Product;
+        if (legacyProduct?.id) {
+          setProduct(legacyProduct);
+          setPreviewIndex(0);
+          setFailedPreviewUrls({});
+          return;
+        }
+
+        notify.error("Product not found");
       })
       .catch(() => notify.error("Failed to load product"))
       .finally(() => setLoadingProduct(false));
@@ -493,8 +510,13 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   // Step 2 → 3: verify price + fetch payment details
   const proceedToStep3 = async () => {
     await Promise.allSettled([
-      fetchJsonCached<ApiResponse<PaymentDetails>>("wallet-payment-details", `${API_BASE}/wallet/payment-details`, { headers: getAuthHeaders() }, 10_000)
-        .then((d) => { if (d.success) setPaymentDetails(d.data); })
+      fetchJsonCached<ApiResponse<PaymentDetails[]>>("wallet-payment-details", `${API_BASE}/wallet/payment-details`, { headers: getAuthHeaders() }, 10_000)
+        .then((d) => {
+          if (d.success && Array.isArray(d.data)) {
+            setPaymentMethods(d.data);
+            if (d.data.length > 0) setSelectedPaymentMethodId(d.data[0].id);
+          }
+        })
         .catch(() => {}),
       fetch(`${API_BASE}/wallet/balance`, { headers: getAuthHeaders() })
         .then((r) => r.json())
@@ -710,8 +732,17 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const labelCls = "block text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em] mb-1.5";
 
   const renderStep1 = () => {
-    const images = [...(product.preview_images?.length ? product.preview_images : []), ...(product.image_url ? [product.image_url] : [])].filter(Boolean);
-    const activeImg = images[previewIndex] ?? null;
+    const images = uniqueImageUrls([
+      ...(Array.isArray(product.preview_images) ? product.preview_images : []),
+      product.image_url,
+    ]).filter((src) => !failedPreviewUrls[src]);
+
+    const activeIndex = images.length === 0 ? -1 : Math.min(previewIndex, images.length - 1);
+    const activeImg = activeIndex >= 0 ? images[activeIndex] : null;
+
+    const markPreviewFailed = (src: string) => {
+      setFailedPreviewUrls((prev) => (prev[src] ? prev : { ...prev, [src]: true }));
+    };
 
     return (
       <div className="flex flex-col gap-5">
@@ -719,9 +750,14 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         <div className="rounded-xl overflow-hidden border border-slate-100 bg-white shadow-sm">
           <div className="relative w-full h-56 bg-slate-50">
             {activeImg ? (
-              <Image src={activeImg} alt={product.name} fill priority sizes="(max-width: 768px) 100vw, 720px" className="object-contain p-3" />
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={activeImg} alt={product.name} className="w-full h-full object-contain p-3" loading="eager" onError={() => markPreviewFailed(activeImg)} />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-4xl">🖨️</div>
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 px-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                  No preview available
+                </p>
+              </div>
             )}
             {images.length > 1 && (
               <>
@@ -749,13 +785,14 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
             <div className="flex gap-1.5 px-3 pb-3 pt-2 overflow-x-auto">
               {images.map((src, i) => (
                 <button
-                  key={i}
+                  key={`${src}-${i}`}
                   type="button"
                   aria-label={`Preview ${i + 1}`}
                   onClick={() => setPreviewIndex(i)}
-                  className={`relative w-11 h-11 rounded-lg shrink-0 overflow-hidden border-2 transition-all ${i === previewIndex ? "border-[#0f172a] shadow-sm" : "border-slate-200 opacity-60 hover:opacity-100"}`}
+                  className={`relative w-11 h-11 rounded-lg shrink-0 overflow-hidden border-2 transition-all ${i === activeIndex ? "border-[#0f172a] shadow-sm" : "border-slate-200 opacity-60 hover:opacity-100"}`}
                 >
-                  <Image src={src} alt="" fill className="object-cover" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt="" className="w-full h-full object-cover" loading="lazy" onError={() => markPreviewFailed(src)} />
                 </button>
               ))}
             </div>
@@ -1100,6 +1137,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           id="attachment-files"
           type="file"
           multiple
+          accept="image/*,.pdf,.tiff,.tif,.zip,.eps,.ai,.psd,.cdr"
           className="hidden"
           title="Attach reference files for your order"
           aria-label="Attach reference files"
@@ -1215,35 +1253,58 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         {/* Bank transfer details */}
         {paymentMethod === "proof" && (
           <>
-            {paymentDetails && (
-              <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
-                <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100">
-                  <span className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em]">Bank / QR Details</span>
-                </div>
-                <div className="px-4 py-4 bg-white flex flex-col gap-2.5 text-sm">
-                  {[
-                    ["Bank", paymentDetails.bankName],
-                    ["Account Name", paymentDetails.accountName],
-                    ["Account No.", paymentDetails.accountNumber],
-                    ...(paymentDetails.branch ? [["Branch", paymentDetails.branch]] : []),
-                    ...(paymentDetails.paymentId ? [["UPI / Payment ID", paymentDetails.paymentId]] : []),
-                  ].map(([label, value]) => (
-                    <div key={label} className="flex justify-between items-center">
-                      <span className="text-slate-400 text-xs">{label}</span>
-                      <span className="font-semibold text-slate-900 text-right max-w-[60%]">{value}</span>
+            {paymentMethods.length > 0 && (() => {
+              const paymentDetails = paymentMethods.find((m) => m.id === selectedPaymentMethodId) ?? paymentMethods[0];
+              return (
+                <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
+                  <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100">
+                    <span className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em]">Bank / QR Details</span>
+                  </div>
+                  {/* Tabs when multiple payment methods */}
+                  {paymentMethods.length > 1 && (
+                    <div className="flex gap-1 px-4 pt-3 overflow-x-auto">
+                      {paymentMethods.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => setSelectedPaymentMethodId(m.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                            (selectedPaymentMethodId ?? paymentMethods[0].id) === m.id
+                              ? "bg-[#0f172a] text-white"
+                              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                          }`}
+                        >
+                          {m.companyName}
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                  {paymentDetails.note && (
-                    <p className="mt-0.5 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">{paymentDetails.note}</p>
                   )}
-                  {paymentDetails.qrImageUrl && (
-                    <div className="mt-2 flex justify-center">
-                      <img src={`${API_BASE}/wallet/qr-image`} alt="QR Code" className="w-44 h-44 object-contain border border-slate-100 rounded-xl p-2 shadow-sm" />
-                    </div>
-                  )}
+                  <div className="px-4 py-4 bg-white flex flex-col gap-2.5 text-sm">
+                    {[
+                      ["Bank", paymentDetails.bankName],
+                      ["Account Name", paymentDetails.accountName],
+                      ["Account No.", paymentDetails.accountNumber],
+                      ...(paymentDetails.branch ? [["Branch", paymentDetails.branch]] : []),
+                      ...(paymentDetails.paymentId ? [["UPI / Payment ID", paymentDetails.paymentId]] : []),
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex justify-between items-center">
+                        <span className="text-slate-400 text-xs">{label}</span>
+                        <span className="font-semibold text-slate-900 text-right max-w-[60%]">{value}</span>
+                      </div>
+                    ))}
+                    {paymentDetails.note && (
+                      <p className="mt-0.5 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">{paymentDetails.note}</p>
+                    )}
+                    {paymentDetails.qrImageUrl && (
+                      <div className="mt-2 flex justify-center">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={`${API_BASE}/wallet/qr-image?id=${paymentDetails.id}`} alt="QR Code" className="w-44 h-44 object-contain border border-slate-100 rounded-xl p-2 shadow-sm" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="border border-slate-100 rounded-xl overflow-hidden shadow-sm">
               <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-100">
@@ -1475,3 +1536,4 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     </div>
   );
 }
+

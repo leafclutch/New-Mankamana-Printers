@@ -283,6 +283,7 @@ export default function DesignApprovalPage() {
                       <span className="text-xs font-semibold text-red-500 uppercase tracking-wide">PDF Document</span>
                     </div>
                   ) : design.image ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={design.image}
                       alt={design.title}
@@ -448,6 +449,7 @@ export default function DesignApprovalPage() {
                 className="h-[480px] w-full border-0"
               />
             ) : selectedDesign?.fileUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={selectedDesign.fileUrl}
                 alt={selectedDesign.title}

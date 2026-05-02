@@ -286,6 +286,7 @@ export const fetchAdminWalletTransactions = async (params?: {
 };
 
 export interface AdminPaymentDetailsApi {
+  id: string;
   companyName: string;
   bankName: string;
   accountName: string;
@@ -296,10 +297,10 @@ export interface AdminPaymentDetailsApi {
   note?: string | null;
 }
 
-export const fetchAdminPaymentDetails = async (): Promise<AdminPaymentDetailsApi | null> => {
-  const data = await cachedJsonFetch<{ success: boolean; data: AdminPaymentDetailsApi }>(PAYMENT_DETAILS_CACHE_KEY, "/api/admin/wallet/payment-details", 60_000);
-  if (!data?.success) return null;
-  return data.data ?? null;
+export const fetchAdminPaymentDetails = async (): Promise<AdminPaymentDetailsApi[]> => {
+  const data = await cachedJsonFetch<{ success: boolean; data: AdminPaymentDetailsApi[] }>(PAYMENT_DETAILS_CACHE_KEY, "/api/admin/wallet/payment-details", 60_000);
+  if (!data?.success) return [];
+  return data.data ?? [];
 };
 
 export const invalidatePaymentDetailsCache = () => invalidateCacheKey(PAYMENT_DETAILS_CACHE_KEY);
@@ -313,12 +314,10 @@ export const createAdminPaymentDetails = async (payload: {
   paymentId?: string;
   qrFile?: File | null;
   note?: string;
-  isActive?: boolean;
 }) => {
   const { qrFile, ...rest } = payload;
 
   if (qrFile) {
-    // Upload QR as multipart so the backend can store the file
     const formData = new FormData();
     Object.entries(rest).forEach(([k, v]) => {
       if (v !== undefined && v !== null) formData.append(k, String(v));
@@ -334,19 +333,21 @@ export const createAdminPaymentDetails = async (payload: {
     return data as { success: boolean; message: string; data?: unknown };
   }
 
-  // No file — send JSON
   const response = await fetch(`/api/admin/wallet/payment-details`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rest),
   });
-
   const data = await safeJson(response);
-  if (!response.ok) {
-    throw new Error(data?.message || "Failed to save payment details.");
-  }
-
+  if (!response.ok) throw new Error(data?.message || "Failed to save payment details.");
   return data as { success: boolean; message: string; data?: unknown };
+};
+
+export const deleteAdminPaymentDetails = async (id: string) => {
+  const response = await fetch(`/api/admin/wallet/payment-details/${id}`, { method: "DELETE" });
+  const data = await safeJson(response);
+  if (!response.ok) throw new Error(data?.message || "Failed to delete payment method.");
+  return data as { success: boolean; message: string };
 };
 
 export const fetchAdminWalletNotifications = async (params?: {
