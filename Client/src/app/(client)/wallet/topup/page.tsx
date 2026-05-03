@@ -33,6 +33,7 @@ export default function TopUpPage() {
     const [note, setNote] = useState("");
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [failedQrById, setFailedQrById] = useState<Record<string, true>>({});
 
     useEffect(() => {
         fetchJsonCached<{ success: boolean; data: PaymentDetail | PaymentDetail[] }>(
@@ -44,6 +45,7 @@ export default function TopUpPage() {
             .then((data) => {
                 if (data.success) {
                     setPaymentDetails(Array.isArray(data.data) ? data.data : [data.data]);
+                    setFailedQrById({});
                 }
             })
             .finally(() => setLoadingDetails(false));
@@ -154,15 +156,22 @@ export default function TopUpPage() {
                                         <p className="text-xs text-amber-700">{pd.note}</p>
                                     </div>
                                 )}
-                                {pd.qrImageUrl && (
+                                {pd.qrImageUrl && !failedQrById[pd.id] ? (
                                     <div className="mt-4 flex flex-col items-center gap-2">
                                         <p className="text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-400">Scan to Pay</p>
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
-                                            src={`${API_BASE}/wallet/qr-image`}
+                                            src={`${API_BASE}/wallet/qr-image?id=${encodeURIComponent(pd.id)}`}
                                             alt="QR Code"
                                             className="w-44 h-44 object-contain rounded-xl border border-slate-100 shadow-sm p-2"
+                                            onError={() => setFailedQrById((prev) => ({ ...prev, [pd.id]: true }))}
                                         />
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-center">
+                                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                                            No preview available
+                                        </p>
                                     </div>
                                 )}
                             </div>

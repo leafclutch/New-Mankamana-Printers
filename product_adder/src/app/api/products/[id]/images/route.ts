@@ -18,6 +18,20 @@ function folderOf(path: string): string {
   return idx > 0 ? path.slice(0, idx) : path;
 }
 
+async function storageFileExists(path: string): Promise<boolean> {
+  if (!isFilePath(path)) return false;
+  const folder = folderOf(path);
+  const filename = path.split("/").pop() ?? "";
+  if (!filename) return false;
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .list(folder, { limit: 100, search: filename });
+
+  if (error) return false;
+  return (data ?? []).some((entry) => entry.name === filename && Boolean(entry.id));
+}
+
 function resolveFolderPath(product: { image_url: string | null; preview_images: string[] }): string | null {
   const firstPreview = product.preview_images?.[0];
   if (firstPreview) return folderOf(storagePath(firstPreview));
@@ -82,8 +96,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const publicUrl = supabase.storage.from(BUCKET).getPublicUrl(filePath).data.publicUrl;
   const currentPath = product.image_url ? storagePath(product.image_url) : "";
   const imageUrlLooksLikeFile = currentPath ? isFilePath(currentPath) : false;
+  const imageUrlExists = imageUrlLooksLikeFile ? await storageFileExists(currentPath) : false;
   const shouldSetPrimary =
-    !product.image_url || !imageUrlLooksLikeFile || (product.preview_images?.length ?? 0) === 0;
+    !product.image_url ||
+    !imageUrlLooksLikeFile ||
+    !imageUrlExists ||
+    (product.preview_images?.length ?? 0) === 0;
 
   await db.product.update({
     where: { id },

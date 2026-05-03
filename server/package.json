@@ -12,6 +12,8 @@
     "seed": "prisma migrate reset --force --skip-seed --skip-generate && npm run seed:run",
     "swagger": "tsx src/swagger.ts",
     "bucket:init": "tsx scripts/init-supabase-bucket.ts",
+    "catalog:repair-images": "tsx scripts/repair-catalog-image-data.ts",
+    "sheet": "tsx scripts/sheet.ts",
     "postinstall": "npm run prisma:generate"
   },
   "keywords": [],

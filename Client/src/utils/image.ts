@@ -10,14 +10,8 @@ const INVALID_IMAGE_VALUES = new Set([
 const HTTP_URL_RE = /^https?:\/\//i;
 const BLOB_URL_RE = /^blob:/i;
 const DATA_IMAGE_RE = /^data:image\//i;
-const IMAGE_EXTENSION_RE = /\.(?:apng|avif|bmp|gif|heic|heif|ico|jpe?g|png|svg|webp)$/i;
 const SUPABASE_HOST_RE = /\.supabase\.co$/i;
 const SUPABASE_PUBLIC_OBJECT_PATH = "/storage/v1/object/public/";
-
-function hasImageExtension(pathname: string): boolean {
-  const lastSegment = pathname.split("/").pop() ?? "";
-  return IMAGE_EXTENSION_RE.test(lastSegment);
-}
 
 function isInvalidSupabaseStorageUrl(value: string): boolean {
   let parsed: URL;
@@ -30,9 +24,11 @@ function isInvalidSupabaseStorageUrl(value: string): boolean {
   if (!SUPABASE_HOST_RE.test(parsed.hostname)) return false;
   if (!parsed.pathname.includes(SUPABASE_PUBLIC_OBJECT_PATH)) return false;
 
-  // Supabase public object URLs should point to an actual file.
-  // Folder-like paths (for example ".../images") are not renderable images.
-  return !hasImageExtension(parsed.pathname);
+  // Require both bucket name and object key in the public object URL path.
+  // Example valid pattern: /storage/v1/object/public/<bucket>/<object-key>
+  const [, objectPath = ""] = parsed.pathname.split(SUPABASE_PUBLIC_OBJECT_PATH);
+  const segments = objectPath.split("/").filter(Boolean);
+  return segments.length < 2;
 }
 
 export function normalizeImageUrl(raw: string | null | undefined): string | null {

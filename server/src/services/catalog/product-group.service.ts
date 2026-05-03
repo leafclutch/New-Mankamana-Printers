@@ -1,10 +1,32 @@
 import prisma from "../../connect";
 import { ApiError } from "../../utils/api-error";
 import { withCache } from "../../utils/cache";
+import { getPublicUrlForPath } from "../../utils/file-upload";
 import { invalidateCatalogGroupCache } from "./catalog-cache.service";
 
 const CATALOG_GROUP_BROWSE_TTL_MS = 60_000;
 const CATALOG_GROUP_DETAIL_TTL_MS = 60_000;
+
+const toPublicAssetUrl = (raw: string | null | undefined): string | null => {
+  if (!raw) return null;
+  const value = raw.trim();
+  if (!value) return null;
+  if (value.startsWith("http")) return value;
+  if (value.startsWith("/")) return value;
+  return getPublicUrlForPath(value);
+};
+
+const resolveCatalogImage = (
+  primary: string | null | undefined,
+  fallbacks: Array<string | null | undefined> = []
+): string | null => {
+  const candidates = [primary, ...fallbacks];
+  for (const candidate of candidates) {
+    const resolved = toPublicAssetUrl(candidate);
+    if (resolved) return resolved;
+  }
+  return null;
+};
 
 // Returns the unified catalog for the client browse page:
 // - active groups (with their sub-product count)
@@ -20,9 +42,18 @@ export const listCatalogService = async () => {
           name: true,
           description: true,
           image_url: true,
+          category: {
+            select: {
+              image_url: true,
+            },
+          },
           products: {
             where: { is_active: true },
-            select: { id: true },
+            select: {
+              id: true,
+              image_url: true,
+              preview_images: true,
+            },
           },
         },
         orderBy: { created_at: "asc" },
@@ -35,6 +66,7 @@ export const listCatalogService = async () => {
           name: true,
           description: true,
           image_url: true,
+          preview_images: true,
           production_days: true,
         },
         orderBy: { created_at: "asc" },
@@ -42,17 +74,28 @@ export const listCatalogService = async () => {
     ]);
 
     return {
-      groups: groups.map((g) => ({
-        id: g.id,
-        group_code: g.group_code,
-        name: g.name,
-        description: g.description,
-        image_url: g.image_url,
-        product_count: g.products.length,
-        type: "group" as const,
-      })),
+      groups: groups.map((g) => {
+        const firstProductImage =
+          g.products
+            .map((p) => resolveCatalogImage(p.image_url, p.preview_images))
+            .find((value): value is string => Boolean(value)) ?? null;
+
+        return {
+          id: g.id,
+          group_code: g.group_code,
+          name: g.name,
+          description: g.description,
+          image_url: resolveCatalogImage(g.image_url, [g.category?.image_url, firstProductImage]),
+          product_count: g.products.length,
+          type: "group" as const,
+        };
+      }),
       products: standaloneProducts.map((p) => ({
-        ...p,
+        id: p.id,
+        product_code: p.product_code,
+        name: p.name,
+        description: p.description,
+        image_url: resolveCatalogImage(p.image_url, p.preview_images),
         production_days: Number(p.production_days),
         type: "product" as const,
       })),
@@ -71,6 +114,11 @@ export const getProductGroupService = async (groupId: string) => {
         name: true,
         description: true,
         image_url: true,
+        category: {
+          select: {
+            image_url: true,
+          },
+        },
         products: {
           where: { is_active: true },
           select: {
@@ -79,6 +127,7 @@ export const getProductGroupService = async (groupId: string) => {
             name: true,
             description: true,
             image_url: true,
+            preview_images: true,
             production_days: true,
           },
           orderBy: { created_at: "asc" },
@@ -93,9 +142,21 @@ export const getProductGroupService = async (groupId: string) => {
       group_code: group.group_code,
       name: group.name,
       description: group.description,
-      image_url: group.image_url,
+      image_url: resolveCatalogImage(
+        group.image_url,
+        [
+          group.category?.image_url,
+          group.products
+            .map((p) => resolveCatalogImage(p.image_url, p.preview_images))
+            .find((value): value is string => Boolean(value)) ?? null,
+        ]
+      ),
       products: group.products.map((p) => ({
-        ...p,
+        id: p.id,
+        product_code: p.product_code,
+        name: p.name,
+        description: p.description,
+        image_url: resolveCatalogImage(p.image_url, p.preview_images),
         production_days: Number(p.production_days),
       })),
     };

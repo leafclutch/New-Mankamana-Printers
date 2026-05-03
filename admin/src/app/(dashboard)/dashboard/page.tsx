@@ -47,6 +47,11 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   ORDER_DELIVERED: "bg-emerald-100 text-emerald-600", ORDER_CANCELLED: "bg-red-100 text-red-600",
 };
 
+const toDateTimeLocalValue = (value: Date) => {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+};
+
 interface DashboardStats {
   active_orders: number;
   total_orders: number;
@@ -82,6 +87,14 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
+  const [reportFrom, setReportFrom] = useState(() => {
+    const now = new Date();
+    return toDateTimeLocalValue(new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0));
+  });
+  const [reportTo, setReportTo] = useState(() => {
+    const now = new Date();
+    return toDateTimeLocalValue(new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999));
+  });
 
   useEffect(() => {
     const loadStats = () => {
@@ -131,24 +144,32 @@ export default function DashboardPage() {
   };
 
   const handleExportReport = async () => {
+    const fromDate = reportFrom ? new Date(reportFrom) : null;
+    const toDate = reportTo ? new Date(reportTo) : null;
+    if (!fromDate || !toDate || Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      toast({ title: "Invalid date range", description: "Choose valid From and To date-time values.", variant: "destructive" });
+      return;
+    }
+    if (fromDate > toDate) {
+      toast({ title: "Invalid date range", description: "From date-time must be before To date-time.", variant: "destructive" });
+      return;
+    }
+
     try {
-      toast({ title: "Generating Report…", description: "Fetching order data." });
+      toast({ title: "Generating Report...", description: "Fetching order data." });
 
       invalidateCacheKey("dashboard-orders");
       const json = await cachedJsonFetch<OrdersApiResponse>("dashboard-orders", "/api/admin/orders", 5000);
       const allOrders: RecentOrder[] = Array.isArray(json) ? json : json.data ?? [];
 
-      // Filter to current month
-      const now = new Date();
-      const month = now.getMonth();
-      const year = now.getFullYear();
-      const monthOrders = allOrders.filter((o) => {
+      // Filter to the selected date-time range.
+      const rangeOrders = allOrders.filter((o) => {
         const d = new Date(o.created_at);
-        return d.getMonth() === month && d.getFullYear() === year;
+        return d >= fromDate && d <= toDate;
       });
 
-      if (monthOrders.length === 0) {
-        toast({ title: "No Data", description: "No orders found for the current month." });
+      if (rangeOrders.length === 0) {
+        toast({ title: "No Data", description: "No orders found in the selected date-time range." });
         return;
       }
 
@@ -167,10 +188,10 @@ export default function DashboardPage() {
       });
 
       // Sheet 1: Only fully delivered orders (money credited)
-      const deliveredOrders = monthOrders.filter((o) => o.status === "ORDER_DELIVERED");
+      const deliveredOrders = rangeOrders.filter((o) => o.status === "ORDER_DELIVERED");
 
-      // Sheet 2: All accepted orders — excludes cancelled and placed (not yet accepted)
-      const acceptedOrders = monthOrders.filter(
+      // Sheet 2: All accepted orders - excludes cancelled and placed (not yet accepted)
+      const acceptedOrders = rangeOrders.filter(
         (o) => o.status !== "ORDER_CANCELLED" && o.status !== "ORDER_PLACED"
       );
 
@@ -179,7 +200,7 @@ export default function DashboardPage() {
       const ws1 = XLSX.utils.json_to_sheet(
         deliveredOrders.length > 0
           ? deliveredOrders.map(toRow)
-          : [{ Note: "No delivered orders this month." }]
+          : [{ Note: "No delivered orders in the selected range." }]
       );
       ws1["!cols"] = [{ wch: 12 }, { wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 22 }];
       XLSX.utils.book_append_sheet(wb, ws1, "Delivered Orders");
@@ -187,23 +208,24 @@ export default function DashboardPage() {
       const ws2 = XLSX.utils.json_to_sheet(
         acceptedOrders.length > 0
           ? acceptedOrders.map((o) => ({ ...toRow(o), "Status": STATUS_LABELS[o.status] ?? o.status }))
-          : [{ Note: "No accepted orders this month." }]
+          : [{ Note: "No accepted orders in the selected range." }]
       );
       ws2["!cols"] = [{ wch: 12 }, { wch: 28 }, { wch: 22 }, { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 22 }, { wch: 14 }];
       XLSX.utils.book_append_sheet(wb, ws2, "Accepted Orders");
 
-      const fileName = `monthly-report-${year}-${String(month + 1).padStart(2, "0")}.xlsx`;
+      const safeFrom = reportFrom.replace(/[:T]/g, "-");
+      const safeTo = reportTo.replace(/[:T]/g, "-");
+      const fileName = `orders-report-${safeFrom}_to_${safeTo}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
       toast({
         title: "Report Exported",
-        description: `${deliveredOrders.length} delivered · ${acceptedOrders.length} accepted orders exported to ${fileName}`,
+        description: `${deliveredOrders.length} delivered / ${acceptedOrders.length} accepted orders exported to ${fileName}`,
       });
     } catch {
-      toast({ title: "Export Failed", description: "Could not generate the monthly report.", variant: "destructive" });
+      toast({ title: "Export Failed", description: "Could not generate the date-range report.", variant: "destructive" });
     }
   };
-
   return (
     <div className="space-y-8">
       <div className="rounded-2xl border border-slate-200 bg-white/80 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/70">
@@ -428,19 +450,43 @@ export default function DashboardPage() {
                 <ChevronRight className="text-slate-400 transition-transform group-hover:translate-x-1" />
               </button>
 
-              <button
-                type="button"
-                className="group flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
-                onClick={handleExportReport}
-              >
-                <div className="flex items-center gap-3">
-                  <FileOutput className="text-[#0061FF]" />
+              <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                <div className="mb-3 flex items-center gap-2">
+                  <FileOutput className="h-4 w-4 text-[#0061FF]" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Export Monthly Report
+                    Export Date-Time Report
                   </span>
                 </div>
-                <ChevronRight className="text-slate-400 transition-transform group-hover:translate-x-1" />
-              </button>
+                <div className="grid grid-cols-1 gap-2">
+                  <div>
+                    <Label htmlFor="report-from" className="text-[11px] uppercase tracking-wider text-slate-500">From</Label>
+                    <Input
+                      id="report-from"
+                      type="datetime-local"
+                      value={reportFrom}
+                      onChange={(event) => setReportFrom(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="report-to" className="text-[11px] uppercase tracking-wider text-slate-500">To</Label>
+                    <Input
+                      id="report-to"
+                      type="datetime-local"
+                      value={reportTo}
+                      onChange={(event) => setReportTo(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  className="mt-3 w-full justify-between"
+                  variant="outline"
+                  onClick={handleExportReport}
+                >
+                  Export Report
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -462,3 +508,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

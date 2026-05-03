@@ -46,6 +46,34 @@ export const getPaymentDetailByIdService = async (id: string) => {
   return prisma.companyPaymentDetail.findFirst({ where: { id, isActive: true } });
 };
 
+export const updatePaymentDetailsService = async (
+  id: string,
+  data: {
+    companyName: string;
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    branch?: string | null;
+    paymentId?: string | null;
+    qrImageUrl?: string | null;
+    note?: string | null;
+  }
+) => {
+  return prisma.companyPaymentDetail.update({
+    where: { id },
+    data: {
+      companyName: data.companyName,
+      bankName: data.bankName,
+      accountName: data.accountName,
+      accountNumber: data.accountNumber,
+      branch: data.branch ?? null,
+      paymentId: data.paymentId ?? null,
+      qrImageUrl: data.qrImageUrl ?? null,
+      note: data.note ?? null,
+    },
+  });
+};
+
 export const deletePaymentDetailsService = async (id: string) => {
   return prisma.companyPaymentDetail.update({
     where: { id },

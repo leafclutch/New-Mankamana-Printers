@@ -139,6 +139,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentDetails[]>([]);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState<string | null>(null);
+  const [failedPaymentQrById, setFailedPaymentQrById] = useState<Record<string, true>>({});
   const [paymentMethod, setPaymentMethod] = useState<"proof" | "wallet">("proof");
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [proofFile, setProofFile] = useState<File | null>(null);
@@ -514,6 +515,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         .then((d) => {
           if (d.success && Array.isArray(d.data)) {
             setPaymentMethods(d.data);
+            setFailedPaymentQrById({});
             if (d.data.length > 0) setSelectedPaymentMethodId(d.data[0].id);
           }
         })
@@ -1295,10 +1297,21 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                     {paymentDetails.note && (
                       <p className="mt-0.5 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">{paymentDetails.note}</p>
                     )}
-                    {paymentDetails.qrImageUrl && (
+                    {paymentDetails.qrImageUrl && !failedPaymentQrById[paymentDetails.id] ? (
                       <div className="mt-2 flex justify-center">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={`${API_BASE}/wallet/qr-image?id=${paymentDetails.id}`} alt="QR Code" className="w-44 h-44 object-contain border border-slate-100 rounded-xl p-2 shadow-sm" />
+                        <img
+                          src={`${API_BASE}/wallet/qr-image?id=${paymentDetails.id}`}
+                          alt="QR Code"
+                          className="w-44 h-44 object-contain border border-slate-100 rounded-xl p-2 shadow-sm"
+                          onError={() => setFailedPaymentQrById((prev) => ({ ...prev, [paymentDetails.id]: true }))}
+                        />
+                      </div>
+                    ) : (
+                      <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-5 text-center">
+                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-slate-500">
+                          No preview available
+                        </p>
                       </div>
                     )}
                   </div>

@@ -85,9 +85,33 @@ function CardGrid({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">{children}</div>;
 }
 
+function PreviewCardImage({ imageUrl, alt }: { imageUrl: string | null | undefined; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  const url = typeof imageUrl === "string" && imageUrl.trim() ? imageUrl : null;
+  const canRender = Boolean(url && !failed);
+
+  return (
+    <div className="mb-3 aspect-[4/3] rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+      {canRender ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url!}
+          alt={alt}
+          className="w-full h-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center px-3 text-center">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">No preview</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Generic editable card — shows rename input on edit mode, delete + edit buttons on hover
-function EditableCard({ title, sub, meta, onClick, onRename, onDelete, deleting }: {
-  title: string; sub?: string; meta?: string;
+function EditableCard({ title, sub, meta, imageUrl, onClick, onRename, onDelete, deleting }: {
+  title: string; sub?: string; meta?: string; imageUrl?: string | null;
   onClick: () => void;
   onRename?: (name: string) => Promise<void>;
   onDelete?: () => void; deleting?: boolean;
@@ -120,6 +144,7 @@ function EditableCard({ title, sub, meta, onClick, onRename, onDelete, deleting 
   return (
     <div role="button" tabIndex={0} onClick={onClick} onKeyDown={e => e.key === "Enter" && onClick()}
       className="group relative bg-white border border-gray-200 rounded-2xl p-5 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer">
+      {imageUrl !== undefined && <PreviewCardImage imageUrl={imageUrl} alt={`${title} preview`} />}
       <p className="font-semibold text-gray-900 truncate pr-14 leading-snug">{title}</p>
       {sub  && <p className="text-sm text-gray-500 mt-1">{sub}</p>}
       {meta && <p className="text-xs text-gray-400 font-mono mt-2">{meta}</p>}
@@ -326,6 +351,7 @@ function CategoriesView({ services, products, onSelect, onCreated, onRenamed, on
         {services.map(s => (
           <EditableCard key={s.id} title={s.name}
             sub={`${countFor(s.id)} product${countFor(s.id) !== 1 ? "s" : ""}`}
+            imageUrl={s.image_url ?? null}
             onClick={() => onSelect(s)}
             onRename={newName => rename(s, newName)}
             onDelete={() => del(s)} deleting={deletingId === s.id} />
@@ -631,6 +657,7 @@ function ProductCard({ product, groups, onSelect, onDeleted, onGroupChanged, onR
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState(product.name);
   const [savingName, setSavingName] = useState(false);
+  const previewUrl = product.image_url || product.preview_images[0] || null;
 
   async function del(e: React.MouseEvent) {
     e.stopPropagation();
@@ -683,6 +710,7 @@ function ProductCard({ product, groups, onSelect, onDeleted, onGroupChanged, onR
       {/* clickable title area */}
       <div role="button" tabIndex={0} onClick={onSelect} onKeyDown={e => e.key === "Enter" && onSelect()}
         className="cursor-pointer flex-1 min-w-0">
+        <PreviewCardImage imageUrl={previewUrl} alt={`${product.name} preview`} />
         <p className="font-semibold text-gray-900 truncate pr-14 leading-snug">{product.name}</p>
         <p className="text-sm text-gray-500 mt-1">{product.variants.length} variant{product.variants.length !== 1 ? "s" : ""}</p>
         <p className="text-xs text-gray-400 font-mono mt-1">{product.product_code}</p>
@@ -842,10 +870,11 @@ function VariantCard({ variant, totalVariants, onSelect, onRenamed, onDeleted }:
   );
 }
 
-function VariantsView({ product, onSelect, onAdded, onRenamed, onDeleted, onBack }: {
+function VariantsView({ product, onSelect, onAdded, onRenamed, onDeleted, onProductMediaUpdated, onBack }: {
   product: Product;
   onSelect: (v: Variant) => void; onAdded: (v: Variant) => void;
   onRenamed: (id: string, name: string) => void; onDeleted: (id: string) => void;
+  onProductMediaUpdated: (next: { image_url: string | null; preview_images: string[] }) => void;
   onBack: () => void;
 }) {
   const { msg, toast } = useToast();
@@ -871,7 +900,7 @@ function VariantsView({ product, onSelect, onAdded, onRenamed, onDeleted, onBack
       <Toast msg={msg} />
       <BackButton label={`Back to ${product.name} products`} onClick={onBack} />
       <div className="max-w-2xl mb-8">
-        <ImagesSection product={product} />
+        <ImagesSection product={product} onProductMediaUpdated={onProductMediaUpdated} />
       </div>
       <CardGrid>
         {product.variants.map(v => (
@@ -892,13 +921,25 @@ function VariantsView({ product, onSelect, onAdded, onRenamed, onDeleted, onBack
 
 // ── Level 4: Images ───────────────────────────────────────────────────────────
 
-function ImagesSection({ product }: { product: Product }) {
+function ImagesSection({
+  product,
+  onProductMediaUpdated,
+}: {
+  product: Product;
+  onProductMediaUpdated?: (next: { image_url: string | null; preview_images: string[] }) => void;
+}) {
   const { msg, toast } = useToast();
   const [images, setImages] = useState<Array<{ name: string; url: string; path: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const looksLikeFileUrl = (url: string | null): boolean => {
+    if (!url) return false;
+    const cleaned = url.split("?")[0].split("#")[0];
+    const tail = cleaned.split("/").pop() ?? "";
+    return /\.[a-z0-9]+$/i.test(tail);
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -909,9 +950,21 @@ function ImagesSection({ product }: { product: Product }) {
     if (!files?.length) return;
     setUploading(true);
     try {
+      const uploaded: Array<{ name: string; url: string; path: string }> = [];
       for (const file of Array.from(files)) {
         const img = await uploadImage(product.id, file);
-        setImages(prev => [...prev, img]);
+        uploaded.push(img);
+      }
+      if (uploaded.length > 0) {
+        const nextImages = [...images, ...uploaded];
+        const nextPreviewImages = Array.from(new Set(nextImages.map((img) => img.url)));
+        const nextPrimaryImage =
+          looksLikeFileUrl(product.image_url) ? product.image_url : (nextPreviewImages[0] ?? null);
+        setImages(nextImages);
+        onProductMediaUpdated?.({
+          image_url: nextPrimaryImage,
+          preview_images: nextPreviewImages,
+        });
       }
       toast(`${files.length} image${files.length > 1 ? "s" : ""} uploaded`);
     } catch (e) { toast((e as Error).message, "err"); }
@@ -920,7 +973,22 @@ function ImagesSection({ product }: { product: Product }) {
 
   async function del(path: string) {
     setDeletingPath(path);
-    try { await deleteImage(product.id, path); setImages(prev => prev.filter(i => i.path !== path)); }
+    try {
+      const removedUrl = images.find((img) => img.path === path)?.url ?? null;
+      await deleteImage(product.id, path);
+      const nextImages = images.filter((img) => img.path !== path);
+      const nextPreviewImages = Array.from(new Set(nextImages.map((img) => img.url)));
+      const currentPrimary = looksLikeFileUrl(product.image_url) ? product.image_url : null;
+      const nextPrimaryImage =
+        removedUrl && currentPrimary === removedUrl
+          ? (nextPreviewImages[0] ?? null)
+          : (currentPrimary ?? nextPreviewImages[0] ?? null);
+      setImages(nextImages);
+      onProductMediaUpdated?.({
+        image_url: nextPrimaryImage,
+        preview_images: nextPreviewImages,
+      });
+    }
     catch (e) { toast((e as Error).message, "err"); }
     finally { setDeletingPath(null); }
   }
@@ -1546,6 +1614,13 @@ export default function Home() {
               const rest = product.variants.filter(v => v.id !== id);
               updateProduct({ ...product, variants: rest });
               if (variantId === id) setVariantId(null);
+            }}
+            onProductMediaUpdated={(next) => {
+              updateProduct({
+                ...product,
+                image_url: next.image_url,
+                preview_images: next.preview_images,
+              });
             }}
             onBack={() => setProductId(null)}
           />

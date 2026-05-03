@@ -350,6 +350,48 @@ export const deleteAdminPaymentDetails = async (id: string) => {
   return data as { success: boolean; message: string };
 };
 
+export const updateAdminPaymentDetails = async (
+  id: string,
+  payload: {
+    companyName: string;
+    bankName: string;
+    accountName: string;
+    accountNumber: string;
+    branch?: string;
+    paymentId?: string;
+    qrFile?: File | null;
+    removeQrImage?: boolean;
+    note?: string;
+  }
+) => {
+  const { qrFile, ...rest } = payload;
+
+  if (qrFile) {
+    const formData = new FormData();
+    Object.entries(rest).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) formData.append(k, String(v));
+    });
+    formData.append("qrImage", qrFile);
+
+    const response = await fetch(`/api/admin/wallet/payment-details/${id}`, {
+      method: "PATCH",
+      body: formData,
+    });
+    const data = await safeJson(response);
+    if (!response.ok) throw new Error(data?.message || "Failed to update payment details.");
+    return data as { success: boolean; message: string; data?: unknown };
+  }
+
+  const response = await fetch(`/api/admin/wallet/payment-details/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rest),
+  });
+  const data = await safeJson(response);
+  if (!response.ok) throw new Error(data?.message || "Failed to update payment details.");
+  return data as { success: boolean; message: string; data?: unknown };
+};
+
 export const fetchAdminWalletNotifications = async (params?: {
   isRead?: boolean;
   page?: number;

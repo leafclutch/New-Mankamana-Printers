@@ -1,0 +1,2068 @@
+{
+  "generatedAt": "2026-05-03T04:25:34.582Z",
+  "sourceRoot": "U:\\Leafclutch\\printing press\\code\\Manakamana-Printing-E-commerce-platform\\Printers Club",
+  "applyMode": true,
+  "uploadBucket": "product-assets",
+  "totalFolders": 137,
+  "matchedFolders": 123,
+  "unmatchedFolders": 14,
+  "rows": [
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\800 GSM visiting cards\\800 GSM + Texture\\800 GSM + Matt + Texture",
+      "imageCount": 1,
+      "confidence": 1.0499999999999998,
+      "product": {
+        "id": "6630e637-1549-4005-bbfd-3f82f6904dbe",
+        "product_code": "VIS-800-MATTE-TEXTURE",
+        "name": "800 GSM Matte + Texture",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Texture\\800 GSM + Matt + Texture\\Texture.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\800 GSM visiting cards\\800 GSM + Velvet\\800 GSM + Velvet + UV + Foil + Die Cut",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "099d0091-a345-4288-a9d4-1612c1e4a397",
+        "product_code": "VIS-800-001",
+        "name": "800 GSM + Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Velvet\\800 GSM + Velvet + UV + Foil + Die Cut\\images_product-images_326_36DIE VV.png"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\800 GSM visiting cards\\800 GSM + Velvet\\800 GSM + Velvet + UV + Foil",
+      "imageCount": 3,
+      "confidence": 1,
+      "product": {
+        "id": "099d0091-a345-4288-a9d4-1612c1e4a397",
+        "product_code": "VIS-800-001",
+        "name": "800 GSM + Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Velvet\\800 GSM + Velvet + UV + Foil\\images_product-images_325_Product Website Image A.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Velvet\\800 GSM + Velvet + UV + Foil\\images_product-images_325_Product Website Image B.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Velvet\\800 GSM + Velvet + UV + Foil\\images_product-images_325_Product Website Image C.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil + Die Cut",
+      "imageCount": 3,
+      "confidence": 1,
+      "product": {
+        "id": "d8567924-766f-4eb9-bc44-2e1e19107ce3",
+        "product_code": "VIS-500-VELVET",
+        "name": "500 GSM Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil + Die Cut\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil + Die Cut\\2.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil + Die Cut\\3.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil + Customized DIe Cut",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "d8567924-766f-4eb9-bc44-2e1e19107ce3",
+        "product_code": "VIS-500-VELVET",
+        "name": "500 GSM Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil + Customized DIe Cut\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil + Customized DIe Cut\\2.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil",
+      "imageCount": 4,
+      "confidence": 1,
+      "product": {
+        "id": "d8567924-766f-4eb9-bc44-2e1e19107ce3",
+        "product_code": "VIS-500-VELVET",
+        "name": "500 GSM Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil\\2.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil\\3.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Foil\\4.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Die-Cut",
+      "imageCount": 3,
+      "confidence": 1,
+      "product": {
+        "id": "d8567924-766f-4eb9-bc44-2e1e19107ce3",
+        "product_code": "VIS-500-VELVET",
+        "name": "500 GSM Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Die-Cut\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Die-Cut\\2.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV + Die-Cut\\3.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV",
+      "imageCount": 3,
+      "confidence": 1,
+      "product": {
+        "id": "d8567924-766f-4eb9-bc44-2e1e19107ce3",
+        "product_code": "VIS-500-VELVET",
+        "name": "500 GSM Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV\\2.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet + UV\\3.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet",
+      "imageCount": 3,
+      "confidence": 1,
+      "product": {
+        "id": "d8567924-766f-4eb9-bc44-2e1e19107ce3",
+        "product_code": "VIS-500-VELVET",
+        "name": "500 GSM Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet\\2.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Velvet\\500 GSM + Velvet\\3.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Foil + Die Cut",
+      "imageCount": 3,
+      "confidence": 1,
+      "product": {
+        "id": "b4ca4ee4-67bf-4ab7-83b0-e3e1ac25a7a4",
+        "product_code": "500-GSM--822",
+        "name": "500 GSM MATT",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Foil + Die Cut\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Foil + Die Cut\\2.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Foil + Die Cut\\3.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Foil",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "b4ca4ee4-67bf-4ab7-83b0-e3e1ac25a7a4",
+        "product_code": "500-GSM--822",
+        "name": "500 GSM MATT",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Foil\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Foil\\2.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Die-Cut",
+      "imageCount": 3,
+      "confidence": 1,
+      "product": {
+        "id": "b4ca4ee4-67bf-4ab7-83b0-e3e1ac25a7a4",
+        "product_code": "500-GSM--822",
+        "name": "500 GSM MATT",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Die-Cut\\1.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Die-Cut\\2.jpg",
+        "Visiting Card\\500 GSM Cards\\500 GSM + Matt\\500 GSM + Matt + UV + Die-Cut\\3.jpg"
+      ]
+    },
+    {
+      "category": "Stickers and Labels",
+      "relativeFolder": "Stickers and Labels\\Paper Sticker",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "ae92d626-d54f-4bf8-a948-a01547566625",
+        "product_code": "PAPER-ST-006",
+        "name": "Paper Sticker",
+        "category_slug": "stickers--labels"
+      },
+      "files": [
+        "Stickers and Labels\\Paper Sticker\\download.jpg"
+      ]
+    },
+    {
+      "category": "Stickers and Labels",
+      "relativeFolder": "Stickers and Labels\\Paper Sticker\\Sticker ( Without Half Cut )",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "ae92d626-d54f-4bf8-a948-a01547566625",
+        "product_code": "PAPER-ST-006",
+        "name": "Paper Sticker",
+        "category_slug": "stickers--labels"
+      },
+      "files": [
+        "Stickers and Labels\\Paper Sticker\\Sticker ( Without Half Cut )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Stickers and Labels",
+      "relativeFolder": "Stickers and Labels\\Paper Sticker\\Sticker ( With Straight Cut )",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "ae92d626-d54f-4bf8-a948-a01547566625",
+        "product_code": "PAPER-ST-006",
+        "name": "Paper Sticker",
+        "category_slug": "stickers--labels"
+      },
+      "files": [
+        "Stickers and Labels\\Paper Sticker\\Sticker ( With Straight Cut )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Stickers and Labels",
+      "relativeFolder": "Stickers and Labels\\Paper Sticker\\Sticker ( With Round Cut )",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "ae92d626-d54f-4bf8-a948-a01547566625",
+        "product_code": "PAPER-ST-006",
+        "name": "Paper Sticker",
+        "category_slug": "stickers--labels"
+      },
+      "files": [
+        "Stickers and Labels\\Paper Sticker\\Sticker ( With Round Cut )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\PISTOL TARGET",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\PISTOL TARGET\\download.png"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\PISTOL TARGET\\EST  - 10 Meter Air Pistol",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\PISTOL TARGET\\EST  - 10 Meter Air Pistol\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\PISTOL TARGET\\25 Mtr. Precision  50 Mtr. Pistol",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\PISTOL TARGET\\25 Mtr. Precision  50 Mtr. Pistol\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\PISTOL TARGET\\25 Meter Pistol - Rapid Fire",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\PISTOL TARGET\\25 Meter Pistol - Rapid Fire\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\PISTOL TARGET\\10 Meter Air Pistol with Academy Name",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\PISTOL TARGET\\10 Meter Air Pistol with Academy Name\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\PISTOL TARGET\\10 Meter Air Pistol",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\PISTOL TARGET\\10 Meter Air Pistol\\download.jpg"
+      ]
+    },
+    {
+      "category": "Pens",
+      "relativeFolder": "Pens\\SINGLE COLOR PRINTED PEN",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "84914037-44ce-417a-af48-7e25ffbe444f",
+        "product_code": "SINGLE-C-969",
+        "name": "SINGLE COLOR PRINTED PEN",
+        "category_slug": "pen"
+      },
+      "files": [
+        "Pens\\SINGLE COLOR PRINTED PEN\\download.jpg"
+      ]
+    },
+    {
+      "category": "Pens",
+      "relativeFolder": "Pens\\SINGLE COLOR PRINTED PEN\\Single Color Printed Pen",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "84914037-44ce-417a-af48-7e25ffbe444f",
+        "product_code": "SINGLE-C-969",
+        "name": "SINGLE COLOR PRINTED PEN",
+        "category_slug": "pen"
+      },
+      "files": [
+        "Pens\\SINGLE COLOR PRINTED PEN\\Single Color Printed Pen\\download.jpg"
+      ]
+    },
+    {
+      "category": "Pens",
+      "relativeFolder": "Pens\\LASER PRINTED PEN",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "f11d8383-4da5-49d0-9189-6e4a430c2e2d",
+        "product_code": "LASER-PR-792",
+        "name": "LASER PRINTED PEN",
+        "category_slug": "pen"
+      },
+      "files": [
+        "Pens\\LASER PRINTED PEN\\download.jpg"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\90 GSM, Sunshine Paper",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "27057585-ae0d-4dcc-9fd3-9abbe12543f5",
+        "product_code": "90-GSM-S-429",
+        "name": "90 GSM, Sunshine Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\90 GSM, Sunshine Paper\\download.png"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\90 GSM, Sunshine Paper\\Letter Head - 90 GSM, Sunshine Paper ( A4 Size )",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "27057585-ae0d-4dcc-9fd3-9abbe12543f5",
+        "product_code": "90-GSM-S-429",
+        "name": "90 GSM, Sunshine Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\90 GSM, Sunshine Paper\\Letter Head - 90 GSM, Sunshine Paper ( A4 Size )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\70 GSM, Maplitho Paper",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "85f6c1b0-b08c-4794-b8aa-cc7ff298bfc0",
+        "product_code": "70-GSM-M-875",
+        "name": "70 GSM Maplitho Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\70 GSM, Maplitho Paper\\download.png"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\70 GSM, Maplitho Paper\\Letter Head - 70 GSM, Maplitho Paper ( A4 Size )",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "85f6c1b0-b08c-4794-b8aa-cc7ff298bfc0",
+        "product_code": "70-GSM-M-875",
+        "name": "70 GSM Maplitho Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\70 GSM, Maplitho Paper\\Letter Head - 70 GSM, Maplitho Paper ( A4 Size )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\115 GSM,Sunshine Paper",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "4c275442-d062-4fd5-81ee-9ff063846e56",
+        "product_code": "115-GSM--122",
+        "name": "115 GSM,Sunshine Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\115 GSM,Sunshine Paper\\download.jpg"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\100 GSM, Deo Paper",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "e45e738f-c0d1-4826-848d-87054d093e21",
+        "product_code": "100-GSM--877",
+        "name": "100 GSM Deo Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\100 GSM, Deo Paper\\download.png"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\100 GSM, Deo Paper\\Letter Head - 100 GSM, Deo Paper ( A4 Size )",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "e45e738f-c0d1-4826-848d-87054d093e21",
+        "product_code": "100-GSM--877",
+        "name": "100 GSM Deo Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\100 GSM, Deo Paper\\Letter Head - 100 GSM, Deo Paper ( A4 Size )\\1.jpg",
+        "Letter Heads\\100 GSM, Deo Paper\\Letter Head - 100 GSM, Deo Paper ( A4 Size )\\2.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\ENVELOPE - 9x4",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "5b570a73-fc1d-4fde-a4d6-ef0ea4965762",
+        "product_code": "ENVELOPE-882",
+        "name": "ENVELOPE -9x4",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\ENVELOPE - 9x4\\1.jpg",
+        "Envelopes\\ENVELOPE - 9x4\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\ENVELOPE - 9.70x4.20",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "73a78b32-bb77-4032-b0a6-357f3d52eddd",
+        "product_code": "ENVELOPE-861",
+        "name": "ENVELOPE -9.70x4.20",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\ENVELOPE - 9.70x4.20\\1.jpg",
+        "Envelopes\\ENVELOPE - 9.70x4.20\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\ENVELOPE - 9.40x12.40",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "b3eaba96-aa18-42eb-a902-fbde3644b0f4",
+        "product_code": "ENVELOPE-504",
+        "name": "ENVELOPE -9.40x12.40",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\ENVELOPE - 9.40x12.40\\1.jpg",
+        "Envelopes\\ENVELOPE - 9.40x12.40\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\ENVELOPE - 8.60x10.60",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "1aa0ab0a-c479-49b4-ab8d-e679be5bf251",
+        "product_code": "ENVELOPE-044",
+        "name": "ENVELOPE -8.60x10.60",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\ENVELOPE - 8.60x10.60\\1.jpg",
+        "Envelopes\\ENVELOPE - 8.60x10.60\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\ENVELOPE - 6x8",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "75d75865-5acc-4f1e-b985-52c7e8a0d489",
+        "product_code": "ENVELOPE-730",
+        "name": "ENVELOPE -6x8",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\ENVELOPE - 6x8\\1.jpg",
+        "Envelopes\\ENVELOPE - 6x8\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\ENVELOPE - 5x7",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "928584cb-0439-48e9-87c1-1d841891b5c8",
+        "product_code": "ENVELOPE-526",
+        "name": "ENVELOPE -5x7",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\ENVELOPE - 5x7\\1.jpg",
+        "Envelopes\\ENVELOPE - 5x7\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\ENVELOPE - 10.75x4.75",
+      "imageCount": 2,
+      "confidence": 1,
+      "product": {
+        "id": "3f6d2ff2-0418-4f89-9ae9-20181304608e",
+        "product_code": "ENVELOPE-050",
+        "name": "ENVELOPE -10.75x4.75",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\ENVELOPE - 10.75x4.75\\1.jpg",
+        "Envelopes\\ENVELOPE - 10.75x4.75\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Digital Paper Printing",
+      "relativeFolder": "Digital Paper Printing\\TEXTURE PAPER",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "000e4ed3-8e76-4141-b3fb-bc7dde821362",
+        "product_code": "TEXTURE--793",
+        "name": "TEXTURE PAPER",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Digital Paper Printing\\TEXTURE PAPER\\download.jpg"
+      ]
+    },
+    {
+      "category": "Digital Paper Printing",
+      "relativeFolder": "Digital Paper Printing\\PAPER GUMMING",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "5c11da73-d526-413f-8915-d991c6bab1c9",
+        "product_code": "PAPER-GU-834",
+        "name": "PAPER GUMMING",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Digital Paper Printing\\PAPER GUMMING\\download.jpg"
+      ]
+    },
+    {
+      "category": "Digital Paper Printing",
+      "relativeFolder": "Digital Paper Printing\\ONLY PRINTING",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "52b8a2d4-c92f-443b-9359-bdc3070334e6",
+        "product_code": "ONLY-PRI-025",
+        "name": "ONLY PRINTING",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Digital Paper Printing\\ONLY PRINTING\\download.jpg"
+      ]
+    },
+    {
+      "category": "Digital Paper Printing",
+      "relativeFolder": "Digital Paper Printing\\METALLIC PAPER",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "791cd1ea-9d3c-4c80-baf8-0014819058ee",
+        "product_code": "METALLIC-343",
+        "name": "METALLIC PAPER",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Digital Paper Printing\\METALLIC PAPER\\download.jpg"
+      ]
+    },
+    {
+      "category": "Digital Paper Printing",
+      "relativeFolder": "Digital Paper Printing\\LETTER HEAD PAPER",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "e7a629e1-637c-45de-91dd-78807f665442",
+        "product_code": "LETTER-H-184",
+        "name": "LETTER HEAD PAPER",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Digital Paper Printing\\LETTER HEAD PAPER\\download.jpg"
+      ]
+    },
+    {
+      "category": "Digital Paper Printing",
+      "relativeFolder": "Digital Paper Printing\\ART PAPER",
+      "imageCount": 1,
+      "confidence": 1,
+      "product": {
+        "id": "27c52af0-e82b-4e0e-9332-8a114c8f2422",
+        "product_code": "ART-PAPE-560",
+        "name": "ART PAPER",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Digital Paper Printing\\ART PAPER\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Regular Visting Card\\Gloss Coated\\Gloss UV Coated",
+      "imageCount": 3,
+      "confidence": 0.96,
+      "product": {
+        "id": "faf6701c-af91-44a5-b38a-04431e782033",
+        "product_code": "GAR-GLS-001",
+        "name": "Gloss Coated Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Visiting Card\\Regular Visting Card\\Gloss Coated\\Gloss UV Coated\\1.jpg",
+        "Visiting Card\\Regular Visting Card\\Gloss Coated\\Gloss UV Coated\\2.jpg",
+        "Visiting Card\\Regular Visting Card\\Gloss Coated\\Gloss UV Coated\\3.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\800 GSM visiting cards\\800 GSM + Matt\\800 GSM + Matt + UV + Foil",
+      "imageCount": 2,
+      "confidence": 0.8999999999999999,
+      "product": {
+        "id": "099d0091-a345-4288-a9d4-1612c1e4a397",
+        "product_code": "VIS-800-001",
+        "name": "800 GSM + Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Matt\\800 GSM + Matt + UV + Foil\\images_product-images_327_800 GSM Box New.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Matt\\800 GSM + Matt + UV + Foil\\images_product-images_327_Matt 800 Gold.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil",
+      "imageCount": 3,
+      "confidence": 0.8999999999999999,
+      "product": {
+        "id": "099d0091-a345-4288-a9d4-1612c1e4a397",
+        "product_code": "VIS-800-001",
+        "name": "800 GSM + Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil\\images_product-images_330_Craft A2 Pho.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil\\images_product-images_330_Craft B Pho.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil\\images_product-images_330_Craft C Pho.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Metal Cards",
+      "imageCount": 4,
+      "confidence": 0.88,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\Metal Cards\\images_product-images_324_Photoshop Metal A.jpg",
+        "Visiting Card\\Metal Cards\\images_product-images_324_Photoshop Metal B.jpg",
+        "Visiting Card\\Metal Cards\\images_product-images_324_Photoshop Metal C.jpg",
+        "Visiting Card\\Metal Cards\\images_product-images_324_Photoshop Metal D.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\800 GSM visiting cards\\800 GSM + Matt\\800 GSM + Matt + UV + Foil + Die Cut",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "b3b3e539-23df-45f7-8df6-4b376793c9b8",
+        "product_code": "VIS-800-MATTE",
+        "name": "800 GSM + Matte",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Matt\\800 GSM + Matt + UV + Foil + Die Cut\\images_product-images_273_36 All Die Cut Img B.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Matt\\800 GSM + Matt + UV + Foil + Die Cut\\images_product-images_273_800 GSM Box New.jpg"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\VISITING CARD\\Sample File – Metal Cards Only",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Sample Files\\VISITING CARD\\Sample File – Metal Cards Only\\download.png"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\VISITING CARD\\Complete Sample File (Metal Cards + 800GSM + 500GSM + NT + Regular Cards + Marketing Posters",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Sample Files\\VISITING CARD\\Complete Sample File (Metal Cards + 800GSM + 500GSM + NT + Regular Cards + Marketing Posters\\1.png",
+        "Sample Files\\VISITING CARD\\Complete Sample File (Metal Cards + 800GSM + 500GSM + NT + Regular Cards + Marketing Posters\\2.png"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\LETTER HEAD",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "e7a629e1-637c-45de-91dd-78807f665442",
+        "product_code": "LETTER-H-184",
+        "name": "LETTER HEAD PAPER",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Sample Files\\LETTER HEAD\\download.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Pamphlet-Posters.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Poster",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Poster\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Poster\\Posters - 20.20",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Poster\\Posters - 20.20\\1.jpg",
+        "Pamplet-Posters\\Poster\\Posters - 20.20\\2.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Poster\\Posters - 18.23",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Poster\\Posters - 18.23\\1.jpg",
+        "Pamplet-Posters\\Poster\\Posters - 18.23\\2.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Poster\\Posters - 15.20",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Poster\\Posters - 15.20\\1.jpg",
+        "Pamplet-Posters\\Poster\\Posters - 15.20\\2.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Pamphlet",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Pamphlet\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Pamphlet\\Pamphlet - 90 GSM Art Paper",
+      "imageCount": 3,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 90 GSM Art Paper\\1.jpg",
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 90 GSM Art Paper\\2.jpg",
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 90 GSM Art Paper\\3.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Pamphlet\\Pamphlet - 70 GSM Maplitho Paper",
+      "imageCount": 3,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 70 GSM Maplitho Paper\\1.jpg",
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 70 GSM Maplitho Paper\\2.jpg",
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 70 GSM Maplitho Paper\\3.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Pamphlet\\Pamphlet - 170 GSM Art Paper",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 170 GSM Art Paper\\1.jpg",
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 170 GSM Art Paper\\2.jpg"
+      ]
+    },
+    {
+      "category": "Pamplet-Posters",
+      "relativeFolder": "Pamplet-Posters\\Pamphlet\\Pamphlet - 115 GSM Art Paper",
+      "imageCount": 3,
+      "confidence": 0.88,
+      "product": {
+        "id": "70232a92-df54-40bb-a2e2-fbf5599f444d",
+        "product_code": "PAMPHLET-810",
+        "name": "POSTERS",
+        "category_slug": "pamphletsposters"
+      },
+      "files": [
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 115 GSM Art Paper\\1.jpg",
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 115 GSM Art Paper\\2.jpg",
+        "Pamplet-Posters\\Pamphlet\\Pamphlet - 115 GSM Art Paper\\3.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\Thread",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "87de5fdd-ed41-457a-b288-40b54bd04653",
+        "product_code": "GAR-THR-001",
+        "name": "Threads",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Garments and Tags\\Thread\\download.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\Thread\\Type B - Slim",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "87de5fdd-ed41-457a-b288-40b54bd04653",
+        "product_code": "GAR-THR-001",
+        "name": "Threads",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Garments and Tags\\Thread\\Type B - Slim\\download.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\Matt",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "5af8e95f-5762-4a95-be49-2b0c487e2171",
+        "product_code": "GAR-MAT-001",
+        "name": "Matte Lamination Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Garments and Tags\\Matt\\download.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\Matt\\Matt Lamination Tags",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "5af8e95f-5762-4a95-be49-2b0c487e2171",
+        "product_code": "GAR-MAT-001",
+        "name": "Matte Lamination Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Garments and Tags\\Matt\\Matt Lamination Tags\\1.jpg",
+        "Garments and Tags\\Matt\\Matt Lamination Tags\\2.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\Gloss",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "faf6701c-af91-44a5-b38a-04431e782033",
+        "product_code": "GAR-GLS-001",
+        "name": "Gloss Coated Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Garments and Tags\\Gloss\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\Gloss\\Glass Coated Tags",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "faf6701c-af91-44a5-b38a-04431e782033",
+        "product_code": "GAR-GLS-001",
+        "name": "Gloss Coated Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Garments and Tags\\Gloss\\Glass Coated Tags\\1.jpg",
+        "Garments and Tags\\Gloss\\Glass Coated Tags\\2.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\800 GSM + Matt",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "b3b3e539-23df-45f7-8df6-4b376793c9b8",
+        "product_code": "VIS-800-MATTE",
+        "name": "800 GSM + Matte",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Garments and Tags\\800 GSM + Matt\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\File.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\SBS File(Small)",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\SBS File(Small)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\SBS File(Large)",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\SBS File(Large)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC File(Small)",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC File(Small)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC File(Large)",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC File(Large)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC Clip",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC Clip\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC Clip\\Type 3",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "fc451eca-fa5c-480e-acad-c7f1dbdc321e",
+        "product_code": "PVC-CLIP-234",
+        "name": "PVC CLIP(SMALL SIZE)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC Clip\\Type 3\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC Clip\\Type 2",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "fc451eca-fa5c-480e-acad-c7f1dbdc321e",
+        "product_code": "PVC-CLIP-234",
+        "name": "PVC CLIP(SMALL SIZE)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC Clip\\Type 2\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC Clip\\Type 1",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "fc451eca-fa5c-480e-acad-c7f1dbdc321e",
+        "product_code": "PVC-CLIP-234",
+        "name": "PVC CLIP(SMALL SIZE)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC Clip\\Type 1\\download.jpg"
+      ]
+    },
+    {
+      "category": "card Holder",
+      "relativeFolder": "card Holder",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "a0dfdf91-f556-448b-b707-ade1deb1fba3",
+        "product_code": "CARD-HOL-031",
+        "name": "Card Holders",
+        "category_slug": "card-holders"
+      },
+      "files": [
+        "card Holder\\Card Holder.jpg"
+      ]
+    },
+    {
+      "category": "card Holder",
+      "relativeFolder": "card Holder\\Vertical Laser Printed Card Holder",
+      "imageCount": 4,
+      "confidence": 0.88,
+      "product": {
+        "id": "a0dfdf91-f556-448b-b707-ade1deb1fba3",
+        "product_code": "CARD-HOL-031",
+        "name": "Card Holders",
+        "category_slug": "card-holders"
+      },
+      "files": [
+        "card Holder\\Vertical Laser Printed Card Holder\\1.png",
+        "card Holder\\Vertical Laser Printed Card Holder\\2.png",
+        "card Holder\\Vertical Laser Printed Card Holder\\3.png",
+        "card Holder\\Vertical Laser Printed Card Holder\\4.png"
+      ]
+    },
+    {
+      "category": "card Holder",
+      "relativeFolder": "card Holder\\Horizontal Laser Printed Card Holder",
+      "imageCount": 4,
+      "confidence": 0.88,
+      "product": {
+        "id": "a0dfdf91-f556-448b-b707-ade1deb1fba3",
+        "product_code": "CARD-HOL-031",
+        "name": "Card Holders",
+        "category_slug": "card-holders"
+      },
+      "files": [
+        "card Holder\\Horizontal Laser Printed Card Holder\\1.png",
+        "card Holder\\Horizontal Laser Printed Card Holder\\2.png",
+        "card Holder\\Horizontal Laser Printed Card Holder\\3.png",
+        "card Holder\\Horizontal Laser Printed Card Holder\\4.png"
+      ]
+    },
+    {
+      "category": "Bill Book",
+      "relativeFolder": "Bill Book",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "a8e6cc9c-da71-4c3f-8cec-1e7ddbfe75eb",
+        "product_code": "BILL-BOO-449",
+        "name": "BILL BOOKS",
+        "category_slug": "bill-books"
+      },
+      "files": [
+        "Bill Book\\Bill Book.jpg"
+      ]
+    },
+    {
+      "category": "Bill Book",
+      "relativeFolder": "Bill Book\\A4 Bill Book - 3 Copy",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "a8e6cc9c-da71-4c3f-8cec-1e7ddbfe75eb",
+        "product_code": "BILL-BOO-449",
+        "name": "BILL BOOKS",
+        "category_slug": "bill-books"
+      },
+      "files": [
+        "Bill Book\\A4 Bill Book - 3 Copy\\download.jpg"
+      ]
+    },
+    {
+      "category": "Bill Book",
+      "relativeFolder": "Bill Book\\A4 Bill Book - 2 Copy",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "a8e6cc9c-da71-4c3f-8cec-1e7ddbfe75eb",
+        "product_code": "BILL-BOO-449",
+        "name": "BILL BOOKS",
+        "category_slug": "bill-books"
+      },
+      "files": [
+        "Bill Book\\A4 Bill Book - 2 Copy\\download.jpg"
+      ]
+    },
+    {
+      "category": "ATM Pouch",
+      "relativeFolder": "ATM Pouch",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "d684d77c-d246-48f3-9958-22f975727368",
+        "product_code": "ATM-POUC-224",
+        "name": "ATM POUCHES",
+        "category_slug": "atm-pouches"
+      },
+      "files": [
+        "ATM Pouch\\thumb.jpg"
+      ]
+    },
+    {
+      "category": "ATM Pouch",
+      "relativeFolder": "ATM Pouch\\ATM Pouch - Matt Lamination",
+      "imageCount": 1,
+      "confidence": 0.88,
+      "product": {
+        "id": "d684d77c-d246-48f3-9958-22f975727368",
+        "product_code": "ATM-POUC-224",
+        "name": "ATM POUCHES",
+        "category_slug": "atm-pouches"
+      },
+      "files": [
+        "ATM Pouch\\ATM Pouch - Matt Lamination\\download.jpg"
+      ]
+    },
+    {
+      "category": "ATM Pouch",
+      "relativeFolder": "ATM Pouch\\ATM Pouch - Gloss Lamination",
+      "imageCount": 2,
+      "confidence": 0.88,
+      "product": {
+        "id": "d684d77c-d246-48f3-9958-22f975727368",
+        "product_code": "ATM-POUC-224",
+        "name": "ATM POUCHES",
+        "category_slug": "atm-pouches"
+      },
+      "files": [
+        "ATM Pouch\\ATM Pouch - Gloss Lamination\\1.jpg",
+        "ATM Pouch\\ATM Pouch - Gloss Lamination\\2.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil + Die Cut",
+      "imageCount": 3,
+      "confidence": 0.8624999999999999,
+      "product": {
+        "id": "099d0091-a345-4288-a9d4-1612c1e4a397",
+        "product_code": "VIS-800-001",
+        "name": "800 GSM + Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil + Die Cut\\images_product-images_331_Craft A Pho.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil + Die Cut\\images_product-images_331_Craft B Pho.jpg",
+        "Visiting Card\\800 GSM visiting cards\\800 GSM + Craft Paper\\800 GSM CraftSheet + Foil + Die Cut\\images_product-images_331_Craft C Pho.jpg"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\100 GSM, Bond Paper\\Letter Head - 100 GSM, Bond Paper ( A4 Size )",
+      "imageCount": 1,
+      "confidence": 0.7999999999999999,
+      "product": {
+        "id": "cdfe8b53-97b5-4c97-b4af-6bb7b79416df",
+        "product_code": "IOO-GSM--059",
+        "name": "IOO GSM, Bond Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\100 GSM, Bond Paper\\Letter Head - 100 GSM, Bond Paper ( A4 Size )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC File(Small)\\PVC file(Glass Coated, Small Size)",
+      "imageCount": 1,
+      "confidence": 0.7638888888888888,
+      "product": {
+        "id": "fc451eca-fa5c-480e-acad-c7f1dbdc321e",
+        "product_code": "PVC-CLIP-234",
+        "name": "PVC CLIP(SMALL SIZE)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC File(Small)\\PVC file(Glass Coated, Small Size)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Regular Visting Card\\Gloss Coated(Small)\\Gloss UV Coated - Small cards",
+      "imageCount": 1,
+      "confidence": 0.75,
+      "product": {
+        "id": "faf6701c-af91-44a5-b38a-04431e782033",
+        "product_code": "GAR-GLS-001",
+        "name": "Gloss Coated Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Visiting Card\\Regular Visting Card\\Gloss Coated(Small)\\Gloss UV Coated - Small cards\\download.jpg"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads\\100 GSM, Bond Paper",
+      "imageCount": 1,
+      "confidence": 0.7499999999999999,
+      "product": {
+        "id": "cdfe8b53-97b5-4c97-b4af-6bb7b79416df",
+        "product_code": "IOO-GSM--059",
+        "name": "IOO GSM, Bond Paper",
+        "category_slug": "letter-heads"
+      },
+      "files": [
+        "Letter Heads\\100 GSM, Bond Paper\\download.png"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\800 GSM + Matt + Texture",
+      "imageCount": 1,
+      "confidence": 0.7499999999999999,
+      "product": {
+        "id": "6630e637-1549-4005-bbfd-3f82f6904dbe",
+        "product_code": "VIS-800-MATTE-TEXTURE",
+        "name": "800 GSM Matte + Texture",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Garments and Tags\\800 GSM + Matt + Texture\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC File(Large)\\PVC file(Glass Coated, Big Size)",
+      "imageCount": 1,
+      "confidence": 0.725,
+      "product": {
+        "id": "83108374-f14e-433e-85e6-0a3594e80c6b",
+        "product_code": "PVC-FILE-119",
+        "name": "PVC FILES(BIG SIZE)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC File(Large)\\PVC file(Glass Coated, Big Size)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Regular Visting Card\\Gloss Coated + Texture\\Gloss + Texture",
+      "imageCount": 1,
+      "confidence": 0.72,
+      "product": {
+        "id": "faf6701c-af91-44a5-b38a-04431e782033",
+        "product_code": "GAR-GLS-001",
+        "name": "Gloss Coated Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Visiting Card\\Regular Visting Card\\Gloss Coated + Texture\\Gloss + Texture\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC File(Small)\\PVC file(Without Coated - Matt Finish, Small Size)",
+      "imageCount": 1,
+      "confidence": 0.6931818181818181,
+      "product": {
+        "id": "fc451eca-fa5c-480e-acad-c7f1dbdc321e",
+        "product_code": "PVC-CLIP-234",
+        "name": "PVC CLIP(SMALL SIZE)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC File(Small)\\PVC file(Without Coated - Matt Finish, Small Size)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\PVC File(Large)\\PVC file(Without Coated - Matt Finish, Big Size)",
+      "imageCount": 1,
+      "confidence": 0.6666666666666667,
+      "product": {
+        "id": "83108374-f14e-433e-85e6-0a3594e80c6b",
+        "product_code": "PVC-FILE-119",
+        "name": "PVC FILES(BIG SIZE)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\PVC File(Large)\\PVC file(Without Coated - Matt Finish, Big Size)\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron + Velvet",
+      "imageCount": 1,
+      "confidence": 0.6666666666666666,
+      "product": {
+        "id": "099d0091-a345-4288-a9d4-1612c1e4a397",
+        "product_code": "VIS-800-001",
+        "name": "800 GSM + Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron + Velvet\\download.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\Matt Lamination + UV",
+      "imageCount": 1,
+      "confidence": 0.6666666666666666,
+      "product": {
+        "id": "bf30f082-2d80-43cb-aed0-39cb9d912a76",
+        "product_code": "GAR-MATUV-001",
+        "name": "Matte Lamination + UV",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Garments and Tags\\Matt Lamination + UV\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture",
+      "imageCount": 8,
+      "confidence": 0.58,
+      "product": {
+        "id": "000e4ed3-8e76-4141-b3fb-bc7dde821362",
+        "product_code": "TEXTURE--793",
+        "name": "TEXTURE PAPER",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\1.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\2.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\3.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\4.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\5.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\6.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\7.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination + Texture\\Matt + Texture\\8.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Regular Visting Card\\Matt Lamination\\Matt Lamination",
+      "imageCount": 3,
+      "confidence": 0.5499999999999999,
+      "product": {
+        "id": "5af8e95f-5762-4a95-be49-2b0c487e2171",
+        "product_code": "GAR-MAT-001",
+        "name": "Matte Lamination Tag",
+        "category_slug": "garment-tags"
+      },
+      "files": [
+        "Visiting Card\\Regular Visting Card\\Matt Lamination\\Matt Lamination\\1.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination\\Matt Lamination\\2.jpg",
+        "Visiting Card\\Regular Visting Card\\Matt Lamination\\Matt Lamination\\3.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\800 GSM + Matt + UV",
+      "imageCount": 1,
+      "confidence": 0.5499999999999999,
+      "product": {
+        "id": "099d0091-a345-4288-a9d4-1612c1e4a397",
+        "product_code": "VIS-800-001",
+        "name": "800 GSM + Velvet",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Garments and Tags\\800 GSM + Matt + UV\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\SBS File(Small)\\SBS File (Matt Lamination, Small Size )",
+      "imageCount": 1,
+      "confidence": 0.51,
+      "product": {
+        "id": "0d9286d0-4fd6-44a9-aab2-fe4ed1693307",
+        "product_code": "SBS-FILE-676",
+        "name": "SBS FILES(SS)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\SBS File(Small)\\SBS File (Matt Lamination, Small Size )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\SBS File(Small)\\SBS File (Gloss Lamination, Small Size )",
+      "imageCount": 1,
+      "confidence": 0.51,
+      "product": {
+        "id": "0d9286d0-4fd6-44a9-aab2-fe4ed1693307",
+        "product_code": "SBS-FILE-676",
+        "name": "SBS FILES(SS)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\SBS File(Small)\\SBS File (Gloss Lamination, Small Size )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\SBS File(Large)\\SBS File (Matt Lamination, Big Size )",
+      "imageCount": 1,
+      "confidence": 0.51,
+      "product": {
+        "id": "0d9286d0-4fd6-44a9-aab2-fe4ed1693307",
+        "product_code": "SBS-FILE-676",
+        "name": "SBS FILES(SS)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\SBS File(Large)\\SBS File (Matt Lamination, Big Size )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Files",
+      "relativeFolder": "Files\\SBS File(Large)\\SBS File (Gloss Lamination, Big Size )",
+      "imageCount": 1,
+      "confidence": 0.51,
+      "product": {
+        "id": "0d9286d0-4fd6-44a9-aab2-fe4ed1693307",
+        "product_code": "SBS-FILE-676",
+        "name": "SBS FILES(SS)",
+        "category_slug": "files"
+      },
+      "files": [
+        "Files\\SBS File(Large)\\SBS File (Gloss Lamination, Big Size )\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\Visiting Card.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\RIFLE TARGET",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\RIFLE TARGET\\download.png"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\RIFLE TARGET\\EST - 10 Meter Air Rifle",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\RIFLE TARGET\\EST - 10 Meter Air Rifle\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\RIFLE TARGET\\50 Meter Rifle",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\RIFLE TARGET\\50 Meter Rifle\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\RIFLE TARGET\\10 Meter Air Rifle with Academy Name",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\RIFLE TARGET\\10 Meter Air Rifle with Academy Name\\download.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets\\RIFLE TARGET\\10 Meter Air Rifle",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "6a7772ac-bfb4-4d8a-b208-86ec82c497f0",
+        "product_code": "PISTOL-T-099",
+        "name": "PISTOL TARGET",
+        "category_slug": "shooting-targets"
+      },
+      "files": [
+        "Shooting Targets\\RIFLE TARGET\\10 Meter Air Rifle\\download.jpg"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Sample Files\\Sample File.jpg"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\VISITING CARD",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Sample Files\\VISITING CARD\\download.png"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\VISITING CARD\\Sample File – Regular Cards Only",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Sample Files\\VISITING CARD\\Sample File – Regular Cards Only\\download.jpg"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\VISITING CARD\\Sample File – 800 GSM Cards Only",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Sample Files\\VISITING CARD\\Sample File – 800 GSM Cards Only\\download.jpg"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\VISITING CARD\\Sample File – 500 GSM + NT Cards Only",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Sample Files\\VISITING CARD\\Sample File – 500 GSM + NT Cards Only\\download.jpg"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\STICKERS",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Sample Files\\STICKERS\\download.jpg"
+      ]
+    },
+    {
+      "category": "Sample Files",
+      "relativeFolder": "Sample Files\\DOCTOR FILE",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "e95f6b8d-75a7-4a7c-a765-4ba72b6fb920",
+        "product_code": "PVC-FILE-602",
+        "name": "PVC FILES",
+        "category_slug": "files"
+      },
+      "files": [
+        "Sample Files\\DOCTOR FILE\\download.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes\\GIFT ENVELOPE",
+      "imageCount": 1,
+      "confidence": 0.5,
+      "product": {
+        "id": "5b570a73-fc1d-4fde-a4d6-ef0ea4965762",
+        "product_code": "ENVELOPE-882",
+        "name": "ENVELOPE -9x4",
+        "category_slug": "envelope"
+      },
+      "files": [
+        "Envelopes\\GIFT ENVELOPE\\Thumbnail.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\NT  PVC Visiting Cards\\180 Micron\\180 Micron NT",
+      "imageCount": 2,
+      "confidence": 0.49090909090909085,
+      "product": {
+        "id": "e8f4a85b-d9f6-438a-9070-e6614427d288",
+        "product_code": "NT-PVC-S-696",
+        "name": "NT/PVC SHEETS",
+        "category_slug": "digital-paper-printing"
+      },
+      "files": [
+        "Visiting Card\\NT  PVC Visiting Cards\\180 Micron\\180 Micron NT\\1.jpg",
+        "Visiting Card\\NT  PVC Visiting Cards\\180 Micron\\180 Micron NT\\2.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Regular Visting Card\\Without Lamination\\Without Coated",
+      "imageCount": 3,
+      "confidence": 0.4555555555555555,
+      "product": {
+        "id": "c7e58c17-61b9-4d72-bfc4-65875848d88f",
+        "product_code": "VIS-MET-001",
+        "name": "Metal Card",
+        "category_slug": "visiting-card"
+      },
+      "files": [
+        "Visiting Card\\Regular Visting Card\\Without Lamination\\Without Coated\\1.jpg",
+        "Visiting Card\\Regular Visting Card\\Without Lamination\\Without Coated\\2.jpg",
+        "Visiting Card\\Regular Visting Card\\Without Lamination\\Without Coated\\3.jpg"
+      ]
+    },
+    {
+      "category": "Letter Heads",
+      "relativeFolder": "Letter Heads",
+      "imageCount": 1,
+      "confidence": 0.44999999999999996,
+      "product": null,
+      "files": [
+        "Letter Heads\\Letter Head.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags\\PCV Tag",
+      "imageCount": 1,
+      "confidence": 0.44999999999999996,
+      "product": null,
+      "files": [
+        "Garments and Tags\\PCV Tag\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\NT  PVC Visiting Cards\\180 Micron\\180 Micron NT Card + Gloss UV Coating",
+      "imageCount": 2,
+      "confidence": 0.43999999999999995,
+      "product": null,
+      "files": [
+        "Visiting Card\\NT  PVC Visiting Cards\\180 Micron\\180 Micron NT Card + Gloss UV Coating\\1.jpg",
+        "Visiting Card\\NT  PVC Visiting Cards\\180 Micron\\180 Micron NT Card + Gloss UV Coating\\2.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\Regular Visting Card\\Without Lamination(Small)\\Without Lamination (Small)",
+      "imageCount": 2,
+      "confidence": 0.4333333333333333,
+      "product": null,
+      "files": [
+        "Visiting Card\\Regular Visting Card\\Without Lamination(Small)\\Without Lamination (Small)\\1.jpg",
+        "Visiting Card\\Regular Visting Card\\Without Lamination(Small)\\Without Lamination (Small)\\2.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron + Matt",
+      "imageCount": 1,
+      "confidence": 0.4333333333333333,
+      "product": null,
+      "files": [
+        "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron + Matt\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron Silver + Gloss",
+      "imageCount": 1,
+      "confidence": 0.39999999999999997,
+      "product": null,
+      "files": [
+        "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron Silver + Gloss\\download.jpg"
+      ]
+    },
+    {
+      "category": "Visiting Card",
+      "relativeFolder": "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron Gold + Gloss",
+      "imageCount": 1,
+      "confidence": 0.39999999999999997,
+      "product": null,
+      "files": [
+        "Visiting Card\\NT  PVC Visiting Cards\\800 Micron Fusion\\800 Micron Gold + Gloss\\download.jpg"
+      ]
+    },
+    {
+      "category": "Digital Paper Printing",
+      "relativeFolder": "Digital Paper Printing",
+      "imageCount": 1,
+      "confidence": 0.3833333333333333,
+      "product": null,
+      "files": [
+        "Digital Paper Printing\\Digital Printing.jpg"
+      ]
+    },
+    {
+      "category": "Stickers and Labels",
+      "relativeFolder": "Stickers and Labels",
+      "imageCount": 1,
+      "confidence": 0,
+      "product": null,
+      "files": [
+        "Stickers and Labels\\Sticker.jpg"
+      ]
+    },
+    {
+      "category": "Shooting Targets",
+      "relativeFolder": "Shooting Targets",
+      "imageCount": 1,
+      "confidence": 0,
+      "product": null,
+      "files": [
+        "Shooting Targets\\Shooting Targets.jpg"
+      ]
+    },
+    {
+      "category": "Pens",
+      "relativeFolder": "Pens",
+      "imageCount": 1,
+      "confidence": 0,
+      "product": null,
+      "files": [
+        "Pens\\Pen.jpg"
+      ]
+    },
+    {
+      "category": "Garments and Tags",
+      "relativeFolder": "Garments and Tags",
+      "imageCount": 1,
+      "confidence": 0,
+      "product": null,
+      "files": [
+        "Garments and Tags\\thumb.jpg"
+      ]
+    },
+    {
+      "category": "Envelopes",
+      "relativeFolder": "Envelopes",
+      "imageCount": 1,
+      "confidence": 0,
+      "product": null,
+      "files": [
+        "Envelopes\\Envelope.jpg"
+      ]
+    },
+    {
+      "category": "Coming Soon",
+      "relativeFolder": "Coming Soon",
+      "imageCount": 1,
+      "confidence": 0,
+      "product": null,
+      "files": [
+        "Coming Soon\\Coming Soon.jpg"
+      ]
+    }
+  ]
+}

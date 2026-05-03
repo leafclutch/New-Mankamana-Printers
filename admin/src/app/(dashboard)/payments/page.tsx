@@ -24,6 +24,7 @@ import {
   approveAdminTopupRequest,
   createAdminPaymentDetails,
   deleteAdminPaymentDetails,
+  updateAdminPaymentDetails,
   fetchAdminClientWalletSummary,
   fetchAdminTopupRequestById,
   fetchAdminTopupRequests,
@@ -127,6 +128,9 @@ export default function PaymentsPage() {
   const [qrFile, setQrFile] = useState<File | null>(null);
   const [paymentFormLoading, setPaymentFormLoading] = useState(true);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [removeExistingQr, setRemoveExistingQr] = useState(false);
+  const [savingPaymentMethod, setSavingPaymentMethod] = useState(false);
 
   const [clientLookupId, setClientLookupId] = useState("");
   const [clientSummary, setClientSummary] =
@@ -178,6 +182,26 @@ export default function PaymentsPage() {
     const id = setInterval(() => void loadData(), 15_000);
     return () => clearInterval(id);
   }, [loadData, loadPaymentDetails]);
+
+  const resetPaymentForm = useCallback(() => {
+    setPaymentForm({
+      companyName: "",
+      bankName: "",
+      accountName: "",
+      accountNumber: "",
+      branch: "",
+      paymentId: "",
+      note: "",
+    });
+    setQrFile(null);
+    setEditingPaymentId(null);
+    setRemoveExistingQr(false);
+  }, []);
+
+  const editingPaymentMethod = useMemo(
+    () => paymentMethods.find((m) => m.id === editingPaymentId) ?? null,
+    [editingPaymentId, paymentMethods]
+  );
 
   const filteredTopups = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -366,25 +390,69 @@ export default function PaymentsPage() {
     }
   };
 
-  const handleAddPaymentMethod = async () => {
-    try {
-      await createAdminPaymentDetails({
-        companyName: paymentForm.companyName,
-        bankName: paymentForm.bankName,
-        accountName: paymentForm.accountName,
-        accountNumber: paymentForm.accountNumber,
-        branch: paymentForm.branch || undefined,
-        paymentId: paymentForm.paymentId || undefined,
-        qrFile: qrFile || undefined,
-        note: paymentForm.note || undefined,
+  const handleEditPaymentMethod = (method: AdminPaymentDetailsApi) => {
+    setEditingPaymentId(method.id);
+    setRemoveExistingQr(false);
+    setQrFile(null);
+    setPaymentForm({
+      companyName: method.companyName ?? "",
+      bankName: method.bankName ?? "",
+      accountName: method.accountName ?? "",
+      accountNumber: method.accountNumber ?? "",
+      branch: method.branch ?? "",
+      paymentId: method.paymentId ?? "",
+      note: method.note ?? "",
+    });
+  };
+
+  const handleSavePaymentMethod = async () => {
+    if (!paymentForm.companyName || !paymentForm.bankName || !paymentForm.accountName || !paymentForm.accountNumber) {
+      toast({
+        title: "Missing required fields",
+        description: "Company, bank name, account name, and account number are required.",
+        variant: "destructive",
       });
+      return;
+    }
+
+    setSavingPaymentMethod(true);
+    try {
+      if (editingPaymentId) {
+        await updateAdminPaymentDetails(editingPaymentId, {
+          companyName: paymentForm.companyName,
+          bankName: paymentForm.bankName,
+          accountName: paymentForm.accountName,
+          accountNumber: paymentForm.accountNumber,
+          branch: paymentForm.branch || undefined,
+          paymentId: paymentForm.paymentId || undefined,
+          qrFile: qrFile || undefined,
+          removeQrImage: removeExistingQr,
+          note: paymentForm.note || undefined,
+        });
+      } else {
+        await createAdminPaymentDetails({
+          companyName: paymentForm.companyName,
+          bankName: paymentForm.bankName,
+          accountName: paymentForm.accountName,
+          accountNumber: paymentForm.accountNumber,
+          branch: paymentForm.branch || undefined,
+          paymentId: paymentForm.paymentId || undefined,
+          qrFile: qrFile || undefined,
+          note: paymentForm.note || undefined,
+        });
+      }
       invalidatePaymentDetailsCache();
-      setQrFile(null);
-      setPaymentForm({ companyName: "", bankName: "", accountName: "", accountNumber: "", branch: "", paymentId: "", note: "" });
-      toast({ title: "Payment method added", description: "Clients will see it immediately.", variant: "success" });
+      resetPaymentForm();
+      toast({
+        title: editingPaymentId ? "Payment method updated" : "Payment method added",
+        description: "Clients will see the latest details immediately.",
+        variant: "success",
+      });
       void loadPaymentDetails();
     } catch (err) {
       toast({ title: "Save failed", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
+    } finally {
+      setSavingPaymentMethod(false);
     }
   };
 
@@ -395,6 +463,9 @@ export default function PaymentsPage() {
       await deleteAdminPaymentDetails(id);
       invalidatePaymentDetailsCache();
       setPaymentMethods((prev) => prev.filter((m) => m.id !== id));
+      if (editingPaymentId === id) {
+        resetPaymentForm();
+      }
       toast({ title: "Payment method removed", variant: "success" });
     } catch (err) {
       toast({ title: "Delete failed", description: err instanceof Error ? err.message : "Try again.", variant: "destructive" });
@@ -554,28 +625,39 @@ export default function PaymentsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-slate-900 text-sm truncate">{m.companyName}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{m.bankName}</p>
-                    <p className="text-xs text-slate-500">{m.accountName} · {m.accountNumber}</p>
+                    <p className="text-xs text-slate-500">{m.accountName} - {m.accountNumber}</p>
                     {m.branch && <p className="text-xs text-slate-400">{m.branch}</p>}
                     {m.paymentId && <p className="text-xs text-slate-400">UPI: {m.paymentId}</p>}
                     {m.note && <p className="text-xs text-amber-600 mt-1">{m.note}</p>}
                   </div>
-                  <button
-                    type="button"
-                    disabled={deletingPaymentId === m.id}
-                    onClick={() => handleDeletePaymentMethod(m.id)}
-                    className="absolute top-3 right-3 p-1 rounded-full text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
-                    title="Remove"
-                  >
-                    {deletingPaymentId === m.id ? "…" : "✕"}
-                  </button>
+                  <div className="absolute top-3 right-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleEditPaymentMethod(m)}
+                      className="rounded-md border border-slate-200 bg-white px-2 py-1 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      disabled={deletingPaymentId === m.id}
+                      onClick={() => handleDeletePaymentMethod(m.id)}
+                      className="rounded-md border border-red-200 bg-white px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      title="Remove"
+                    >
+                      {deletingPaymentId === m.id ? "..." : "Remove"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Add new payment method form */}
+          {/* Add or edit payment method form */}
           <div className="border-t border-slate-100 pt-5">
-            <p className="text-sm font-semibold text-slate-700 mb-4">Add Payment Method</p>
+            <p className="text-sm font-semibold text-slate-700 mb-4">
+              {editingPaymentId ? "Edit Payment Method" : "Add Payment Method"}
+            </p>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Label / Company Name</Label>
@@ -612,25 +694,80 @@ export default function PaymentsPage() {
                       <p className="text-xs text-emerald-500">({(qrFile.size / 1024).toFixed(1)} KB)</p>
                       <div className="flex gap-2">
                         <label htmlFor="qr-file-input" className="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-emerald-300 text-xs font-medium text-emerald-700 cursor-pointer hover:bg-emerald-100">Change</label>
-                        <button type="button" onClick={() => setQrFile(null)} className="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-red-200 text-xs font-medium text-red-600 hover:bg-red-50">Remove</button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQrFile(null);
+                            if (editingPaymentMethod?.qrImageUrl) setRemoveExistingQr(false);
+                          }}
+                          className="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-red-200 text-xs font-medium text-red-600 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : editingPaymentMethod?.qrImageUrl && !removeExistingQr ? (
+                  <div className="flex items-center gap-4 p-3 rounded-lg border border-blue-200 bg-blue-50">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`${API_BASE}/wallet/qr-image?id=${editingPaymentMethod.id}`}
+                      alt="Current QR"
+                      className="h-20 w-20 object-contain rounded border border-blue-200 bg-white p-1 shrink-0"
+                    />
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-sm font-medium text-blue-700">Current QR image</p>
+                      <div className="flex gap-2">
+                        <label htmlFor="qr-file-input" className="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-blue-300 text-xs font-medium text-blue-700 cursor-pointer hover:bg-blue-100">Replace</label>
+                        <button
+                          type="button"
+                          onClick={() => setRemoveExistingQr(true)}
+                          className="inline-flex items-center px-3 py-1.5 rounded-md bg-white border border-red-200 text-xs font-medium text-red-600 hover:bg-red-50"
+                        >
+                          Remove QR
+                        </button>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <label htmlFor="qr-file-input" className="flex items-center justify-center w-full h-20 border-2 border-dashed rounded-lg cursor-pointer transition-colors text-sm border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-500">
-                    Click to upload QR image (PNG, JPG, WebP…)
+                    Click to upload QR image (PNG, JPG, WebP...)
                   </label>
                 )}
-                <input id="qr-file-input" type="file" accept="image/*" className="hidden" onChange={(e) => setQrFile(e.target.files?.[0] || null)} />
+                <input
+                  id="qr-file-input"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    setQrFile(e.target.files?.[0] || null);
+                    if (e.target.files?.[0]) setRemoveExistingQr(false);
+                  }}
+                />
+                {editingPaymentMethod && removeExistingQr && !qrFile && (
+                  <p className="text-xs text-amber-700">QR image will be removed when you save.</p>
+                )}
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label>Notes</Label>
                 <Input value={paymentForm.note} onChange={(e) => setPaymentForm((p) => ({ ...p, note: e.target.value }))} placeholder="Optional instructions for clients" />
               </div>
               <div className="md:col-span-2 flex justify-end">
-                <Button onClick={handleAddPaymentMethod} disabled={!paymentForm.companyName || !paymentForm.bankName || !paymentForm.accountName || !paymentForm.accountNumber}>
-                  + Add Payment Method
-                </Button>
+                <div className="flex items-center gap-2">
+                  {editingPaymentId && (
+                    <Button variant="outline" onClick={resetPaymentForm} disabled={savingPaymentMethod}>
+                      Cancel
+                    </Button>
+                  )}
+                  <Button
+                    onClick={handleSavePaymentMethod}
+                    disabled={savingPaymentMethod || !paymentForm.companyName || !paymentForm.bankName || !paymentForm.accountName || !paymentForm.accountNumber}
+                  >
+                    {savingPaymentMethod
+                      ? (editingPaymentId ? "Saving..." : "Adding...")
+                      : (editingPaymentId ? "Save Changes" : "+ Add Payment Method")}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -1218,3 +1355,4 @@ export default function PaymentsPage() {
     </div>
   );
 }
+

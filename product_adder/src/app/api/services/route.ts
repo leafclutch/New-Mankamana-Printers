@@ -1,9 +1,41 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+function resolveCategoryImage(input: {
+  image_url: string | null;
+  products: Array<{ image_url: string | null; preview_images: string[] }>;
+}): string | null {
+  if (input.image_url?.trim()) return input.image_url;
+
+  for (const product of input.products) {
+    if (product.image_url?.trim()) return product.image_url;
+    const preview = (product.preview_images ?? []).find((url) => url?.trim());
+    if (preview) return preview;
+  }
+
+  return null;
+}
+
 export async function GET() {
-  const data = await db.productCategory.findMany({ where: { is_active: true }, orderBy: { created_at: "asc" } });
-  return NextResponse.json(data.map(c => ({ id: c.id, name: c.name, image_url: c.image_url })));
+  const data = await db.productCategory.findMany({
+    where: { is_active: true },
+    orderBy: { created_at: "asc" },
+    include: {
+      products: {
+        where: { is_active: true },
+        select: { image_url: true, preview_images: true },
+        orderBy: { created_at: "asc" },
+      },
+    },
+  });
+
+  return NextResponse.json(
+    data.map((category) => ({
+      id: category.id,
+      name: category.name,
+      image_url: resolveCategoryImage(category),
+    }))
+  );
 }
 
 export async function DELETE(req: Request) {

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { protect, restrictTo } from "../../middleware/auth.middleware";
-import { createPaymentDetails, getPaymentDetails, deletePaymentDetails } from "../../controller/wallet/payment-details.controller";
+import { createPaymentDetails, getPaymentDetails, updatePaymentDetails, deletePaymentDetails } from "../../controller/wallet/payment-details.controller";
 import {
   getAdminTopupRequests,
   getAdminTopupRequestById,
@@ -51,6 +51,7 @@ router.use(protect, restrictTo("ADMIN"));
 // every multipart save hashes an empty body and gets the same derived key.
 router.get("/payment-details", getPaymentDetails);
 router.post("/payment-details", adminWalletCriticalRateLimiter, upload.single("qrImage"), requireIdempotencyKey, createPaymentDetails);
+router.patch("/payment-details/:id", adminWalletCriticalRateLimiter, upload.single("qrImage"), requireIdempotencyKey, updatePaymentDetails);
 router.delete("/payment-details/:id", adminWalletCriticalRateLimiter, deletePaymentDetails);
 
 // Top-up request management: Review and process client balance top-up submissions

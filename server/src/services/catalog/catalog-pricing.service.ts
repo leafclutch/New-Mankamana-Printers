@@ -1,6 +1,7 @@
 import prisma from "../../connect";
 import { ApiError } from "../../utils/api-error";
 import { withCache } from "../../utils/cache";
+import { getPublicUrlForPath } from "../../utils/file-upload";
 import { invalidateCatalogPricingForVariant } from "./catalog-cache.service";
 import {
   buildCombinationKey,
@@ -23,6 +24,22 @@ const CATALOG_PRODUCTS_TTL_MS = 60_000;
 const CATALOG_PRODUCT_DETAIL_TTL_MS = 60_000;
 const CATALOG_VARIANTS_TTL_MS = 60_000;
 const CATALOG_VARIANT_OPTIONS_TTL_MS = 120_000;
+
+const toPublicAssetUrl = (raw: string | null | undefined): string | null => {
+  if (!raw) return null;
+  const value = raw.trim();
+  if (!value) return null;
+  if (value.startsWith("http")) return value;
+  if (value.startsWith("/")) return value;
+  return getPublicUrlForPath(value);
+};
+
+const mapImageArray = (values: string[] | null | undefined): string[] => {
+  if (!Array.isArray(values)) return [];
+  return values
+    .map((v) => toPublicAssetUrl(v))
+    .filter((v): v is string => Boolean(v));
+};
 
 const toSelectedOptions = (value: unknown): SelectedOptions => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -86,6 +103,7 @@ export const listActiveProductsService = async () => {
 
     return products.map((product) => ({
       ...product,
+      image_url: toPublicAssetUrl(product.image_url),
       production_days: Number(product.production_days),
     }));
   });
@@ -107,7 +125,14 @@ export const getActiveProductByIdService = async (productId: string) => {
       },
     });
     if (!product) throw new ApiError("Product not found.", 404, "PRODUCT_NOT_FOUND");
-    return { ...product, production_days: Number(product.production_days) };
+    const resolvedPreviewImages = mapImageArray(product.preview_images);
+    const resolvedPrimaryImage = toPublicAssetUrl(product.image_url) ?? resolvedPreviewImages[0] ?? null;
+    return {
+      ...product,
+      image_url: resolvedPrimaryImage,
+      preview_images: resolvedPreviewImages,
+      production_days: Number(product.production_days),
+    };
   });
 };
 

@@ -48,6 +48,34 @@ export const createPaymentDetailsSchema = z.object({
   isActive: z.coerce.boolean().optional().default(true),
 }).strict();
 
+export const updatePaymentDetailsSchema = z.object({
+  companyName: z.string().trim().min(1),
+  bankName: z.string().trim().min(1),
+  accountName: z.string().trim().min(1),
+  accountNumber: z.string().trim().min(1),
+  branch: z.string().nullish().transform((v) => {
+    if (typeof v !== "string") return undefined;
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }),
+  paymentId: z.string().nullish().transform((v) => {
+    if (typeof v !== "string") return undefined;
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }),
+  qrImageUrl: z.string().nullish().transform((v) => {
+    if (typeof v !== "string") return undefined;
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }),
+  note: z.string().max(500).nullish().transform((v) => {
+    if (typeof v !== "string") return undefined;
+    const trimmed = v.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }),
+  removeQrImage: z.coerce.boolean().optional().default(false),
+}).strict();
+
 // -- Validate checkout --
 // validateCheckoutSchema: Ensures a positive order amount for pre-payment balance checks
 export const validateCheckoutSchema = z.object({
