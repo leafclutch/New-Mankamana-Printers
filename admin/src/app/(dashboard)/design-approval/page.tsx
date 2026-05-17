@@ -418,7 +418,7 @@ export default function DesignApprovalPage() {
           <DialogHeader>
             <DialogTitle className="text-lg">{selectedDesign?.title}</DialogTitle>
             <DialogDescription>
-              Submitted by <strong>{selectedDesign?.designer}</strong> &mdash;{" "}
+              Submitted by <strong>{selectedDesign?.designer}</strong>,{" "}
               {selectedDesign?.client}
               {selectedDesign?.productName && (
                 <>

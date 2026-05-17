@@ -147,7 +147,7 @@ function WalletPageInner() {
                             B2B Wallet
                         </span>
                         <h1 className="font-serif text-3xl sm:text-4xl font-black text-white leading-tight">My Wallet</h1>
-                        <p className="mt-1.5 text-slate-400 text-sm">Balance, transactions, and top-up history.</p>
+                        <p className="mt-1.5 text-slate-400 text-sm">Balance, transactions and top up history.</p>
                     </div>
 
                     {/* Balance card inside hero */}
@@ -320,7 +320,7 @@ function WalletPageInner() {
                         ) : filteredTopups.length === 0 ? (
                             <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
                                 <div className="text-4xl mb-3">🏦</div>
-                                <p className="font-semibold text-slate-700">No top-up requests yet</p>
+                                <p className="font-semibold text-slate-700">No top up requests yet</p>
                                 <p className="text-sm text-slate-400 mt-1 mb-4">Submit a payment proof to top up your wallet.</p>
                                 <Link href="/wallet/topup" className="inline-flex items-center gap-2 px-4 py-2 bg-[#0f172a] text-white text-sm font-semibold rounded-lg hover:bg-slate-800 transition-colors">
                                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>

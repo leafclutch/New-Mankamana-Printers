@@ -70,7 +70,7 @@ function TemplatesContent() {
     const [customDesignGroupId, setCustomDesignGroupId] = useState("");
     const [customDesignProductId, setCustomDesignProductId] = useState("");
     const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
-    const [products, setProducts] = useState<{ id: string; name: string; service_id?: string }[]>([]);
+    const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
     const [customDesignFile, setCustomDesignFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isSending, setIsSending] = useState(false);
@@ -81,33 +81,36 @@ function TemplatesContent() {
     const [brokenCategoryImages, setBrokenCategoryImages] = useState<Set<string>>(new Set());
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-    // Fetch service groups and product list for the custom design selectors
+    // Fetch product groups (categories) for the custom design category selector
     useEffect(() => {
         const init = { headers: getAuthHeaders() };
 
-        fetchJsonCached<{ success: boolean; data?: { id: string; name: string }[] }>(
-            "services-list", `${API_BASE}/services`, init, 60_000
+        fetchJsonCached<{ success: boolean; data?: { groups: { id: string; name: string }[] } }>(
+            "catalog-groups", `${API_BASE}/catalog`, init, 60_000
         )
-            .then((d) => { if (d.success) setGroups(d.data || []); })
+            .then((d) => { if (d.success && d.data) setGroups(d.data.groups || []); })
             .catch(() => {});
 
-        fetchJsonCached<{ success: boolean; data?: { id: string; name: string; service_id?: string }[] }>(
-            "products-list", `${API_BASE}/products`, init, 60_000
-        )
-            .then((d) => { if (d.success) setProducts(d.data || []); })
-            .catch(() => {});
-
-        const deregGroups = registerFocusRevalidation<{ success: boolean; data?: { id: string; name: string }[] }>(
-            "services-list", `${API_BASE}/services`, init, 60_000,
-            (d) => { if (d.success) setGroups(d.data || []); }
-        );
-        const deregProducts = registerFocusRevalidation<{ success: boolean; data?: { id: string; name: string; service_id?: string }[] }>(
-            "products-list", `${API_BASE}/products`, init, 60_000,
-            (d) => { if (d.success) setProducts(d.data || []); }
+        const deregGroups = registerFocusRevalidation<{ success: boolean; data?: { groups: { id: string; name: string }[] } }>(
+            "catalog-groups", `${API_BASE}/catalog`, init, 60_000,
+            (d) => { if (d.success && d.data) setGroups(d.data.groups || []); }
         );
 
-        return () => { deregGroups(); deregProducts(); };
+        return () => { deregGroups(); };
     }, []);
+
+    // Fetch products for the selected group
+    useEffect(() => {
+        if (!customDesignGroupId) { setProducts([]); return; }
+        const init = { headers: getAuthHeaders() };
+        fetchJsonCached<{ success: boolean; data?: { products: { id: string; name: string }[] } }>(
+            `group-products-${customDesignGroupId}`,
+            `${API_BASE}/product-groups/${customDesignGroupId}`,
+            init, 60_000
+        )
+            .then((d) => { if (d.success && d.data) setProducts(d.data.products || []); })
+            .catch(() => {});
+    }, [customDesignGroupId]);
 
     useEffect(() => {
         if (activeTab !== "mydesigns") return;
@@ -265,7 +268,7 @@ function TemplatesContent() {
                             <div className="px-4 py-3 bg-[#0f172a]">
                                 <p className="text-slate-400 font-bold text-[0.72rem] uppercase tracking-widest">Options</p>
                             </div>
-                            <nav className="p-2 flex flex-row lg:flex-col gap-1.5">
+                            <nav className="p-2 flex flex-row lg:flex-col gap-1.5 overflow-x-auto">
                                 {sidebarItems.map((item) => {
                                     const isActive = activeTab === item.id;
                                     return (
@@ -273,7 +276,7 @@ function TemplatesContent() {
                                             key={item.id}
                                             type="button"
                                             onClick={() => setActiveTab(item.id)}
-                                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 group ${
+                                            className={`shrink-0 lg:shrink lg:w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 group ${
                                                 isActive
                                                     ? "bg-[#0f172a] text-white shadow-sm"
                                                     : "hover:bg-slate-50 text-slate-600"
@@ -606,9 +609,7 @@ function TemplatesContent() {
                                                 className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-800 bg-white outline-none focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 transition-all appearance-none"
                                             >
                                                 <option value="">Select which product this design is for…</option>
-                                                {products
-                                                    .filter((p) => !p.service_id || p.service_id === customDesignGroupId)
-                                                    .map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                                             </select>
                                         </div>
                                         )}

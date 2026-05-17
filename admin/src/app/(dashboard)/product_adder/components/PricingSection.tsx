@@ -143,7 +143,7 @@ export function PricingSection({ productId, options }: Props) {
         </div>
       ) : rows.length === 0 ? (
         <p className="text-sm text-slate-400 italic">
-          {hasOptions ? "No prices yet — click Generate." : "No prices yet."}
+          {hasOptions ? "No prices yet. Click Generate to create pricing rows." : "No prices yet."}
         </p>
       ) : (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">

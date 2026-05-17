@@ -143,7 +143,7 @@ function OrderDetailModal({
           <div>
             <p className="font-mono text-xs font-semibold text-slate-400">#{order.id}</p>
             <h2 className="font-bold text-slate-900 dark:text-white text-base mt-0.5">
-              {order.variant?.product?.name ?? "—"} — {order.variant?.variant_name ?? ""}
+              {order.variant?.product?.name ?? ""}{order.variant?.variant_name ? ` / ${order.variant.variant_name}` : ""}
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               {order.client?.business_name} · {order.client?.phone_number}
@@ -322,7 +322,7 @@ function OrderDetailModal({
                     return (
                       <>
                         <div className="flex justify-between px-4 py-2.5 text-sm">
-                          <span className="text-slate-500">{order.variant?.product?.name} — {order.variant?.variant_name} × {order.quantity.toLocaleString()}</span>
+                          <span className="text-slate-500">{order.variant?.product?.name}{order.variant?.variant_name ? ` / ${order.variant.variant_name}` : ""} × {order.quantity.toLocaleString()}</span>
                           <span className="font-semibold text-slate-800 dark:text-slate-200">NPR {baseTotal.toLocaleString("en-NP", { minimumFractionDigits: 2 })}</span>
                         </div>
                         {discount > 0 && (
@@ -395,7 +395,7 @@ function OrderDetailModal({
             {isPaidViaWallet && !order.payment_proof_url ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-900/40 px-4 py-3 flex items-center gap-2">
                 <Wallet className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Paid via wallet — no payment proof required.</p>
+                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">Paid via wallet. No payment proof required.</p>
               </div>
             ) : proofProxyUrl ? (
               <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -850,12 +850,12 @@ export default function OrderManagementPage() {
                             </td>
 
                             <td className="px-5 py-4">
-                              <p className="font-medium text-slate-900 dark:text-white">{order.client?.business_name ?? "—"}</p>
+                              <p className="font-medium text-slate-900 dark:text-white">{order.client?.business_name ?? ""}</p>
                               <p className="text-[11px] text-slate-400">{order.client?.phone_number ?? ""}</p>
                             </td>
 
                             <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
-                              <p className="font-medium">{order.variant?.product?.name ?? "—"}</p>
+                              <p className="font-medium">{order.variant?.product?.name ?? ""}</p>
                               <p className="text-[11px] text-slate-400">{order.variant?.variant_name} · Qty {order.quantity}</p>
                             </td>
 
@@ -881,7 +881,7 @@ export default function OrderManagementPage() {
                             <td className="px-5 py-4 text-xs text-slate-500">
                               {order.expected_delivery_date
                                 ? new Date(order.expected_delivery_date).toLocaleDateString()
-                                : <span className="text-slate-300">—</span>}
+                                : null}
                             </td>
 
                             <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>

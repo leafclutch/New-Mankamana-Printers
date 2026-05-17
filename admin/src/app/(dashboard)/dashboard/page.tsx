@@ -265,7 +265,7 @@ export default function DashboardPage() {
             <div key={label} className="flex flex-col items-center justify-center gap-1 px-4 py-4">
               <Icon className={`h-4 w-4 ${color}`} />
               <span className="text-xl font-bold text-slate-900 dark:text-white">
-                {value !== undefined ? value.toLocaleString() : "—"}
+                {value !== undefined ? value.toLocaleString() : "..."}
               </span>
               <span className="text-center text-[10px] font-medium uppercase tracking-wider text-slate-400">{label}</span>
             </div>
@@ -279,7 +279,7 @@ export default function DashboardPage() {
           <CardContent className="p-6">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Active Orders</p>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {stats ? stats.active_orders : "—"}
+              {stats ? stats.active_orders : "..."}
             </h3>
             <div className="mt-2 flex items-center text-xs font-medium text-slate-500">
               <Package className="mr-1 h-3 w-3" />
@@ -291,7 +291,7 @@ export default function DashboardPage() {
           <CardContent className="p-6">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Total Clients</p>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {stats ? stats.total_clients : "—"}
+              {stats ? stats.total_clients : "..."}
             </h3>
             <div className="mt-2 flex items-center text-xs font-medium text-slate-500">
               <Users className="mr-1 h-3 w-3" />
@@ -303,7 +303,7 @@ export default function DashboardPage() {
           <CardContent className="p-6">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Registrations</p>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {stats ? stats.pending_registrations : "—"}
+              {stats ? stats.pending_registrations : "..."}
             </h3>
             <div className="mt-2 flex items-center text-xs font-medium text-amber-500">
               <AlertTriangle className="mr-1 h-3 w-3" />
@@ -315,7 +315,7 @@ export default function DashboardPage() {
           <CardContent className="p-6">
             <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Designs</p>
             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {stats ? stats.pending_designs : "—"}
+              {stats ? stats.pending_designs : "..."}
             </h3>
             <div className="mt-2 flex items-center text-xs font-medium text-[#0061FF]">
               <Palette className="mr-1 h-3 w-3" />
@@ -359,10 +359,10 @@ export default function DashboardPage() {
                         {order.id.slice(0, 8)}...
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
-                        {order.client?.business_name ?? "—"}
+                        {order.client?.business_name ?? ""}
                       </td>
                       <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
-                        {order.variant?.product?.name ?? order.variant?.variant_name ?? "—"}
+                        {order.variant?.product?.name ?? order.variant?.variant_name ?? ""}
                       </td>
                       <td className="px-6 py-4 text-right text-sm font-medium text-slate-900 dark:text-white">
                         NPR {Number(order.final_amount).toLocaleString()}

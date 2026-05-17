@@ -15,6 +15,7 @@ import productOrderRoutes from "./routes/orders/product-order.routes";
 import { sweepStalePlacedOrders } from "./services/orders/product-order.service";
 import prisma from "./connect";
 import { preWarmCatalogCache } from "./utils/cache-warmup";
+import { computePricelist, schedulePricelistRefresh } from "./services/catalog/pricelist.service";
 import clientWalletRoutes from "./routes/wallet/client-wallet.routes";
 import adminWalletRoutes from "./routes/wallet/admin-wallet.routes";
 import { globalErrorHandler } from "./middleware/error.middleware";
@@ -151,6 +152,17 @@ app.get("/", (req: Request, res: Response) => {
   res.json({ message: "API is running" });
 });
 
+// Cron — refresh the pre-computed price list (hit this from Vercel Cron or an external scheduler)
+app.get("/api/v1/pricelist/refresh", (req: Request, res: Response) => {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || req.headers["authorization"] !== `Bearer ${cronSecret}`) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  computePricelist()
+    .then((rows) => res.json({ ok: true, count: rows.length }))
+    .catch((err) => res.status(500).json({ error: err.message }));
+});
+
 // Vercel Cron — sweeps stale ORDER_PLACED orders every 5 minutes
 app.get("/api/v1/admin/sweep", (req: Request, res: Response) => {
   const cronSecret = process.env.CRON_SECRET;
@@ -185,7 +197,9 @@ if (process.env.VERCEL !== "1") {
         console.log("[DB] Connection pool warmed up");
         return preWarmCatalogCache();
       })
+      .then(() => computePricelist())
       .catch(() => {}); // non-fatal
+    schedulePricelistRefresh(3 * 60 * 60 * 1000); // refresh every 3 hours
     sweepStalePlacedOrders().catch((err) =>
       console.error("[AutoTransition] Startup sweep failed:", err)
     );

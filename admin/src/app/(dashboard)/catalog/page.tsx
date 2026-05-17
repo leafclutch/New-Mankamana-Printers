@@ -227,7 +227,7 @@ export default function CatalogPage() {
                 value={assignProductId}
                 onChange={(e) => setAssignProductId(e.target.value)}
               >
-                <option value="">— select product —</option>
+                <option value="">Select product</option>
                 {products.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} ({p.product_code}){p.group_id ? " ✓ in group" : ""}
@@ -244,7 +244,7 @@ export default function CatalogPage() {
                 value={assignGroupId}
                 onChange={(e) => setAssignGroupId(e.target.value)}
               >
-                <option value="">— standalone (no group) —</option>
+                <option value="">Standalone (no group)</option>
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name} ({g.group_code})</option>
                 ))}
@@ -341,7 +341,7 @@ export default function CatalogPage() {
         <CardHeader className="border-b border-slate-100 dark:border-slate-800">
           <CardTitle className="text-base font-semibold">
             Standalone Products
-            <span className="ml-2 text-xs font-normal text-slate-400">(no group — appear directly on the services page)</span>
+            <span className="ml-2 text-xs font-normal text-slate-400">(no group, appear directly on the services page)</span>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">

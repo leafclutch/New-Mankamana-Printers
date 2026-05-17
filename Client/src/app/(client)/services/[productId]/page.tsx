@@ -6,6 +6,7 @@ import { useAuthStore, getAuthHeaders } from "@/store/authStore";
 import { notify } from "@/utils/notifications";
 import { fetchJsonCached, revalidateInBackground, registerFocusRevalidation } from "@/utils/requestCache";
 import { uniqueImageUrls } from "@/utils/image";
+import { TEMPLATE_CATEGORIES } from "@/constants";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
@@ -550,6 +551,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   };
 
   const handleProceedToStep3 = async () => {
+    if (attachmentFiles.length === 0) { notify.error("Please upload at least one reference file to continue"); return; }
     if (uploadingAttachments) { notify.error("Please wait for file uploads to complete"); return; }
 
     setPriceVerifying(true);
@@ -676,7 +678,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         });
         const data = await res.json();
         if (data.success) {
-          notify.success("Order placed — NPR " + pricing.total_price.toFixed(2) + " deducted from wallet");
+          notify.success(`Order placed. NPR ${pricing.total_price.toFixed(2)} deducted from wallet.`);
           router.push("/orders");
         } else {
           notify.error(data.error?.message || data.message || "Failed to place order");
@@ -846,7 +848,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
             aria-label="Select variant"
             className={selectCls}
           >
-            <option value="">— Select variant —</option>
+            <option value="">Select variant</option>
             {variants.map((v) => (
               <option key={v.id} value={v.id}>{v.variant_name}</option>
             ))}
@@ -879,7 +881,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                     aria-label="Quantity"
                     className={selectCls}
                   >
-                    <option value="">— Select —</option>
+                    <option value="">Select quantity</option>
                     {quantityGroup.values.map((v) => <option key={v.id} value={v.code}>{v.label}</option>)}
                   </select>
                 </div>
@@ -908,7 +910,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                     aria-label="Quantity"
                     className={selectCls}
                   >
-                    <option value="">— Select quantity —</option>
+                    <option value="">Select quantity</option>
                     {quantityGroup.values.map((v) => <option key={v.id} value={v.code}>{v.label}</option>)}
                   </select>
                 </div>
@@ -941,8 +943,8 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                     aria-label={group.label}
                     className={selectCls}
                   >
-                    {group.is_required && <option value="">— Select —</option>}
-                    {!group.is_required && <option value="">— None —</option>}
+                    {group.is_required && <option value="">Select</option>}
+                    {!group.is_required && <option value="">None</option>}
                     {group.values.map((v) => <option key={v.id} value={v.code}>{v.label}</option>)}
                   </select>
                 </div>
@@ -963,10 +965,10 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
               aria-label="Select approved design"
               className={selectCls}
             >
-              <option value="">— No design —</option>
+              <option value="">No design</option>
               {approvedDesigns.map((d) => (
                 <option key={d.designCode} value={d.designCode}>
-                  {d.designCode}{d.title ? ` — ${d.title}` : ""}
+                  {d.designCode}{d.title ? ` · ${d.title}` : ""}
                 </option>
               ))}
             </select>
@@ -998,32 +1000,43 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                   <span className="text-amber-400 text-[0.72rem] font-bold tracking-wide">B2B Rate</span>
                 </div>
                 <div className="bg-white divide-y divide-slate-50">
-                  <div className="px-4 py-2.5 flex justify-between text-sm">
-                    <span className="text-slate-500">Unit Price</span>
-                    <span className="font-semibold text-slate-800">NPR {pricing.unit_price.toFixed(2)}</span>
-                  </div>
-                  {pricing.discount > 0 && (
-                    <div className="px-4 py-2.5 flex justify-between text-sm">
-                      <span className="text-emerald-600">
-                        Discount{pricing.discount_type === "percentage" ? ` (${pricing.discount_value}%)` : ""}
+                  {pricing.unit_price === 0 ? (
+                    <div className="px-4 py-5 text-center">
+                      <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-slate-500 text-sm font-semibold">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        Coming Soon. Pricing not yet configured.
                       </span>
-                      <span className="font-semibold text-emerald-600">− NPR {pricing.discount.toFixed(2)}</span>
                     </div>
+                  ) : (
+                    <>
+                      <div className="px-4 py-2.5 flex justify-between text-sm">
+                        <span className="text-slate-500">Unit Price</span>
+                        <span className="font-semibold text-slate-800">NPR {pricing.unit_price.toFixed(2)}</span>
+                      </div>
+                      {pricing.discount > 0 && (
+                        <div className="px-4 py-2.5 flex justify-between text-sm">
+                          <span className="text-emerald-600">
+                            Discount{pricing.discount_type === "percentage" ? ` (${pricing.discount_value}%)` : ""}
+                          </span>
+                          <span className="font-semibold text-emerald-600">− NPR {pricing.discount.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="px-4 py-2.5 flex justify-between text-sm">
+                        <span className="text-slate-500">Quantity</span>
+                        <span className="font-semibold text-slate-800">× {effectiveQuantity}</span>
+                      </div>
+                      {pricing.design_extra_per_unit > 0 && (
+                        <div className="px-4 py-2.5 flex justify-between text-sm border-t border-slate-100">
+                          <span className="text-indigo-600">Design surcharge (NPR {pricing.design_extra_per_unit.toFixed(2)} × {effectiveQuantity})</span>
+                          <span className="font-semibold text-indigo-600">+ NPR {pricing.design_extra_total.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="px-4 py-3.5 flex justify-between items-center bg-slate-50/60">
+                        <span className="font-bold text-slate-900">Total</span>
+                        <span className="font-extrabold text-[#0f172a] text-xl">NPR {pricing.total_price.toFixed(2)}</span>
+                      </div>
+                    </>
                   )}
-                  <div className="px-4 py-2.5 flex justify-between text-sm">
-                    <span className="text-slate-500">Quantity</span>
-                    <span className="font-semibold text-slate-800">× {effectiveQuantity}</span>
-                  </div>
-                  {pricing.design_extra_per_unit > 0 && (
-                    <div className="px-4 py-2.5 flex justify-between text-sm border-t border-slate-100">
-                      <span className="text-indigo-600">Design surcharge (NPR {pricing.design_extra_per_unit.toFixed(2)} × {effectiveQuantity})</span>
-                      <span className="font-semibold text-indigo-600">+ NPR {pricing.design_extra_total.toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="px-4 py-3.5 flex justify-between items-center bg-slate-50/60">
-                    <span className="font-bold text-slate-900">Total</span>
-                    <span className="font-extrabold text-[#0f172a] text-xl">NPR {pricing.total_price.toFixed(2)}</span>
-                  </div>
                 </div>
               </>
             ) : (
@@ -1041,6 +1054,33 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           </div>
         )}
 
+        {/* Free templates banner */}
+        {(() => {
+          const pName = product.name.toLowerCase();
+          const matchedCat = TEMPLATE_CATEGORIES.find((cat) =>
+            pName.includes(cat.toLowerCase()) || cat.toLowerCase().includes(pName)
+          );
+          return matchedCat ? (
+            <div className="flex items-center gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[0.8rem] font-bold text-amber-800">Free templates available</p>
+                <p className="text-[0.72rem] text-amber-700 mt-0.5">Download a free design template for {matchedCat} to get started.</p>
+              </div>
+              <a
+                href={`/templates?tab=free`}
+                className="shrink-0 text-[0.72rem] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                View Templates
+              </a>
+            </div>
+          ) : null;
+        })()}
+
         <div className="flex gap-3 pt-1">
           <button
             type="button"
@@ -1052,10 +1092,10 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           <button
             type="button"
             onClick={handleProceedToStep2}
-            disabled={!pricing}
+            disabled={!pricing || pricing.unit_price === 0}
             className="flex-1 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            Continue
+            {pricing?.unit_price === 0 ? "Coming Soon" : "Continue"}
             <svg className="inline-block w-4 h-4 ml-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
@@ -1068,8 +1108,8 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const renderStep2 = () => (
     <div className="flex flex-col gap-5">
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-1">Reference Files</p>
-        <p className="text-xs text-slate-400 mb-4">Upload your design references, images, or any files needed for this order. You can skip this step if no files are needed.</p>
+        <p className="text-sm font-semibold text-slate-700 mb-1">Reference Files <span className="text-red-400">*</span></p>
+        <p className="text-xs text-slate-400 mb-4">Upload your design references, images, or any files needed for this order. At least one file is required.</p>
         <div
           className="rounded-lg border-2 border-dashed border-slate-200 p-4 text-center cursor-pointer hover:border-slate-300 hover:bg-slate-50/50 transition-colors"
           onClick={() => document.getElementById("attachment-files")?.click()}
@@ -1197,7 +1237,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         <button
           type="button"
           onClick={handleProceedToStep3}
-          disabled={uploadingAttachments || priceVerifying || !!priceChangedInfo}
+          disabled={attachmentFiles.length === 0 || uploadingAttachments || priceVerifying || !!priceChangedInfo}
           className="flex-1 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {priceVerifying ? "Verifying price…" : uploadingAttachments ? "Uploading files…" : (
@@ -1435,7 +1475,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
             <div className="px-4 py-2.5 flex justify-between">
               <span className="text-slate-400">Variant</span>
               <span className="font-semibold text-slate-800 text-right max-w-[60%]">
-                {variants.find((v) => v.id === selectedVariantId)?.variant_name || "—"}
+                {variants.find((v) => v.id === selectedVariantId)?.variant_name || ""}
               </span>
             </div>
             {configuredOptions.map((g) => {

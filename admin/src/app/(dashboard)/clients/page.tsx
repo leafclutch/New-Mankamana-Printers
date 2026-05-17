@@ -303,7 +303,7 @@ export default function ClientsPage() {
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <span className="text-xs text-slate-400">
-                              {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : "—"}
+                              {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : ""}
                             </span>
                             <Button
                               type="button"
@@ -497,7 +497,7 @@ export default function ClientsPage() {
                           { icon: Phone, label: "Phone", value: selectedClient.phone_number },
                           { icon: Mail, label: "Email", value: selectedClient.email },
                           ...(selectedClient.address ? [{ icon: MapPin, label: "Address", value: selectedClient.address }] : []),
-                          { icon: Building2, label: "Joined", value: selectedClient.createdAt ? new Date(selectedClient.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "—" },
+                          { icon: Building2, label: "Joined", value: selectedClient.createdAt ? new Date(selectedClient.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "" },
                         ].map(({ icon: Icon, label, value }) => (
                           <div key={label} className="flex items-start gap-3">
                             <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
@@ -524,7 +524,7 @@ export default function ClientsPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <span className="font-semibold text-slate-800">{order.variant.product.name}</span>
-                              <span className="text-slate-500"> — {order.variant.variant_name}</span>
+                              <span className="text-slate-500"> / {order.variant.variant_name}</span>
                               {/* Order ID as a link to the orders page with pre-filter */}
                               <a
                                 href={`/orders?search=${order.id}`}

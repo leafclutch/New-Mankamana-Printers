@@ -143,7 +143,7 @@ export function OptionsSection({ product, onOptionsChange }: Props) {
       </div>
 
       {product.options.length === 0 && (
-        <p className="text-sm text-slate-400 italic">No options yet — add one below.</p>
+        <p className="text-sm text-slate-400 italic">No options yet. Add one below.</p>
       )}
 
       {product.options.map(opt => (

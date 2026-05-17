@@ -4,6 +4,7 @@ import { protect } from "../../middleware/auth.middleware";
 import * as adminController from "../../controller/admin/admin.controller";
 import * as publicCatalogController from "../../controller/catalog/public-catalog.controller";
 import * as productGroupController from "../../controller/catalog/product-group.controller";
+import * as pricelistController from "../../controller/catalog/pricelist.controller";
 import { createRegistrationRequestSchema } from "../../validators/registration.validator";
 import { trackPageView, getPublicTotalVisits } from "../../controller/analytics/analytics.controller";
 import rateLimit from "express-rate-limit";
@@ -39,6 +40,9 @@ router.post(
   validate(createRegistrationRequestSchema),
   adminController.createRegistrationRequest
 );
+
+// PRICELIST: Pre-computed price list served from server cache (refreshed every 3 hours)
+router.get("/pricelist", protect, pricelistController.getPricelistController);
 
 // CLIENT CATALOG APIs: Browse products, variants, options, and calculate exact-match pricing
 router.get("/catalog", protect, productGroupController.getCatalogController);

@@ -179,7 +179,7 @@ export default function PricingPage() {
   };
 
   const renderCombination = (row: PricingRow) => {
-    if (!row.selected_options || row.selected_options.length === 0) return "—";
+    if (!row.selected_options || row.selected_options.length === 0) return "";
     return row.selected_options.map((o) => o.display_value || o.value).join(" · ");
   };
 
@@ -201,7 +201,7 @@ export default function PricingPage() {
           Product Pricing Matrix
         </h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Edit prices inline — changes save automatically.
+          Edit prices inline. Changes save automatically.
         </p>
       </div>
 

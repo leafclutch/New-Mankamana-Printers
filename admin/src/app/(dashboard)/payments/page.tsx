@@ -527,7 +527,7 @@ export default function PaymentsPage() {
             Wallet & Payment Requests
           </h1>
           <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-            Review wallet top-up submissions, verify payment proofs, and audit
+            Review wallet top up submissions, verify payment proofs, and audit
             wallet transactions.
           </p>
         </div>
@@ -823,7 +823,7 @@ export default function PaymentsPage() {
                       colSpan={7}
                       className="px-5 py-6 text-center text-sm text-slate-500"
                     >
-                      No top-up requests found.
+                      No top up requests found.
                     </td>
                   </tr>
                 ) : (

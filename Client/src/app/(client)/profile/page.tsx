@@ -110,7 +110,6 @@ export default function ProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 items-start">
                         {/* Left sidebar card */}
                         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                            {/* Color band */}
                             <div className="h-2 bg-gradient-to-r from-[#0f172a] to-slate-700" />
                             <div className="p-6">
                                 <div className="flex flex-col items-center text-center mb-5">
@@ -133,7 +132,7 @@ export default function ProfilePage() {
 
                                     <div className="rounded-lg bg-slate-50 border border-slate-100 px-3.5 py-3">
                                         <p className="text-[0.62rem] font-bold uppercase tracking-[0.1em] text-slate-400 mb-0.5">Phone</p>
-                                        <p className="font-semibold text-slate-800 text-sm">{profile?.phone_number || user?.phoneNumber || "—"}</p>
+                                        <p className="font-semibold text-slate-800 text-sm">{profile?.phone_number || user?.phoneNumber || ""}</p>
                                     </div>
 
                                     <div className="rounded-lg bg-slate-50 border border-slate-100 px-3.5 py-3">
