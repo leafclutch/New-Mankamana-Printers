@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Bell, ChevronDown, ClipboardList, Menu, Moon, Palette, Search, Sun, X } from "lucide-react";
+import { Bell, ChevronDown, ClipboardList, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "@/components/shared/theme-provider";
 import { cachedJsonFetch, invalidateCacheKey } from "@/lib/requestCache";
@@ -15,21 +15,18 @@ export function Header({ onMenuToggle }: HeaderProps) {
   const router = useRouter();
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingRegistrations, setPendingRegistrations] = useState(0);
-  const [pendingDesigns, setPendingDesigns] = useState(0);
   const [notifOpen, setNotifOpen] = useState(false);
   const bellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchPending = async () => {
       try {
-        const json = await cachedJsonFetch<{ data?: { pending_registrations?: number; pending_designs?: number } }>("dashboard-stats", "/api/admin/dashboard/stats", 8000);
+        const json = await cachedJsonFetch<{ data?: { pending_registrations?: number } }>("dashboard-stats", "/api/admin/dashboard/stats", 8000);
         const d = json?.data;
         if (d) {
           const regs = d.pending_registrations || 0;
-          const designs = d.pending_designs || 0;
           setPendingRegistrations(regs);
-          setPendingDesigns(designs);
-          setPendingCount(regs + designs);
+          setPendingCount(regs);
         }
       } catch {
         // non-blocking
@@ -155,24 +152,6 @@ export function Header({ onMenuToggle }: HeaderProps) {
                       </div>
                       <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
                         {pendingRegistrations}
-                      </span>
-                    </button>
-                  )}
-                  {pendingDesigns > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => { router.push("/design-approval"); setNotifOpen(false); }}
-                      className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                        <Palette className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Design Reviews</p>
-                        <p className="text-xs text-slate-400">{pendingDesigns} awaiting review</p>
-                      </div>
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-500 px-1 text-[10px] font-bold text-white">
-                        {pendingDesigns}
                       </span>
                     </button>
                   )}

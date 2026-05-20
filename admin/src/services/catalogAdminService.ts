@@ -79,23 +79,6 @@ export const fetchAdminServices = async (): Promise<AdminService[]> => {
   return unwrapData<AdminService[]>(data, []);
 };
 
-export const createAdminService = async (payload: {
-  name: string;
-  description?: string;
-  is_active?: boolean;
-}): Promise<AdminService> => {
-  const response = await fetch("/api/admin/services", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const data = await safeJson(response);
-  if (!response.ok) {
-    throw new Error(data?.message || "Failed to create service.");
-  }
-  return unwrapData<AdminService>(data, data as AdminService);
-};
-
 export const fetchAdminProducts = async (): Promise<AdminProduct[]> => {
   const response = await fetch("/api/admin/products", { cache: "no-store" });
   const data = await safeJson(response);

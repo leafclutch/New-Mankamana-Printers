@@ -7,8 +7,8 @@ export const getPricelistController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { rows, computedAt } = await getPricelist();
-    res.json({ success: true, data: { rows, computedAt } });
+    const { rows, moduleTabs, computedAt, refreshHours } = await getPricelist();
+    res.json({ success: true, data: { rows, moduleTabs, computedAt, refreshHours } });
   } catch (err) {
     next(err);
   }

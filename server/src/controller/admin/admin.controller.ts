@@ -161,14 +161,3 @@ export const updateClientProfile = async (req: Request, res: Response, next: Nex
     next(error);
   }
 };
-
-// getClientDesigns: Returns all design submissions by a specific client for admin view
-export const getClientDesigns = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const id = req.params.id as string;
-    const data = await adminService.getClientDesignsAdminService(id);
-    res.status(200).json({ success: true, data });
-  } catch (error: any) {
-    next(error);
-  }
-};

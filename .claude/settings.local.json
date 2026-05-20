@@ -22,7 +22,10 @@
       "Bash(Select-Object -ExpandProperty Name)",
       "Bash(grep -v \"export\\\\|//.*updateProfileSchema\")",
       "Bash(powershell -Command \"Get-ChildItem -Path 'admin\\\\src\\\\app\\\\api\\\\admin' -Include '*route.ts' -Recurse | Select-Object -ExpandProperty Name | Sort-Object\")",
-      "Bash(powershell -Command ' *)"
+      "Bash(powershell -Command ' *)",
+      "Bash(grep -r \"\\\\${API_BASE}\\\\|API_BASE\\\\s*+\" \"U:\\\\Leafclutch\\\\printing press\\\\code\\\\Manakamana-Printing-E-commerce-platform/Client/src\")",
+      "Bash(awk '{print $NF}')",
+      "Bash(Select-Object Name)"
     ]
   },
   "disabledMcpjsonServers": [

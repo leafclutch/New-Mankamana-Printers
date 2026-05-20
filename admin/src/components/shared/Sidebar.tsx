@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   UserPlus,
   Package,
-  CheckCircle,
   Wallet,
   LogOut,
   Users,
@@ -27,17 +26,15 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [pendingRegistrations, setPendingRegistrations] = useState(0);
-  const [pendingDesigns, setPendingDesigns] = useState(0);
   const [pendingOrders, setPendingOrders] = useState(0);
 
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        const json = await cachedJsonFetch<{ data?: { pending_registrations?: number; pending_designs?: number; pending_orders?: number } }>("dashboard-stats", "/api/admin/dashboard/stats", 8000);
+        const json = await cachedJsonFetch<{ data?: { pending_registrations?: number; pending_orders?: number } }>("dashboard-stats", "/api/admin/dashboard/stats", 8000);
         const d = json?.data;
         if (d) {
           setPendingRegistrations(d.pending_registrations || 0);
-          setPendingDesigns(d.pending_designs || 0);
           setPendingOrders(d.pending_orders || 0);
         }
       } catch {
@@ -74,7 +71,6 @@ export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
         { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badge: 0 },
         { title: "Registration Requests", href: "/registration-requests", icon: UserPlus, badge: pendingRegistrations },
         { title: "Clients", href: "/clients", icon: Users, badge: 0 },
-        { title: "Designs", href: "/design-approval", icon: CheckCircle, badge: pendingDesigns },
         { title: "Wallet", href: "/payments", icon: Wallet, badge: 0 },
         { title: "Orders", href: "/orders", icon: Package, badge: pendingOrders },
       ],

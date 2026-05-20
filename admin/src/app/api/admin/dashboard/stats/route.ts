@@ -17,10 +17,9 @@ export async function GET() {
   const headers = { Authorization: `Bearer ${token}` };
 
   // Fetch data in parallel from available endpoints
-  const [ordersRes, registrationsRes, designsRes, clientsRes] = await Promise.allSettled([
+  const [ordersRes, registrationsRes, clientsRes] = await Promise.allSettled([
     fetch(`${API_BASE_URL}/admin/orders`, { headers, next: { revalidate: 15 } }),
     fetch(`${API_BASE_URL}/admin/registration-requests?status=PENDING`, { headers, next: { revalidate: 15 } }),
-    fetch(`${API_BASE_URL}/admin/design-submissions?status=PENDING_REVIEW`, { headers, next: { revalidate: 15 } }),
     fetch(`${API_BASE_URL}/admin/clients`, { headers, next: { revalidate: 15 } }),
   ]);
 
@@ -29,18 +28,15 @@ export async function GET() {
     try { return await res.value.json(); } catch { return null; }
   };
 
-  const [orders, registrations, designs, clients] = await Promise.all([
+  const [orders, registrations, clients] = await Promise.all([
     parseJson(ordersRes),
     parseJson(registrationsRes),
-    parseJson(designsRes),
     parseJson(clientsRes),
   ]);
 
   interface OrderItem { status: string }
   const ordersData: OrderItem[] = Array.isArray(orders?.data) ? orders.data : [];
   const registrationsData: unknown[] = Array.isArray(registrations?.data) ? registrations.data : [];
-  // design-submissions returns { data: { items: [], pagination: {} } }
-  const designsData = Array.isArray(designs?.data?.items) ? designs.data.items : [];
   const clientsData = Array.isArray(clients?.data) ? clients.data : [];
 
   const activeStatuses = ["ORDER_PLACED", "ORDER_PROCESSING", "ORDER_PREPARED", "ORDER_DISPATCHED"];
@@ -52,7 +48,6 @@ export async function GET() {
       total_orders: ordersData.length,
       pending_orders: ordersData.filter((o) => o.status === "ORDER_PLACED").length,
       pending_registrations: registrationsData.length,
-      pending_designs: designsData.length,
       total_clients: clientsData.length,
     },
   }, {

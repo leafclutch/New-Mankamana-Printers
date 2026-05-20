@@ -35,7 +35,7 @@ export const listCatalogService = async () => {
   return withCache("catalog:browse", CATALOG_GROUP_BROWSE_TTL_MS, async () => {
     const [groups, standaloneProducts] = await Promise.all([
       prisma.productGroup.findMany({
-        where: { is_active: true },
+        where: { is_active: true, module: "PRINTING" },
         select: {
           id: true,
           group_code: true,
@@ -59,7 +59,7 @@ export const listCatalogService = async () => {
         orderBy: { created_at: "asc" },
       }),
       prisma.product.findMany({
-        where: { is_active: true, group_id: null },
+        where: { is_active: true, group_id: null, module: "PRINTING" },
         select: {
           id: true,
           product_code: true,
@@ -107,7 +107,7 @@ export const listCatalogService = async () => {
 export const getProductGroupService = async (groupId: string) => {
   return withCache(`catalog:group:${groupId}`, CATALOG_GROUP_DETAIL_TTL_MS, async () => {
     const group = await prisma.productGroup.findFirst({
-      where: { id: groupId, is_active: true },
+      where: { id: groupId, is_active: true, module: "PRINTING" },
       select: {
         id: true,
         group_code: true,

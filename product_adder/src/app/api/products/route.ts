@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { parseCatalogModule } from "@/lib/catalog-module";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const module = parseCatalogModule(new URL(req.url).searchParams.get("module"));
   const products = await db.product.findMany({
-    where: { is_active: true },
+    where: { is_active: true, module },
     include: {
       variants: {
         where: { is_active: true },
@@ -23,6 +25,7 @@ export async function GET() {
       description: p.description,
       service_id: p.category_id,
       group_id: p.group_id,
+      module: p.module,
       image_url: p.image_url,
       preview_images: p.preview_images ?? [],
       variants: p.variants.map(v => ({
@@ -42,7 +45,14 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const { service_id, group_id, name, description } = await req.json();
+  const body = await req.json().catch(() => ({}));
+  const service_id = typeof body?.service_id === "string" ? body.service_id : null;
+  const group_id = typeof body?.group_id === "string" ? body.group_id : null;
+  const name = typeof body?.name === "string" ? body.name.trim() : "";
+  const description = typeof body?.description === "string" ? body.description : null;
+  const module = parseCatalogModule(body?.module);
+  if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
+
   const code = name.trim().toUpperCase().replace(/[^A-Z0-9]+/g, "-").slice(0, 8) + "-" + String(Date.now()).slice(-3);
 
   const product = await db.product.create({
@@ -50,8 +60,9 @@ export async function POST(req: Request) {
       category_id: service_id ?? null,
       group_id:    group_id    ?? null,
       product_code: code,
-      name: name.trim(),
+      name,
       description: description?.trim() ?? null,
+      module,
     },
   });
 
@@ -62,6 +73,7 @@ export async function POST(req: Request) {
     description: product.description,
     service_id: product.category_id,
     group_id: product.group_id,
+    module: product.module,
     image_url: product.image_url,
     preview_images: [],
     variants: [],

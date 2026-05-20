@@ -6,25 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertTriangle,
-  Palette,
-  Fingerprint,
   ShieldCheck,
   FileOutput,
   ChevronRight,
-  Copy,
-  Check,
   Package,
   Users,
   Eye,
@@ -56,7 +43,6 @@ interface DashboardStats {
   active_orders: number;
   total_orders: number;
   pending_registrations: number;
-  pending_designs: number;
   total_clients: number;
 }
 
@@ -82,8 +68,6 @@ type OrdersApiResponse = RecentOrder[] | { data: RecentOrder[] }
 export default function DashboardPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [generatedId, setGeneratedId] = useState("");
-  const [isCopied, setIsCopied] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [visitorStats, setVisitorStats] = useState<VisitorStats | null>(null);
@@ -130,18 +114,6 @@ export default function DashboardPage() {
       clearInterval(visitorsInterval);
     };
   }, []);
-
-  const handleGenerateId = () => {
-    const id = `DSN-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    setGeneratedId(id);
-    setIsCopied(false);
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedId);
-    setIsCopied(true);
-    toast({ title: "Copied to clipboard", description: `Design ID ${generatedId} copied.` });
-  };
 
   const handleExportReport = async () => {
     const fromDate = reportFrom ? new Date(reportFrom) : null;
@@ -311,18 +283,6 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-slate-200/80 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800">
-          <CardContent className="p-6">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Pending Designs</p>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">
-              {stats ? stats.pending_designs : "..."}
-            </h3>
-            <div className="mt-2 flex items-center text-xs font-medium text-[#0061FF]">
-              <Palette className="mr-1 h-3 w-3" />
-              <span>Needs review</span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -389,53 +349,6 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button
-                    type="button"
-                    className="group flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
-                    onClick={handleGenerateId}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Fingerprint className="text-[#0061FF]" />
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Generate Design ID
-                      </span>
-                    </div>
-                    <ChevronRight className="text-slate-400 transition-transform group-hover:translate-x-1" />
-                  </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Generate Design ID</DialogTitle>
-                    <DialogDescription>
-                      Use this unique ID for tracking new design projects.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex items-center space-x-2">
-                    <div className="grid flex-1 gap-2">
-                      <Label htmlFor="link" className="sr-only">
-                        Link
-                      </Label>
-                      <Input
-                        id="link"
-                        defaultValue={generatedId}
-                        readOnly
-                      />
-                    </div>
-                    <Button type="submit" size="sm" className="px-3" onClick={copyToClipboard}>
-                      <span className="sr-only">Copy</span>
-                      {isCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <DialogFooter className="sm:justify-start">
-                    <DialogDescription className="text-xs">
-                      This ID is valid for 24 hours.
-                    </DialogDescription>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
               <button
                 type="button"
                 className="group flex w-full items-center justify-between rounded-lg border border-slate-200 px-4 py-3 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"

@@ -84,7 +84,6 @@ export const createProductOrderService = async (data: {
     }>;
   };
   notes?: string;
-  designCode?: string;
   useWallet?: boolean;
   paymentProofUrl?: string;
   paymentProofFileName?: string;
@@ -92,7 +91,7 @@ export const createProductOrderService = async (data: {
   paymentProofFileSize?: number;
   attachmentUrls?: string[];
 }) => {
-  const { userId, variantId, quantity, options, notes, designCode, useWallet,
+  const { userId, variantId, quantity, options, notes, useWallet,
     paymentProofUrl, paymentProofFileName, paymentProofMimeType, paymentProofFileSize, attachmentUrls } = data;
   const selectedOptions = normalizeSelectedOptions(options);
 
@@ -132,37 +131,9 @@ export const createProductOrderService = async (data: {
         }
       : null,
     final_total: finalAmount,
-    designCode: designCode || null,
   };
 
   const newOrder = await prisma.$transaction(async (tx) => {
-    let approvedDesignId: string | null = null;
-
-    if (designCode) {
-      const approvedDesign = await tx.approvedDesign.findFirst({
-        where: {
-          designCode,
-          clientId: userId,
-          status: "ACTIVE",
-        },
-      });
-
-      if (!approvedDesign) {
-        throw new Error("Invalid design code. Please use an active approved design code belonging to your account.");
-      }
-
-      approvedDesignId = approvedDesign.id;
-
-      // Add design extra price surcharge (per unit set by admin at approval)
-      const designExtraPrice = Number(approvedDesign.extraPrice ?? 0);
-      if (designExtraPrice > 0) {
-        const extraTotal = Number((designExtraPrice * quantity).toFixed(2));
-        effectiveFinalAmount = Number((effectiveFinalAmount + extraTotal).toFixed(2));
-        pricingSnapshot.designExtraPrice = designExtraPrice;
-        pricingSnapshot.final_total = effectiveFinalAmount;
-      }
-    }
-
     // Wallet pre-check: verify balance BEFORE creating the order to fail fast
     let walletSnapshot: { id: string; currency: string; balanceBefore: number } | null = null;
     if (useWallet) {
@@ -192,7 +163,6 @@ export const createProductOrderService = async (data: {
         discount_amount: discountAmount,
         final_amount: effectiveFinalAmount,
         notes: notes,
-        designId: approvedDesignId,
         pricing_snapshot: pricingSnapshot as any,
         status: "ORDER_PLACED",
         payment_status: useWallet ? "PAID" : paymentProofUrl ? "PROOF_SUBMITTED" : "PENDING",
@@ -312,13 +282,6 @@ export const getOrderDetailsService = async (orderId: string) => {
   return await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      approvedDesign: {
-        select: {
-          id: true,
-          designCode: true,
-          status: true,
-        },
-      },
       variant: {
         include: {
           product: true,
@@ -339,7 +302,6 @@ export const getClientOrdersService = async (userId: string) => {
     const orders = await prisma.order.findMany({
       where: { user_id: userId },
       include: {
-        approvedDesign: { select: { designCode: true } },
         variant: { select: { variant_name: true, product: { select: { name: true } } } },
       },
       orderBy: { created_at: "desc" },
@@ -362,11 +324,6 @@ export const getAllOrdersService = async () => {
   const orders = await prisma.order.findMany({
     include: {
       client: { select: { business_name: true, phone_number: true } },
-      approvedDesign: {
-        select: {
-          designCode: true,
-        },
-      },
       variant: {
         select: {
           variant_name: true,
@@ -562,13 +519,11 @@ export const updateOrderStatusService = async (
         payment_status: true,
         pricing_snapshot: true,
         configurations: { select: { group_label: true, selected_label: true } },
-        approvedDesign: { select: { designCode: true } },
         variant: { select: { variant_name: true, product: { select: { name: true } } } },
         client: { select: { email: true, business_name: true, phone_number: true, client_code: true } },
       },
     }).then((o) => {
       if (!o) return;
-      const snap = o.pricing_snapshot as any;
       return sendOrderInvoice({
         to: o.client.email,
         businessName: o.client.business_name,
@@ -580,10 +535,9 @@ export const updateOrderStatusService = async (
         quantity: o.quantity,
         unitPrice: Number(o.unit_price),
         discountAmount: Number(o.discount_amount ?? 0),
-        designSurcharge: snap?.designExtraPrice ? Number(snap.designExtraPrice) * o.quantity : 0,
+        designSurcharge: 0,
         finalAmount: Number(o.final_amount),
         configurations: o.configurations,
-        designCode: o.approvedDesign?.designCode,
         notes: o.notes,
         paymentMethod: o.payment_status === "PAID" ? "Wallet" : "Bank Transfer",
         acceptedAt: new Date(),

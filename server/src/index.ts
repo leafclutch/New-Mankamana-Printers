@@ -9,15 +9,14 @@ import adminRoutes from "./routes/admin/admin.routes";
 import publicRoutes from "./routes/auth/public.routes";
 import userRoutes from "./routes/auth/user.routes";
 import templateRoutes from "./routes/design/template.routes";
-import designSubmissionRoutes from "./routes/design/design-submission.routes";
-import designRoutes from "./routes/design/design.routes";
 import productOrderRoutes from "./routes/orders/product-order.routes";
 import { sweepStalePlacedOrders } from "./services/orders/product-order.service";
 import prisma from "./connect";
 import { preWarmCatalogCache } from "./utils/cache-warmup";
-import { computePricelist, schedulePricelistRefresh } from "./services/catalog/pricelist.service";
+import { computePricelist, getPricelistRefreshHours, schedulePricelistRefresh } from "./services/catalog/pricelist.service";
 import clientWalletRoutes from "./routes/wallet/client-wallet.routes";
 import adminWalletRoutes from "./routes/wallet/admin-wallet.routes";
+import machineryAdminRoutes from "./routes/admin/machinery.routes";
 import { globalErrorHandler } from "./middleware/error.middleware";
 import { performanceMiddleware } from "./middleware/performance.middleware";
 import { assertRegionConsistency } from "./utils/region-check";
@@ -136,11 +135,10 @@ app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/auth", authRateLimiter, authRoutes);          // rate-limited
 app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/templates", templateRoutes);
-app.use("/api/v1/design-submissions", designSubmissionRoutes);
-app.use("/api/v1", designRoutes);
 app.use("/api/v1/orders", productOrderRoutes);
 app.use("/api/v1/wallet", clientWalletRoutes);
 app.use("/api/v1/admin/wallet", adminWalletRoutes);
+app.use("/api/v1/admin", machineryAdminRoutes);
 
 // Swagger UI (only available when swagger-output.json has been generated locally)
 if (swaggerOutput) {
@@ -199,7 +197,8 @@ if (process.env.VERCEL !== "1") {
       })
       .then(() => computePricelist())
       .catch(() => {}); // non-fatal
-    schedulePricelistRefresh(3 * 60 * 60 * 1000); // refresh every 3 hours
+    schedulePricelistRefresh();
+    console.log(`[Pricelist] Auto refresh scheduled every ${getPricelistRefreshHours()} hour(s)`);
     sweepStalePlacedOrders().catch((err) =>
       console.error("[AutoTransition] Startup sweep failed:", err)
     );

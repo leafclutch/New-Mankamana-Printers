@@ -6,7 +6,6 @@ import { useAuthStore, getAuthHeaders } from "@/store/authStore";
 import { notify } from "@/utils/notifications";
 import { fetchJsonCached, revalidateInBackground, registerFocusRevalidation } from "@/utils/requestCache";
 import { uniqueImageUrls } from "@/utils/image";
-import { TEMPLATE_CATEGORIES } from "@/constants";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
 
@@ -59,8 +58,6 @@ interface PricingResult {
   discount_value: number;
   final_unit_price: number;
   total_price: number;
-  design_extra_per_unit: number;
-  design_extra_total: number;
 }
 
 interface PaymentDetails {
@@ -133,8 +130,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [quantity, setQuantity] = useState("");
   const [minQty, setMinQty] = useState(1);
-  const [designCode, setDesignCode] = useState("");
-  const [approvedDesigns, setApprovedDesigns] = useState<{ designCode: string; title: string | null; approvedFileUrl: string | null; extraPrice: number }[]>([]);
   const [notes, setNotes] = useState("");
   const [pricingRows, setPricingRows] = useState<PricingRow[]>([]);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -228,17 +223,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
 
     return () => { deregProduct(); deregVariants(); };
   }, [productId]);
-
-  useEffect(() => {
-    if (!product || !selectedVariantId) return;
-    const url = `${API_BASE}/designs/my?productId=${encodeURIComponent(productId)}&productName=${encodeURIComponent(product.name)}`;
-    fetchJsonCached<ApiResponse<{ designCode: string; title: string | null; approvedFileUrl: string | null; extraPrice: number }[]>>(`approved-designs-${productId}`, url, { headers: getAuthHeaders() }, 20000)
-      .then((d) => {
-        if (d.success) setApprovedDesigns(d.data || []);
-        else setApprovedDesigns([]);
-      })
-      .catch(() => setApprovedDesigns([]));
-  }, [productId, product, selectedVariantId]);
 
   useEffect(() => {
     if (!selectedVariantId) {
@@ -453,14 +437,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
     if (!row) return null;
 
     const finalUnitPrice = Number((row.price - row.discount).toFixed(2));
-
-    const selectedDesignMeta = designCode
-      ? approvedDesigns.find((d) => d.designCode === designCode)
-      : undefined;
-    const designExtraPerUnit = selectedDesignMeta?.extraPrice ?? 0;
-    const designExtraTotal = Number((designExtraPerUnit * effectiveQuantity).toFixed(2));
-
-    const totalPrice = Number((finalUnitPrice * effectiveQuantity + designExtraTotal).toFixed(2));
+    const totalPrice = Number((finalUnitPrice * effectiveQuantity).toFixed(2));
     return {
       unit_price: row.price,
       discount: row.discount,
@@ -468,10 +445,8 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
       discount_value: row.discount_value,
       final_unit_price: finalUnitPrice,
       total_price: totalPrice,
-      design_extra_per_unit: designExtraPerUnit,
-      design_extra_total: designExtraTotal,
     };
-  }, [isSelectionComplete, pricingMap, optionGroups, selectedOptions, effectiveQuantity, designCode, approvedDesigns]);
+  }, [isSelectionComplete, pricingMap, optionGroups, selectedOptions, effectiveQuantity]);
 
   // Auto-upload attachments as soon as they are selected
   const uploadingRef = useRef(false);
@@ -582,7 +557,7 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
             newUnitPrice: json.data.unit_price,
             newFinalUnitPrice: json.data.final_unit_price,
             newDiscount: json.data.discount,
-            newTotal: Number((json.data.final_unit_price * effectiveQuantity + (pricing.design_extra_total ?? 0)).toFixed(2)),
+            newTotal: Number((json.data.final_unit_price * effectiveQuantity).toFixed(2)),
             combinationKey,
           });
           return;
@@ -668,7 +643,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           options: { ...selectedOptions, configDetails },
           useWallet: true,
           ...(notes ? { notes } : {}),
-          ...(designCode ? { designCode } : {}),
           ...(attachmentPaths.length > 0 ? { attachmentUrls: attachmentPaths } : {}),
         };
         const res = await fetch(`${API_BASE}/orders`, {
@@ -701,7 +675,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
         Object.entries(selectedOptions).forEach(([k, v]) => formData.append(`options[${k}]`, v));
         formData.append("options[configDetails]", JSON.stringify(configDetails));
         if (notes) formData.append("notes", notes);
-        if (designCode) formData.append("designCode", designCode);
         formData.append("paymentProofPath", path);
         formData.append("paymentProofFileName", proofFile?.name || "");
         formData.append("paymentProofMimeType", proofFile?.type || "");
@@ -953,28 +926,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
           </div>
         )}
 
-        {/* Optional fields */}
-        {selectedVariantId && approvedDesigns.length > 0 && (
-          <div>
-            <label className={labelCls}>
-              Approved Design <span className="text-slate-400 font-normal normal-case">(optional)</span>
-            </label>
-            <select
-              value={designCode}
-              onChange={(e) => setDesignCode(e.target.value)}
-              aria-label="Select approved design"
-              className={selectCls}
-            >
-              <option value="">No design</option>
-              {approvedDesigns.map((d) => (
-                <option key={d.designCode} value={d.designCode}>
-                  {d.designCode}{d.title ? ` · ${d.title}` : ""}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {selectedVariantId && (
           <div>
             <label className={labelCls}>
@@ -1025,12 +976,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
                         <span className="text-slate-500">Quantity</span>
                         <span className="font-semibold text-slate-800">× {effectiveQuantity}</span>
                       </div>
-                      {pricing.design_extra_per_unit > 0 && (
-                        <div className="px-4 py-2.5 flex justify-between text-sm border-t border-slate-100">
-                          <span className="text-indigo-600">Design surcharge (NPR {pricing.design_extra_per_unit.toFixed(2)} × {effectiveQuantity})</span>
-                          <span className="font-semibold text-indigo-600">+ NPR {pricing.design_extra_total.toFixed(2)}</span>
-                        </div>
-                      )}
                       <div className="px-4 py-3.5 flex justify-between items-center bg-slate-50/60">
                         <span className="font-bold text-slate-900">Total</span>
                         <span className="font-extrabold text-[#0f172a] text-xl">NPR {pricing.total_price.toFixed(2)}</span>
@@ -1053,33 +998,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
             )}
           </div>
         )}
-
-        {/* Free templates banner */}
-        {(() => {
-          const pName = product.name.toLowerCase();
-          const matchedCat = TEMPLATE_CATEGORIES.find((cat) =>
-            pName.includes(cat.toLowerCase()) || cat.toLowerCase().includes(pName)
-          );
-          return matchedCat ? (
-            <div className="flex items-center gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                <svg className="w-4 h-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[0.8rem] font-bold text-amber-800">Free templates available</p>
-                <p className="text-[0.72rem] text-amber-700 mt-0.5">Download a free design template for {matchedCat} to get started.</p>
-              </div>
-              <a
-                href={`/templates?tab=free`}
-                className="shrink-0 text-[0.72rem] font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
-              >
-                View Templates
-              </a>
-            </div>
-          ) : null;
-        })()}
 
         <div className="flex gap-3 pt-1">
           <button
@@ -1495,12 +1413,6 @@ export default function ProductOrderPage({ params }: { params: Promise<{ product
               <div className="px-4 py-2.5 flex justify-between">
                 <span className="text-slate-400">Files</span>
                 <span className="font-semibold text-slate-800">{attachmentPaths.length} uploaded</span>
-              </div>
-            )}
-            {designCode && (
-              <div className="px-4 py-2.5 flex justify-between">
-                <span className="text-slate-400">Design</span>
-                <span className="font-semibold text-slate-800">{designCode}</span>
               </div>
             )}
             {notes && (

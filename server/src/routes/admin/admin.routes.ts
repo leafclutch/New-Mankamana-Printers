@@ -2,10 +2,6 @@ import { Router } from "express";
 import * as adminController from "../../controller/admin/admin.controller";
 import * as authController from "../../controller/auth/auth.controller";
 import { protect, restrictTo } from "../../middleware/auth.middleware";
-import * as designSubmissionController from "../../controller/design/design-submission.controller";
-import * as approvedDesignController from "../../controller/design/approved-design.controller";
-import * as adminProductController from "../../controller/catalog/admin-product.controller";
-import * as adminPricingController from "../../controller/catalog/admin-pricing.controller";
 import * as adminCatalogController from "../../controller/admin/admin-catalog.controller";
 import * as productGroupController from "../../controller/catalog/product-group.controller";
 import * as productOrderController from "../../controller/orders/product-order.controller";
@@ -51,19 +47,6 @@ router.post("/clients/:id/reset-password", protect, restrictTo("ADMIN"), critica
 router.patch("/clients/:id/toggle-status", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminController.toggleClientStatus);
 router.patch("/clients/:id", protect, restrictTo("ADMIN"), criticalActionRateLimiter, adminController.updateClientProfile);
 router.get("/clients/:id/orders", protect, restrictTo("ADMIN"), adminController.getClientOrders);
-router.get("/clients/:id/designs", protect, restrictTo("ADMIN"), adminController.getClientDesigns);
-
-// DESIGN SUBMISSIONS: Review, approve, or reject custom designs submitted by clients
-router.get("/design-submissions", protect, restrictTo("ADMIN"), designSubmissionController.getAdminSubmissions);
-router.get("/design-submissions/:submissionId", protect, restrictTo("ADMIN"), designSubmissionController.getAdminSubmissionById);
-router.get("/design-submissions/:submissionId/file", protect, restrictTo("ADMIN"), designSubmissionController.getAdminSubmissionFile);
-router.post("/design-submissions/:submissionId/approve", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, designSubmissionController.approveSubmission);
-router.patch("/design-submissions/:submissionId/reject", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, designSubmissionController.rejectSubmission);
-
-// APPROVED DESIGNS: Manage the repository of designs that have passed review
-router.get("/designs", protect, restrictTo("ADMIN"), approvedDesignController.getAdminDesigns);
-router.get("/designs/:designId", protect, restrictTo("ADMIN"), approvedDesignController.getAdminDesignById);
-router.patch("/designs/:designId/archive", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, approvedDesignController.archiveDesign);
 
 import * as templateController from "../../controller/design/template.controller";
 import multer from "multer";
@@ -104,16 +87,6 @@ router.get("/product-groups", protect, restrictTo("ADMIN"), productGroupControll
 router.post("/product-groups", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productGroupController.adminCreateGroupController);
 router.patch("/product-groups/:groupId", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productGroupController.adminUpdateGroupController);
 router.patch("/products/:productId/group", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, productGroupController.adminSetProductGroupController);
-
-// UNIVERSAL PRODUCT & PRICING MANAGEMENT: Low-level variant/group/value APIs (kept for backward compatibility)
-router.post("/products-raw", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminProductController.createProduct);
-router.post("/products-raw/:productId/variants", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminProductController.createVariant);
-router.post("/variants/:variantId/option-groups", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminProductController.createOptionGroup);
-router.post("/groups/:groupId/option-values", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminProductController.createOptionValue);
-router.post("/variants/:variantId/pricing", protect, restrictTo("ADMIN"), criticalActionRateLimiter, requireIdempotencyKey, adminProductController.createVariantPricing);
-router.get("/variants/:variantId/full-details", protect, restrictTo("ADMIN"), adminProductController.getVariantFullDetails);
-// ADMIN PRICING APIs: Review and update pricing rows without changing catalog structure
-router.get("/pricing/:variantId", protect, restrictTo("ADMIN"), adminPricingController.getVariantPricingMatrix);
 
 // ORDERS MANAGEMENT: Overview and status updates for all client orders
 router.get("/orders", protect, restrictTo("ADMIN"), productOrderController.getAdminOrders);

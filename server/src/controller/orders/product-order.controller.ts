@@ -313,7 +313,6 @@ export const downloadOrderInvoice = async (req: Request, res: Response) => {
         client: { select: { business_name: true, client_code: true, phone_number: true } },
         variant: { include: { product: true } },
         configurations: true,
-        approvedDesign: { select: { designCode: true } },
         statusHistory: { orderBy: { changed_at: "asc" } },
       },
     });
@@ -323,9 +322,6 @@ export const downloadOrderInvoice = async (req: Request, res: Response) => {
     // Find when order was accepted (moved to ORDER_PROCESSING)
     const acceptedEntry = order.statusHistory.find((h) => h.status === "ORDER_PROCESSING");
     const acceptedAt = acceptedEntry?.changed_at ?? order.created_at;
-
-    const snap = order.pricing_snapshot as any;
-    const designSurcharge = snap?.designExtraPrice ? Number(snap.designExtraPrice) * order.quantity : 0;
 
     const pdfBuffer = await generateInvoicePdf({
       orderId: order.id,
@@ -337,13 +333,12 @@ export const downloadOrderInvoice = async (req: Request, res: Response) => {
       quantity: order.quantity,
       unitPrice: Number(order.unit_price),
       discountAmount: Number(order.discount_amount ?? 0),
-      designSurcharge,
+      designSurcharge: 0,
       finalAmount: Number(order.final_amount),
       configurations: order.configurations.map((c) => ({
         group_label: c.group_label,
         selected_label: c.selected_label,
       })),
-      designCode: order.approvedDesign?.designCode ?? null,
       notes: order.notes ?? null,
       paymentMethod: order.walletTransactionId ? "Wallet" : "Bank Transfer",
       acceptedAt,

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, Users, Phone, Mail, Building2, RefreshCw, KeyRound, MapPin, User, Eye, Ban, CheckCircle, FileText, Download, ExternalLink, Pencil, Save, X } from "lucide-react";
+import { Search, Users, Phone, Mail, Building2, RefreshCw, KeyRound, MapPin, User, Eye, Ban, CheckCircle, Pencil, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cachedJsonFetch, invalidateCacheKey } from "@/lib/requestCache";
 
@@ -35,18 +35,6 @@ interface ClientOrder {
   final_amount: string | number;
   created_at: string;
   variant: { variant_name: string; product: { name: string } };
-  approvedDesign?: { designCode: string } | null;
-}
-
-interface ClientDesign {
-  id: string;
-  title?: string | null;
-  status: string;
-  submittedAt: string;
-  fileUrl: string;
-  fileType: string;
-  feedbackMessage?: string | null;
-  approvedDesign?: { designCode: string } | null;
 }
 
 interface ApiResponse<T> { success?: boolean; data: T }
@@ -71,8 +59,7 @@ export default function ClientsPage() {
   const [resetResult, setResetResult] = useState<ResetResult | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientOrders, setClientOrders] = useState<ClientOrder[]>([]);
-  const [clientDesigns, setClientDesigns] = useState<ClientDesign[]>([]);
-  const [detailTab, setDetailTab] = useState<"info" | "orders" | "designs">("info");
+  const [detailTab, setDetailTab] = useState<"info" | "orders">("info");
   const [detailLoading, setDetailLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
@@ -159,32 +146,12 @@ export default function ClientsPage() {
     setDetailTab("info");
     setDetailLoading(true);
     try {
-      const [ordersJson, designsJson] = await Promise.all([
-        cachedJsonFetch<ApiResponse<ClientOrder[]>>(`admin-client-orders-${client.id}`, `/api/admin/clients/${client.id}/orders`, 30_000),
-        cachedJsonFetch<ApiResponse<ClientDesign[]>>(`admin-client-designs-${client.id}`, `/api/admin/clients/${client.id}/designs`, 60_000),
-      ]);
+      const ordersJson = await cachedJsonFetch<ApiResponse<ClientOrder[]>>(`admin-client-orders-${client.id}`, `/api/admin/clients/${client.id}/orders`, 30_000);
       setClientOrders(ordersJson.data || []);
-      setClientDesigns(designsJson.data || []);
     } catch {
       setClientOrders([]);
-      setClientDesigns([]);
     } finally {
       setDetailLoading(false);
-    }
-  };
-
-  const handleDownload = async (url: string, title: string, fileType?: string) => {
-    try {
-      const res = await fetch(url);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = blobUrl;
-      a.download = `${title}.${fileType || "file"}`;
-      a.click();
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      window.open(url, "_blank");
     }
   };
 
@@ -378,12 +345,12 @@ export default function ClientsPage() {
               <Building2 className="h-5 w-5 text-[#0061FF]" />
               {selectedClient?.business_name}
             </DialogTitle>
-            <DialogDescription>Client profile, orders, and designs</DialogDescription>
+            <DialogDescription>Client profile and orders</DialogDescription>
           </DialogHeader>
 
           {/* Tabs */}
           <div className="flex gap-1 border-b border-slate-200">
-            {(["info", "orders", "designs"] as const).map((tab) => (
+            {(["info", "orders"] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -392,7 +359,6 @@ export default function ClientsPage() {
               >
                 {tab}
                 {tab === "orders" && !detailLoading && ` (${clientOrders.length})`}
-                {tab === "designs" && !detailLoading && ` (${clientDesigns.length})`}
               </button>
             ))}
           </div>
@@ -542,7 +508,6 @@ export default function ClientsPage() {
                             <span>Qty: {order.quantity}</span>
                             <span>NPR {Number(order.final_amount).toLocaleString()}</span>
                             <span>{new Date(order.created_at).toLocaleDateString()}</span>
-                            {order.approvedDesign && <span className="font-mono text-[#0061FF]">{order.approvedDesign.designCode}</span>}
                           </div>
                         </div>
                       ))}
@@ -551,43 +516,6 @@ export default function ClientsPage() {
                 </div>
               )}
 
-              {detailTab === "designs" && (
-                <div>
-                  {clientDesigns.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-slate-400">No design submissions yet.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {clientDesigns.map((design) => (
-                        <div key={design.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-slate-400 shrink-0" />
-                              <div>
-                                <div className="font-semibold text-slate-800">{design.title || `Submission ${design.id.slice(0, 6)}`}</div>
-                                <div className="text-xs text-slate-500">{new Date(design.submittedAt).toLocaleDateString()}{design.approvedDesign && <span className="ml-2 font-mono text-[#0061FF]">{design.approvedDesign.designCode}</span>}</div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${design.status === "APPROVED" ? "bg-emerald-100 text-emerald-700" : design.status === "REJECTED" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
-                                {design.status === "PENDING_REVIEW" ? "Pending" : design.status === "APPROVED" ? "Approved" : "Rejected"}
-                              </span>
-                              <a href={design.fileUrl} target="_blank" rel="noreferrer" className="rounded p-1 hover:bg-slate-200" title="Open">
-                                <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
-                              </a>
-                              <button type="button" onClick={() => handleDownload(design.fileUrl, design.title || design.id, design.fileType)} className="rounded p-1 hover:bg-slate-200" title="Download">
-                                <Download className="h-3.5 w-3.5 text-slate-500" />
-                              </button>
-                            </div>
-                          </div>
-                          {design.feedbackMessage && (
-                            <p className="mt-2 text-xs text-red-600 bg-red-50 rounded px-2 py-1">{design.feedbackMessage}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
             </>
           )}
 

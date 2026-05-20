@@ -1,20 +1,43 @@
 import prisma from "../../connect";
 
+export type PricelistModule = "PRINTING" | "MACHINERY";
+
 export type PricelistRow = {
   id: string;
   name: string;
   description: string | null;
   product_code: string;
+  module: PricelistModule;
   group: string | null;
   minPrice: number | null;
 };
 
+export type PricelistModuleTab = {
+  key: PricelistModule;
+  label: string;
+  rows: PricelistRow[];
+  productCount: number;
+  pricedCount: number;
+};
+
 type Cache = {
   rows: PricelistRow[];
+  moduleTabs: PricelistModuleTab[];
   computedAt: number;
 };
 
-const PRICELIST_TTL_MS = 3 * 60 * 60 * 1000; // 3 hours
+const HOUR_MS = 60 * 60 * 1000;
+const PRICELIST_MIN_REFRESH_HOURS = 3;
+const PRICELIST_MAX_REFRESH_HOURS = 5;
+
+const resolvePricelistRefreshHours = (): number => {
+  const raw = Number(process.env.PRICELIST_REFRESH_HOURS ?? PRICELIST_MIN_REFRESH_HOURS);
+  if (!Number.isFinite(raw)) return PRICELIST_MIN_REFRESH_HOURS;
+  return Math.min(PRICELIST_MAX_REFRESH_HOURS, Math.max(PRICELIST_MIN_REFRESH_HOURS, raw));
+};
+
+const PRICELIST_REFRESH_HOURS = resolvePricelistRefreshHours();
+const PRICELIST_TTL_MS = Math.round(PRICELIST_REFRESH_HOURS * HOUR_MS);
 
 let cache: Cache | null = null;
 let computing = false;
@@ -26,6 +49,17 @@ const computeDiscount = (price: number, type: string | null, value: unknown): nu
   return 0;
 };
 
+const buildModuleTab = (rows: PricelistRow[], key: PricelistModule, label: string): PricelistModuleTab => {
+  const moduleRows = rows.filter((row) => row.module === key);
+  return {
+    key,
+    label,
+    rows: moduleRows,
+    productCount: moduleRows.length,
+    pricedCount: moduleRows.filter((r) => r.minPrice !== null && r.minPrice > 0).length,
+  };
+};
+
 export const computePricelist = async (): Promise<PricelistRow[]> => {
   const products = await prisma.product.findMany({
     where: { is_active: true },
@@ -34,6 +68,7 @@ export const computePricelist = async (): Promise<PricelistRow[]> => {
       name: true,
       description: true,
       product_code: true,
+      module: true,
       group: { select: { name: true } },
       variants: {
         where: { is_active: true },
@@ -66,10 +101,16 @@ export const computePricelist = async (): Promise<PricelistRow[]> => {
       name: p.name,
       description: p.description,
       product_code: p.product_code,
+      module: p.module as PricelistModule,
       group: p.group?.name ?? null,
       minPrice,
     };
   });
+
+  const moduleTabs: PricelistModuleTab[] = [
+    buildModuleTab(rows, "PRINTING", "Printing Services"),
+    buildModuleTab(rows, "MACHINERY", "Machinery"),
+  ];
 
   // Only replace the cache if the new computation has at least as many priced products
   // as the current cache. This prevents a temporary DB issue from degrading the list
@@ -80,13 +121,13 @@ export const computePricelist = async (): Promise<PricelistRow[]> => {
     : 0;
 
   if (!cache || newPricedCount >= oldPricedCount) {
-    cache = { rows, computedAt: Date.now() };
+    cache = { rows, moduleTabs, computedAt: Date.now() };
     console.log(
-      `[Pricelist] Cache updated: ${rows.length} products, ${newPricedCount} priced at ${new Date().toISOString()}`
+      `[Pricelist] Cache updated: ${rows.length} products, ${newPricedCount} priced, refresh=${PRICELIST_REFRESH_HOURS}h at ${new Date().toISOString()}`
     );
   } else {
     console.warn(
-      `[Pricelist] Cache NOT updated: new computation has ${newPricedCount} priced products vs ${oldPricedCount} in cache — keeping old data`
+      `[Pricelist] Cache NOT updated: new computation has ${newPricedCount} priced products vs ${oldPricedCount} in cache, keeping old data`
     );
   }
 
@@ -94,31 +135,36 @@ export const computePricelist = async (): Promise<PricelistRow[]> => {
 };
 
 /** Returns cached rows (stale-while-revalidate). First call blocks until ready. */
-export const getPricelist = async (): Promise<{ rows: PricelistRow[]; computedAt: number }> => {
+export const getPricelist = async (): Promise<{
+  rows: PricelistRow[];
+  moduleTabs: PricelistModuleTab[];
+  computedAt: number;
+  refreshHours: number;
+}> => {
   if (cache) {
     const age = Date.now() - cache.computedAt;
     if (age < PRICELIST_TTL_MS) {
-      // Fresh — serve immediately
-      return cache;
+      // Fresh: serve immediately
+      return { ...cache, refreshHours: PRICELIST_REFRESH_HOURS };
     }
-    // Stale — serve old data and refresh in background
+    // Stale: serve old data and refresh in background
     if (!computing) {
       computing = true;
       computePricelist()
         .catch((err) => console.error("[Pricelist] Background refresh failed:", err))
         .finally(() => { computing = false; });
     }
-    return cache;
+    return { ...cache, refreshHours: PRICELIST_REFRESH_HOURS };
   }
 
-  // Nothing cached yet — compute synchronously for the first caller
+  // Nothing cached yet: compute synchronously for the first caller
   computing = true;
   try {
     await computePricelist();
   } finally {
     computing = false;
   }
-  return cache!;
+  return { ...cache!, refreshHours: PRICELIST_REFRESH_HOURS };
 };
 
 /** Call once at startup on non-serverless environments to keep cache proactively warm. */
@@ -129,3 +175,5 @@ export const schedulePricelistRefresh = (intervalMs = PRICELIST_TTL_MS): NodeJS.
     );
   }, intervalMs);
 };
+
+export const getPricelistRefreshHours = (): number => PRICELIST_REFRESH_HOURS;

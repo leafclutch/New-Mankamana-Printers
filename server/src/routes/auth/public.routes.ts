@@ -4,6 +4,7 @@ import { protect } from "../../middleware/auth.middleware";
 import * as adminController from "../../controller/admin/admin.controller";
 import * as publicCatalogController from "../../controller/catalog/public-catalog.controller";
 import * as productGroupController from "../../controller/catalog/product-group.controller";
+import * as machineryController from "../../controller/catalog/machinery-catalog.controller";
 import * as pricelistController from "../../controller/catalog/pricelist.controller";
 import { createRegistrationRequestSchema } from "../../validators/registration.validator";
 import { trackPageView, getPublicTotalVisits } from "../../controller/analytics/analytics.controller";
@@ -41,7 +42,7 @@ router.post(
   adminController.createRegistrationRequest
 );
 
-// PRICELIST: Pre-computed price list served from server cache (refreshed every 3 hours)
+// PRICELIST: Pre-computed price list served from server cache (refreshed every 3-5 hours)
 router.get("/pricelist", protect, pricelistController.getPricelistController);
 
 // CLIENT CATALOG APIs: Browse products, variants, options, and calculate exact-match pricing
@@ -52,6 +53,10 @@ router.get("/products/:productId", protect, publicCatalogController.getProductBy
 router.get("/products/:productId/variants", protect, publicCatalogController.getProductVariantsController);
 router.get("/variants/:variantId/options", protect, publicCatalogController.getVariantOptionsController);
 router.post("/pricing/calculate", protect, pricingRateLimiter, publicCatalogController.calculatePricingController);
+
+// MACHINERY CATALOG APIs: Browse machinery groups and products
+router.get("/machinery/catalog", protect, machineryController.getMachineryCatalogController);
+router.get("/machinery/groups/:groupId", protect, machineryController.getMachineryGroupController);
 
 // LEGACY CATALOG API: Retained for backwards compatibility (now auth-gated to prevent price scraping)
 router.post("/variants/:variantId/calculate-price", protect, pricingRateLimiter, publicCatalogController.calculatePriceController);

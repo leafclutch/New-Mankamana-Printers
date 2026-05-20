@@ -20,7 +20,7 @@ interface FormData {
 
 const benefits = [
     { title: "Wholesale Rates", desc: "Exclusive B2B pricing on all printing services." },
-    { title: "Free Templates", desc: "Access 200+ free professional design templates." },
+    { title: "Machinery Access", desc: "Browse and order industrial machinery at wholesale rates." },
     { title: "Reliable Delivery", desc: "On-time delivery across all of Nepal." },
     { title: "Dedicated Support", desc: "Personal account manager for all your needs." },
 ];
@@ -117,7 +117,7 @@ export default function RegisterPage() {
                                 </div>
                                 <h2 className="text-white text-[1.18rem] sm:text-[1.5rem] font-extrabold mb-2">Join Our B2B Network</h2>
                                 <p className="text-white/[0.78] text-[0.8rem] sm:text-[0.82rem] leading-[1.7]">
-                                    Register your company and get access to exclusive wholesale printing rates and premium templates.
+                                    Register your company and get access to exclusive wholesale printing rates and machinery at trade pricing.
                                 </p>
                             </div>
 

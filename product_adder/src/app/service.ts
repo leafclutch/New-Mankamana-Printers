@@ -5,9 +5,17 @@ import type {
   Service,
   Variant,
   Group,
+  CatalogModule,
   TemplateCategory,
   FreeDesignTemplate,
 } from "./types";
+
+const DEFAULT_MODULE: CatalogModule = "PRINTING";
+
+function withModule(path: string, module: CatalogModule): string {
+  const divider = path.includes("?") ? "&" : "?";
+  return `${path}${divider}module=${module}`;
+}
 
 async function api<T>(path: string, method = "GET", body?: unknown): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -36,16 +44,30 @@ export const uploadServicePreview = (serviceId: string, file: File) => {
     });
 };
 
-export const getGroups      = () => api<Group[]>("/groups");
-export const addGroup       = (name: string) => api<Group>("/groups", "POST", { name });
-export const renameGroup    = (id: string, name: string) => api<Group>(`/groups/${id}`, "PATCH", { name });
-export const removeGroup    = (id: string) => api(`/groups/${id}`, "DELETE");
+export const getGroups      = (module: CatalogModule = DEFAULT_MODULE) => api<Group[]>(withModule("/groups", module));
+export const addGroup       = (name: string, module: CatalogModule = DEFAULT_MODULE) =>
+  api<Group>("/groups", "POST", { name, module });
+export const renameGroup    = (id: string, name: string, module: CatalogModule = DEFAULT_MODULE) =>
+  api<Group>(withModule(`/groups/${id}`, module), "PATCH", { name });
+export const removeGroup    = (id: string, module: CatalogModule = DEFAULT_MODULE) =>
+  api(withModule(`/groups/${id}`, module), "DELETE");
 export const setProductGroup = (productId: string, groupId: string | null) =>
   api<{ id: string; group_id: string | null }>(`/products/${productId}/group`, "PATCH", { group_id: groupId });
 
-export const getProducts  = () => api<Product[]>("/products");
-export const addProduct   = (service_id: string, name: string, description?: string) =>
-  api<Product>("/products", "POST", { service_id, name, description });
+export const getProducts  = (module: CatalogModule = DEFAULT_MODULE) => api<Product[]>(withModule("/products", module));
+export const addProduct   = (
+  service_id: string | null,
+  name: string,
+  description?: string,
+  opts?: { group_id?: string | null; module?: CatalogModule },
+) =>
+  api<Product>("/products", "POST", {
+    service_id,
+    group_id: opts?.group_id ?? null,
+    name,
+    description,
+    module: opts?.module ?? DEFAULT_MODULE,
+  });
 export const saveProduct  = (id: string, name: string, description?: string) =>
   api<Partial<Product>>(`/products/${id}`, "PATCH", { name, description });
 export const removeProduct = (id: string) => api(`/products/${id}`, "DELETE");
@@ -56,8 +78,8 @@ export const renameVariant = (variantId: string, name: string) =>
   api<{ id: string; variant_name: string }>(`/variants/${variantId}`, "PATCH", { name });
 export const removeVariant = (variantId: string) => api(`/variants/${variantId}`, "DELETE");
 
-export const getOptionSuggestions = () =>
-  api<Array<{ label: string; is_pricing_field: boolean; choices: string[] }>>("/option-suggestions");
+export const getOptionSuggestions = (module: CatalogModule = DEFAULT_MODULE) =>
+  api<Array<{ label: string; is_pricing_field: boolean; choices: string[] }>>(withModule("/option-suggestions", module));
 
 export const addField = (productId: string, variantId: string, label: string, is_pricing_field: boolean, import_choices?: string[]) =>
   api<Option>(`/products/${productId}/fields`, "POST", { variant_id: variantId, label, is_pricing_field, import_choices });

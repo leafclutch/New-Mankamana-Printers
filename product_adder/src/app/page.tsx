@@ -5,6 +5,7 @@ import type {
   Product,
   Option,
   PriceRow,
+  CatalogModule,
   Service,
   Variant,
   Group,
@@ -24,6 +25,9 @@ import {
   getTemplateCategories, addTemplateCategory, getFreeTemplates, uploadFreeTemplate, removeFreeTemplate,
   cartesian,
 } from "./service";
+
+const PRINTING_MODULE: CatalogModule = "PRINTING";
+const MACHINERY_MODULE: CatalogModule = "MACHINERY";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -425,6 +429,96 @@ function GroupsView({ groups, products, onBack, onCreated, onRenamed, onDeleted 
 }
 
 // ── Level 2: Products ─────────────────────────────────────────────────────────
+
+function MachineryGroupsView({ groups, products, onSelect, onCreated, onRenamed, onDeleted }: {
+  groups: Group[];
+  products: Product[];
+  onSelect: (group: Group) => void;
+  onCreated: (group: Group) => void;
+  onRenamed: (id: string, name: string) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const { msg, toast } = useToast();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function create() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const g = await addGroup(name.trim(), MACHINERY_MODULE);
+      onCreated(g);
+      setName("");
+      setCreating(false);
+      toast(`"${g.name}" created`);
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function del(g: Group) {
+    const count = products.filter(p => p.group_id === g.id).length;
+    if (count > 0) return toast(`Cannot delete - ${count} product${count > 1 ? "s" : ""} still in this group`, "err");
+    if (!confirm(`Delete machinery group "${g.name}"?`)) return;
+    setDeletingId(g.id);
+    try {
+      await removeGroup(g.id, MACHINERY_MODULE);
+      onDeleted(g.id);
+      toast(`"${g.name}" deleted`);
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function rename(g: Group, newName: string) {
+    try {
+      await renameGroup(g.id, newName, MACHINERY_MODULE);
+      onRenamed(g.id, newName);
+      toast(`Renamed to "${newName}"`);
+    } catch (e) {
+      toast((e as Error).message, "err");
+      throw e;
+    }
+  }
+
+  const countFor = (id: string) => products.filter(p => p.group_id === id).length;
+
+  return (
+    <>
+      <Toast msg={msg} />
+      <p className="text-sm text-gray-500 mb-6">Select a machinery group to manage its products.</p>
+      <CardGrid>
+        {groups.map(g => (
+          <EditableCard
+            key={g.id}
+            title={g.name}
+            sub={`${countFor(g.id)} product${countFor(g.id) !== 1 ? "s" : ""}`}
+            meta={g.group_code}
+            onClick={() => onSelect(g)}
+            onRename={newName => rename(g, newName)}
+            onDelete={() => del(g)}
+            deleting={deletingId === g.id}
+          />
+        ))}
+        {creating
+          ? <CreateCard
+              title="New machinery group"
+              fields={[{ placeholder: "Group name", value: name, onChange: setName }]}
+              onSubmit={create}
+              onCancel={() => { setCreating(false); setName(""); }}
+              saving={saving}
+            />
+          : <NewCard label="New Machinery Group" onClick={() => setCreating(true)} />}
+      </CardGrid>
+    </>
+  );
+}
 
 function TemplatesView({
   categories,
@@ -870,6 +964,64 @@ function VariantCard({ variant, totalVariants, onSelect, onRenamed, onDeleted }:
   );
 }
 
+function MachineryProductsView({ group, products, groups, onSelect, onCreated, onDeleted, onProductChanged, onBack }: {
+  group: Group;
+  products: Product[];
+  groups: Group[];
+  onSelect: (p: Product) => void;
+  onCreated: (p: Product) => void;
+  onDeleted: (id: string) => void;
+  onProductChanged: (p: Product) => void;
+  onBack: () => void;
+}) {
+  const { msg, toast } = useToast();
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function create() {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const p = await addProduct(null, name.trim(), desc.trim() || undefined, { group_id: group.id, module: MACHINERY_MODULE });
+      onCreated(p);
+      setName("");
+      setDesc("");
+      setCreating(false);
+      toast(`"${p.name}" created`);
+    } catch (e) {
+      toast((e as Error).message, "err");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Toast msg={msg} />
+      <BackButton label="All Machinery Groups" onClick={onBack} />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {products.map(p => (
+          <ProductCard key={p.id} product={p} groups={groups}
+            onSelect={() => onSelect(p)}
+            onDeleted={() => onDeleted(p.id)}
+            onGroupChanged={groupId => onProductChanged({ ...p, group_id: groupId })}
+            onRenamed={newName => onProductChanged({ ...p, name: newName })} />
+        ))}
+        {creating
+          ? <CreateCard title="New machinery product"
+              fields={[
+                { placeholder: "Product name *", value: name, onChange: setName },
+                { placeholder: "Description (optional)", value: desc, onChange: setDesc, optional: true },
+              ]}
+              onSubmit={create} onCancel={() => { setCreating(false); setName(""); setDesc(""); }} saving={saving} />
+          : <NewCard label="New Machinery Product" onClick={() => setCreating(true)} />}
+      </div>
+    </>
+  );
+}
+
 function VariantsView({ product, onSelect, onAdded, onRenamed, onDeleted, onProductMediaUpdated, onBack }: {
   product: Product;
   onSelect: (v: Variant) => void; onAdded: (v: Variant) => void;
@@ -1058,8 +1210,12 @@ function ImagesSection({
 
 type Suggestion = { label: string; is_pricing_field: boolean; choices: string[] };
 
-function OptionsSection({ productId, variantId, options, onChange }: {
-  productId: string; variantId: string; options: Option[]; onChange: (opts: Option[]) => void;
+function OptionsSection({ productId, variantId, module, options, onChange }: {
+  productId: string;
+  variantId: string;
+  module: CatalogModule;
+  options: Option[];
+  onChange: (opts: Option[]) => void;
 }) {
   const { msg, toast } = useToast();
 
@@ -1082,8 +1238,8 @@ function OptionsSection({ productId, variantId, options, onChange }: {
   const sugRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    getOptionSuggestions().then(setSuggestions).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    getOptionSuggestions(module).then(setSuggestions).catch(() => {});
+  }, [module]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // close suggestions on outside click
   useEffect(() => {
@@ -1400,8 +1556,12 @@ function PricingSection({ productId, variantId, options }: {
 
 // ── Level 4: Variant detail ───────────────────────────────────────────────────
 
-function VariantDetailView({ product, variant, onOptionsChange, onBack }: {
-  product: Product; variant: Variant; onOptionsChange: (opts: Option[]) => void; onBack: () => void;
+function VariantDetailView({ product, variant, module, onOptionsChange, onBack }: {
+  product: Product;
+  variant: Variant;
+  module: CatalogModule;
+  onOptionsChange: (opts: Option[]) => void;
+  onBack: () => void;
 }) {
   const [options, setOptions] = useState<Option[]>(variant.options);
 
@@ -1410,7 +1570,7 @@ function VariantDetailView({ product, variant, onOptionsChange, onBack }: {
   return (
     <div className="max-w-2xl space-y-10">
       <BackButton label={`Back to ${product.name} variants`} onClick={onBack} />
-      <OptionsSection productId={product.id} variantId={variant.id} options={options} onChange={handleOptions} />
+      <OptionsSection productId={product.id} variantId={variant.id} module={module} options={options} onChange={handleOptions} />
       <hr className="border-gray-100" />
       <PricingSection productId={product.id} variantId={variant.id} options={options} />
     </div>
@@ -1420,25 +1580,33 @@ function VariantDetailView({ product, variant, onOptionsChange, onBack }: {
 // ── Home ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [activeModule, setActiveModule] = useState<CatalogModule>(PRINTING_MODULE);
+
+  const [printingProducts, setPrintingProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [printingGroups, setPrintingGroups] = useState<Group[]>([]);
   const [templateCategories, setTemplateCategories] = useState<TemplateCategory[]>([]);
   const [freeTemplates, setFreeTemplates] = useState<FreeDesignTemplate[]>([]);
+
+  const [machineryProducts, setMachineryProducts] = useState<Product[]>([]);
+  const [machineryGroups, setMachineryGroups] = useState<Group[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Navigation IDs — level is derived from which are set
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [productId,  setProductId]  = useState<string | null>(null);
-  const [variantId,  setVariantId]  = useState<string | null>(null);
+  const [productId, setProductId] = useState<string | null>(null);
+  const [variantId, setVariantId] = useState<string | null>(null);
   const [showGroups, setShowGroups] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // Derived objects
-  const category = services.find(s => s.id === categoryId) ?? null;
-  const product  = products.find(p => p.id === productId)  ?? null;
-  const variant  = product?.variants.find(v => v.id === variantId) ?? null;
+  const [machineryGroupId, setMachineryGroupId] = useState<string | null>(null);
+  const [machineryProductId, setMachineryProductId] = useState<string | null>(null);
+  const [machineryVariantId, setMachineryVariantId] = useState<string | null>(null);
+
+  const category = services.find((s) => s.id === categoryId) ?? null;
+  const product = printingProducts.find((p) => p.id === productId) ?? null;
+  const variant = product?.variants.find((v) => v.id === variantId) ?? null;
 
   const level = showGroups
     ? "groups"
@@ -1452,28 +1620,53 @@ export default function Home() {
             ? "products"
             : "categories";
 
+  const machineryGroup = machineryGroups.find((g) => g.id === machineryGroupId) ?? null;
+  const machineryProduct = machineryProducts.find((p) => p.id === machineryProductId) ?? null;
+  const machineryVariant = machineryProduct?.variants.find((v) => v.id === machineryVariantId) ?? null;
+
+  const machineryLevel = machineryVariantId
+    ? "detail"
+    : machineryProductId
+      ? "variants"
+      : machineryGroupId
+        ? "products"
+        : "groups";
+
   useEffect(() => {
-    Promise.all([getProducts(), getServices(), getGroups(), getTemplateCategories(), getFreeTemplates()])
-      .then(([prods, svcs, grps, templateCats, templates]) => {
-        setProducts(prods);
+    Promise.all([
+      getProducts(PRINTING_MODULE),
+      getServices(),
+      getGroups(PRINTING_MODULE),
+      getTemplateCategories(),
+      getFreeTemplates(),
+      getProducts(MACHINERY_MODULE),
+      getGroups(MACHINERY_MODULE),
+    ])
+      .then(([printingProds, svcs, printingGrps, templateCats, templates, machineryProds, machineryGrps]) => {
+        setPrintingProducts(printingProds);
         setServices(svcs);
-        setGroups(grps);
+        setPrintingGroups(printingGrps);
         setTemplateCategories(templateCats);
         setFreeTemplates(templates);
+        setMachineryProducts(machineryProds);
+        setMachineryGroups(machineryGrps);
       })
-      .catch(e => setError(e.message))
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
 
-  function updateProduct(updated: Product) {
-    setProducts(prev => prev.map(p => p.id === updated.id ? updated : p));
+  function updatePrintingProduct(updated: Product) {
+    setPrintingProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   }
 
-  // Breadcrumb crumbs for each level
-  const crumbs = showGroups
+  function updateMachineryProduct(updated: Product) {
+    setMachineryProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+  }
+
+  const printingCrumbs = showGroups
     ? [
         {
-          label: "Categories",
+          label: "Printing Services",
           onClick: () => {
             setShowGroups(false);
             setShowTemplates(false);
@@ -1487,7 +1680,7 @@ export default function Home() {
     : showTemplates
       ? [
           {
-            label: "Categories",
+            label: "Printing Services",
             onClick: () => {
               setShowTemplates(false);
               setShowGroups(false);
@@ -1500,123 +1693,220 @@ export default function Home() {
         ]
       : [
           {
-            label: "Categories",
-            onClick: level !== "categories"
-              ? () => {
-                  setCategoryId(null);
-                  setProductId(null);
-                  setVariantId(null);
-                }
-              : undefined,
+            label: "Printing Services",
+            onClick:
+              level !== "categories"
+                ? () => {
+                    setCategoryId(null);
+                    setProductId(null);
+                    setVariantId(null);
+                  }
+                : undefined,
           },
-          ...(category ? [{ label: category.name, onClick: level !== "products" ? () => { setProductId(null); setVariantId(null); } : undefined }] : []),
-          ...(product  ? [{ label: product.name,  onClick: level !== "variants" ? () => { setVariantId(null); } : undefined }] : []),
-          ...(variant  ? [{ label: variant.variant_name }] : []),
+          ...(category
+            ? [
+                {
+                  label: category.name,
+                  onClick: level !== "products" ? () => {
+                    setProductId(null);
+                    setVariantId(null);
+                  } : undefined,
+                },
+              ]
+            : []),
+          ...(product
+            ? [
+                {
+                  label: product.name,
+                  onClick: level !== "variants" ? () => {
+                    setVariantId(null);
+                  } : undefined,
+                },
+              ]
+            : []),
+          ...(variant ? [{ label: variant.variant_name }] : []),
         ];
 
-  // Page title for each level
-  const subtitle: Record<typeof level, string> = {
+  const machineryCrumbs = [
+    {
+      label: "Machinery",
+      onClick:
+        machineryLevel !== "groups"
+          ? () => {
+              setMachineryGroupId(null);
+              setMachineryProductId(null);
+              setMachineryVariantId(null);
+            }
+          : undefined,
+    },
+    ...(machineryGroup
+      ? [
+          {
+            label: machineryGroup.name,
+            onClick: machineryLevel !== "products" ? () => {
+              setMachineryProductId(null);
+              setMachineryVariantId(null);
+            } : undefined,
+          },
+        ]
+      : []),
+    ...(machineryProduct
+      ? [
+          {
+            label: machineryProduct.name,
+            onClick: machineryLevel !== "variants" ? () => {
+              setMachineryVariantId(null);
+            } : undefined,
+          },
+        ]
+      : []),
+    ...(machineryVariant ? [{ label: machineryVariant.variant_name }] : []),
+  ];
+
+  const crumbs = activeModule === PRINTING_MODULE ? printingCrumbs : machineryCrumbs;
+
+  const printingSubtitle: Record<typeof level, string> = {
     categories: "Select a category to get started",
-    groups:     "Add, rename, or remove product groups",
-    templates:  "Upload and manage free design templates",
-    products:   `Products in ${category?.name ?? ""}`,
-    variants:   `Variants of ${product?.name ?? ""}`,
-    detail:     `${variant?.variant_name ?? ""} — ${product?.name ?? ""}`,
+    groups: "Add, rename, or remove product groups",
+    templates: "Upload and manage free design templates",
+    products: `Products in ${category?.name ?? ""}`,
+    variants: `Variants of ${product?.name ?? ""}`,
+    detail: `${variant?.variant_name ?? ""} - ${product?.name ?? ""}`,
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-screen gap-3 text-gray-400">
-      <Spinner /> <span>Loading…</span>
-    </div>
-  );
-  if (error) return (
-    <div className="flex items-center justify-center h-screen">
-      <div className="text-center space-y-2">
-        <p className="text-red-500 font-semibold">Could not connect to database</p>
-        <p className="text-sm text-gray-500">{error}</p>
+  const machinerySubtitle: Record<typeof machineryLevel, string> = {
+    groups: "Create or select a machinery group",
+    products: `Products in ${machineryGroup?.name ?? ""}`,
+    variants: `Variants of ${machineryProduct?.name ?? ""}`,
+    detail: `${machineryVariant?.variant_name ?? ""} - ${machineryProduct?.name ?? ""}`,
+  };
+
+  const subtitle = activeModule === PRINTING_MODULE ? printingSubtitle[level] : machinerySubtitle[machineryLevel];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen gap-3 text-gray-400">
+        <Spinner /> <span>Loading...</span>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center space-y-2">
+          <p className="text-red-500 font-semibold">Could not connect to database</p>
+          <p className="text-sm text-gray-500">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* App header */}
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-3 sticky top-0 z-10">
         <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">M</div>
         <div className="min-w-0 flex-1">
           <Breadcrumb crumbs={crumbs} />
-          <p className="text-xs text-gray-400 mt-0.5 truncate">{subtitle[level]}</p>
+          <p className="text-xs text-gray-400 mt-0.5 truncate">{subtitle}</p>
+        </div>
+        <div className="shrink-0 flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+          <button
+            type="button"
+            onClick={() => setActiveModule(PRINTING_MODULE)}
+            className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${activeModule === PRINTING_MODULE ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"}`}
+          >
+            Printing Services
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveModule(MACHINERY_MODULE)}
+            className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${activeModule === MACHINERY_MODULE ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-800"}`}
+          >
+            Machinery
+          </button>
         </div>
       </header>
 
-      {/* Content */}
       <main className="flex-1 px-6 py-8 max-w-6xl mx-auto w-full">
-        {level === "categories" && (
+        {activeModule === PRINTING_MODULE && level === "categories" && (
           <CategoriesView
-            services={services} products={products}
-            onSelect={s => setCategoryId(s.id)}
-            onCreated={s => setServices(prev => [...prev, s])}
-            onRenamed={(id, name) => setServices(prev => prev.map(s => s.id === id ? { ...s, name } : s))}
-            onDeleted={id => setServices(prev => prev.filter(s => s.id !== id))}
-            onPreviewUpdated={(id, imageUrl) => setServices(prev => prev.map(s => s.id === id ? { ...s, image_url: imageUrl } : s))}
-            onManageGroups={() => { setShowTemplates(false); setShowGroups(true); }}
-            onManageTemplates={() => { setShowGroups(false); setShowTemplates(true); }}
+            services={services}
+            products={printingProducts}
+            onSelect={(s) => setCategoryId(s.id)}
+            onCreated={(s) => setServices((prev) => [...prev, s])}
+            onRenamed={(id, name) => setServices((prev) => prev.map((s) => (s.id === id ? { ...s, name } : s)))}
+            onDeleted={(id) => setServices((prev) => prev.filter((s) => s.id !== id))}
+            onPreviewUpdated={(id, imageUrl) => setServices((prev) => prev.map((s) => (s.id === id ? { ...s, image_url: imageUrl } : s)))}
+            onManageGroups={() => {
+              setShowTemplates(false);
+              setShowGroups(true);
+            }}
+            onManageTemplates={() => {
+              setShowGroups(false);
+              setShowTemplates(true);
+            }}
           />
         )}
 
-        {level === "groups" && (
+        {activeModule === PRINTING_MODULE && level === "groups" && (
           <GroupsView
-            groups={groups} products={products}
+            groups={printingGroups}
+            products={printingProducts}
             onBack={() => setShowGroups(false)}
-            onCreated={g => setGroups(prev => [...prev, g])}
-            onRenamed={(id, name) => setGroups(prev => prev.map(g => g.id === id ? { ...g, name } : g))}
-            onDeleted={id => setGroups(prev => prev.filter(g => g.id !== id))}
+            onCreated={(g) => setPrintingGroups((prev) => [...prev, g])}
+            onRenamed={(id, name) => setPrintingGroups((prev) => prev.map((g) => (g.id === id ? { ...g, name } : g)))}
+            onDeleted={(id) => setPrintingGroups((prev) => prev.filter((g) => g.id !== id))}
           />
         )}
 
-        {level === "templates" && (
+        {activeModule === PRINTING_MODULE && level === "templates" && (
           <TemplatesView
             categories={templateCategories}
             templates={freeTemplates}
             onBack={() => setShowTemplates(false)}
-            onCategoryCreated={(category) => setTemplateCategories((prev) => [...prev, category])}
+            onCategoryCreated={(cat) => setTemplateCategories((prev) => [...prev, cat])}
             onTemplateCreated={(template) => setFreeTemplates((prev) => [template, ...prev])}
             onTemplateDeleted={(id) => setFreeTemplates((prev) => prev.filter((template) => template.id !== id))}
           />
         )}
 
-        {level === "products" && category && (
+        {activeModule === PRINTING_MODULE && level === "products" && category && (
           <ProductsView
             category={category}
-            products={products.filter(p => p.service_id === category.id)}
-            groups={groups}
-            onSelect={p => setProductId(p.id)}
-            onCreated={p => { setProducts(prev => [p, ...prev]); }}
-            onDeleted={id => {
-              setProducts(prev => prev.filter(p => p.id !== id));
+            products={printingProducts.filter((p) => p.service_id === category.id)}
+            groups={printingGroups}
+            onSelect={(p) => setProductId(p.id)}
+            onCreated={(p) => {
+              setPrintingProducts((prev) => [p, ...prev]);
+            }}
+            onDeleted={(id) => {
+              setPrintingProducts((prev) => prev.filter((p) => p.id !== id));
               if (productId === id) setProductId(null);
             }}
-            onProductChanged={updated => setProducts(prev => prev.map(p => p.id === updated.id ? updated : p))}
+            onProductChanged={(updated) => setPrintingProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
             onBack={() => setCategoryId(null)}
           />
         )}
 
-        {level === "variants" && product && (
+        {activeModule === PRINTING_MODULE && level === "variants" && product && (
           <VariantsView
             product={product}
-            onSelect={v => setVariantId(v.id)}
-            onAdded={v => updateProduct({ ...product, variants: [...product.variants, v] })}
-            onRenamed={(id, name) => updateProduct({
-              ...product,
-              variants: product.variants.map(v => v.id === id ? { ...v, variant_name: name } : v),
-            })}
-            onDeleted={id => {
-              const rest = product.variants.filter(v => v.id !== id);
-              updateProduct({ ...product, variants: rest });
+            onSelect={(v) => setVariantId(v.id)}
+            onAdded={(v) => updatePrintingProduct({ ...product, variants: [...product.variants, v] })}
+            onRenamed={(id, name) =>
+              updatePrintingProduct({
+                ...product,
+                variants: product.variants.map((v) => (v.id === id ? { ...v, variant_name: name } : v)),
+              })
+            }
+            onDeleted={(id) => {
+              const rest = product.variants.filter((v) => v.id !== id);
+              updatePrintingProduct({ ...product, variants: rest });
               if (variantId === id) setVariantId(null);
             }}
             onProductMediaUpdated={(next) => {
-              updateProduct({
+              updatePrintingProduct({
                 ...product,
                 image_url: next.image_url,
                 preview_images: next.preview_images,
@@ -1626,16 +1916,95 @@ export default function Home() {
           />
         )}
 
-        {level === "detail" && product && variant && (
+        {activeModule === PRINTING_MODULE && level === "detail" && product && variant && (
           <VariantDetailView
             key={variant.id}
             product={product}
             variant={variant}
-            onOptionsChange={opts => {
-              const updatedVariants = product.variants.map(v => v.id === variant.id ? { ...v, options: opts } : v);
-              updateProduct({ ...product, variants: updatedVariants });
+            module={PRINTING_MODULE}
+            onOptionsChange={(opts) => {
+              const updatedVariants = product.variants.map((v) => (v.id === variant.id ? { ...v, options: opts } : v));
+              updatePrintingProduct({ ...product, variants: updatedVariants });
             }}
             onBack={() => setVariantId(null)}
+          />
+        )}
+
+        {activeModule === MACHINERY_MODULE && machineryLevel === "groups" && (
+          <MachineryGroupsView
+            groups={machineryGroups}
+            products={machineryProducts}
+            onSelect={(group) => setMachineryGroupId(group.id)}
+            onCreated={(group) => setMachineryGroups((prev) => [...prev, group])}
+            onRenamed={(id, name) => setMachineryGroups((prev) => prev.map((g) => (g.id === id ? { ...g, name } : g)))}
+            onDeleted={(id) => {
+              setMachineryGroups((prev) => prev.filter((g) => g.id !== id));
+              if (machineryGroupId === id) {
+                setMachineryGroupId(null);
+                setMachineryProductId(null);
+                setMachineryVariantId(null);
+              }
+            }}
+          />
+        )}
+
+        {activeModule === MACHINERY_MODULE && machineryLevel === "products" && machineryGroup && (
+          <MachineryProductsView
+            group={machineryGroup}
+            products={machineryProducts.filter((p) => p.group_id === machineryGroup.id)}
+            groups={machineryGroups}
+            onSelect={(p) => setMachineryProductId(p.id)}
+            onCreated={(p) => setMachineryProducts((prev) => [p, ...prev])}
+            onDeleted={(id) => {
+              setMachineryProducts((prev) => prev.filter((p) => p.id !== id));
+              if (machineryProductId === id) {
+                setMachineryProductId(null);
+                setMachineryVariantId(null);
+              }
+            }}
+            onProductChanged={(updated) => setMachineryProducts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))}
+            onBack={() => setMachineryGroupId(null)}
+          />
+        )}
+
+        {activeModule === MACHINERY_MODULE && machineryLevel === "variants" && machineryProduct && (
+          <VariantsView
+            product={machineryProduct}
+            onSelect={(v) => setMachineryVariantId(v.id)}
+            onAdded={(v) => updateMachineryProduct({ ...machineryProduct, variants: [...machineryProduct.variants, v] })}
+            onRenamed={(id, name) =>
+              updateMachineryProduct({
+                ...machineryProduct,
+                variants: machineryProduct.variants.map((v) => (v.id === id ? { ...v, variant_name: name } : v)),
+              })
+            }
+            onDeleted={(id) => {
+              const rest = machineryProduct.variants.filter((v) => v.id !== id);
+              updateMachineryProduct({ ...machineryProduct, variants: rest });
+              if (machineryVariantId === id) setMachineryVariantId(null);
+            }}
+            onProductMediaUpdated={(next) => {
+              updateMachineryProduct({
+                ...machineryProduct,
+                image_url: next.image_url,
+                preview_images: next.preview_images,
+              });
+            }}
+            onBack={() => setMachineryProductId(null)}
+          />
+        )}
+
+        {activeModule === MACHINERY_MODULE && machineryLevel === "detail" && machineryProduct && machineryVariant && (
+          <VariantDetailView
+            key={machineryVariant.id}
+            product={machineryProduct}
+            variant={machineryVariant}
+            module={MACHINERY_MODULE}
+            onOptionsChange={(opts) => {
+              const updatedVariants = machineryProduct.variants.map((v) => (v.id === machineryVariant.id ? { ...v, options: opts } : v));
+              updateMachineryProduct({ ...machineryProduct, variants: updatedVariants });
+            }}
+            onBack={() => setMachineryVariantId(null)}
           />
         )}
       </main>

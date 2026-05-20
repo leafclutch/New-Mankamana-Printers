@@ -118,57 +118,6 @@ export const sendPasswordReset = async (opts: {
   });
 };
 
-// sendDesignApproved: Notifies client their design has been approved and provides the design ID
-export const sendDesignApproved = async (opts: {
-  to: string;
-  businessName: string;
-  designCode: string;
-  designTitle?: string;
-}) => {
-  const { to, businessName, designCode, designTitle } = opts;
-
-  await transporter.sendMail({
-    from: FROM,
-    to,
-    subject: `Design Approved — Your Design ID: ${designCode}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
-        <div style="background: #0061FF; padding: 32px 40px;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">New Mankamana Printers</h1>
-        </div>
-        <div style="padding: 40px; border: 1px solid #e2e8f0; border-top: none;">
-          <h2 style="font-size: 20px; margin: 0 0 8px;">Design Approved</h2>
-          <p style="color: #64748b; margin: 0 0 8px;">Hi ${businessName},</p>
-          <p style="color: #64748b; margin: 0 0 32px;">
-            ${designTitle ? `Your design "<strong>${designTitle}</strong>" has been reviewed and approved.` : "Your design submission has been reviewed and approved."}
-            Use the Design ID below when placing your print order.
-          </p>
-
-          <div style="background: #eff6ff; border: 2px solid #0061FF; border-radius: 8px; padding: 28px; text-align: center; margin-bottom: 32px;">
-            <p style="margin: 0 0 8px; color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Your Design ID</p>
-            <p style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 4px; color: #0061FF;">${designCode}</p>
-          </div>
-
-          <p style="color: #64748b; margin: 0 0 8px;">To use your design:</p>
-          <ol style="color: #64748b; margin: 0 0 32px; padding-left: 20px; line-height: 1.8;">
-            <li>Log in to your account</li>
-            <li>Go to Place Order</li>
-            <li>Enter your Design ID <strong>${designCode}</strong> in the checkout form</li>
-          </ol>
-
-          <p style="color: #94a3b8; font-size: 13px; margin: 0;">
-            Questions? Contact us at
-            <a href="mailto:${process.env.SMTP_EMAIL}" style="color: #0061FF;">${process.env.SMTP_EMAIL}</a>.
-          </p>
-        </div>
-        <div style="padding: 20px 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
-          <p style="margin: 0; color: #94a3b8; font-size: 12px;">New Mankamana Printers &mdash; Professional Printing Services</p>
-        </div>
-      </div>
-    `,
-  });
-};
-
 // ── Order status helpers ──────────────────────────────────────────────────────
 
 const ORDER_STATUS_META: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -464,55 +413,6 @@ export const sendClientProfileUpdated = async (opts: {
   });
 };
 
-// sendDesignRejected: Notifies client their design was rejected and provides admin feedback
-export const sendDesignRejected = async (opts: {
-  to: string;
-  businessName: string;
-  designTitle?: string;
-  feedbackMessage?: string;
-}) => {
-  const { to, businessName, designTitle, feedbackMessage } = opts;
-
-  await transporter.sendMail({
-    from: FROM,
-    to,
-    subject: "Design Submission Update — Action Required",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #1e293b;">
-        <div style="background: #0061FF; padding: 32px 40px;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">New Mankamana Printers</h1>
-        </div>
-        <div style="padding: 40px; border: 1px solid #e2e8f0; border-top: none;">
-          <h2 style="font-size: 20px; margin: 0 0 8px;">Design Needs Revision</h2>
-          <p style="color: #64748b; margin: 0 0 8px;">Hi ${businessName},</p>
-          <p style="color: #64748b; margin: 0 0 32px;">
-            ${designTitle ? `Your design "<strong>${designTitle}</strong>" could not be approved at this time.` : "Your recent design submission could not be approved at this time."}
-          </p>
-
-          ${feedbackMessage ? `
-          <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin-bottom: 32px;">
-            <p style="margin: 0 0 6px; font-size: 12px; color: #ef4444; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Feedback</p>
-            <p style="margin: 0; color: #1e293b;">${feedbackMessage}</p>
-          </div>
-          ` : ""}
-
-          <p style="color: #64748b; margin: 0 0 32px;">
-            Please revise your design based on the feedback above and resubmit through your account.
-          </p>
-
-          <p style="color: #94a3b8; font-size: 13px; margin: 0;">
-            Need help? Contact us at
-            <a href="mailto:${process.env.SMTP_EMAIL}" style="color: #0061FF;">${process.env.SMTP_EMAIL}</a>.
-          </p>
-        </div>
-        <div style="padding: 20px 40px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
-          <p style="margin: 0; color: #94a3b8; font-size: 12px;">New Mankamana Printers &mdash; Professional Printing Services</p>
-        </div>
-      </div>
-    `,
-  });
-};
-
 // sendOrderInvoice: Sends a detailed invoice to the client when admin accepts the order (ORDER_PROCESSING)
 export const sendOrderInvoice = async (opts: {
   to: string;
@@ -528,13 +428,12 @@ export const sendOrderInvoice = async (opts: {
   designSurcharge: number;
   finalAmount: number;
   configurations: Array<{ group_label: string; selected_label: string }>;
-  designCode?: string | null;
   notes?: string | null;
   paymentMethod: string;
   acceptedAt: Date;
 }) => {
   const { to, businessName, clientCode, phone, orderId, productName, variantName, quantity,
-    unitPrice, discountAmount, designSurcharge, finalAmount, configurations, designCode,
+    unitPrice, discountAmount, designSurcharge, finalAmount, configurations,
     notes, paymentMethod, acceptedAt } = opts;
 
   const invoiceNumber = `INV-${orderId.slice(0, 8).toUpperCase()}`;
@@ -550,7 +449,7 @@ export const sendOrderInvoice = async (opts: {
   const pdfBuffer = await generateInvoicePdf({
     orderId, businessName, clientCode, phone, productName, variantName, quantity,
     unitPrice, discountAmount, designSurcharge, finalAmount, configurations,
-    designCode, notes, paymentMethod, acceptedAt,
+    notes, paymentMethod, acceptedAt,
   }).catch(() => null);
 
   await transporter.sendMail({
@@ -614,7 +513,7 @@ export const sendOrderInvoice = async (opts: {
               </tr>` : ""}
               ${designSurcharge > 0 ? `
               <tr style="border-bottom:1px solid #f1f5f9;">
-                <td colspan="3" style="padding:10px 12px;font-size:13px;color:#6366f1;">Design Surcharge${designCode ? ` (${designCode})` : ""}</td>
+                <td colspan="3" style="padding:10px 12px;font-size:13px;color:#6366f1;">Surcharge</td>
                 <td style="padding:10px 12px;text-align:right;font-size:13px;color:#6366f1;font-weight:600;">+ NPR ${designSurcharge.toLocaleString("en-NP", { minimumFractionDigits: 2 })}</td>
               </tr>` : ""}
             </tbody>
@@ -635,7 +534,6 @@ export const sendOrderInvoice = async (opts: {
             </table>
           </div>` : ""}
 
-          ${designCode ? `<p style="font-size:13px;color:#6366f1;margin:0 0 16px;">Design Code: <strong style="font-family:monospace;">${designCode}</strong></p>` : ""}
           ${notes ? `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;margin-bottom:20px;"><p style="font-size:11px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px;">Remarks</p><p style="margin:0;font-size:13px;color:#78350f;">${notes}</p></div>` : ""}
 
           <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;margin-bottom:24px;">

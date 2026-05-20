@@ -37,8 +37,8 @@ export default function ContactPage() {
           </h1>
           <div className="divider mt-1 h-[4px] rounded-full w-52 bg-blue-500 my-4" />
           <p className="mt-3 text-center text-sm sm:text-base text-slate-500 max-w-2xl mx-auto lg:mx-0">
-            Have a question about orders, corporate printing, or free design
-            templates? Send us a message and our team will get back to you as
+            Have a question about orders, corporate printing, or machinery?
+            Send us a message and our team will get back to you as
             soon as possible.
           </p>
         </div>

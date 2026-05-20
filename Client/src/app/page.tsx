@@ -46,7 +46,7 @@ const howItWorks = [
   {
     step: "02",
     title: "Choose or Design",
-    desc: "Browse free templates or upload your custom design files to get started.",
+    desc: "Browse printing services or machinery. Upload your custom design files to get started.",
   },
   {
     step: "03",
@@ -198,35 +198,35 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Free Design Files */}
+            {/* Machinery */}
             <div
               className="card overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-              onClick={() => router.push('/templates')}
+              onClick={() => router.push('/machinery')}
             >
-              <div className="h-[110px] sm:h-[160px] md:h-[180px] bg-gradient-to-br from-[#a8edea] to-[#fed6e3] flex items-center justify-center">
-                <svg className="w-16 h-16 text-teal-400 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+              <div className="h-[110px] sm:h-[160px] md:h-[180px] bg-gradient-to-br from-[#e0e7ff] to-[#c7d2fe] flex items-center justify-center">
+                <svg className="w-16 h-16 text-indigo-400 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 11-3.586-3.586l5.653-4.655m0 0l-1.397-1.397a.75.75 0 00-1.06 0L5.48 9.47a.75.75 0 000 1.061l.396.396a.75.75 0 01-.531 1.28H3.75a.75.75 0 01-.75-.75V9.75a.75.75 0 01.22-.53l5.72-5.72a.75.75 0 011.06 0l.397.397A.75.75 0 0111.72 4.5h.53a.75.75 0 01.75.75v1.868a.75.75 0 001.28.531l.396-.396a.75.75 0 011.061 0l2.21 2.21a.75.75 0 010 1.06l-1.397 1.397" />
                 </svg>
               </div>
               <div className="p-4 sm:p-6">
-                <span className="bg-[#fef9c3] text-[#ca8a04] text-[0.55rem] sm:text-[0.6rem] font-bold px-2 py-0.5 rounded-[50px] tracking-[0.08em] uppercase">
-                  FREE RESOURCE
+                <span className="bg-[#e0e7ff] text-[#4338ca] text-[0.55rem] sm:text-[0.6rem] font-bold px-2 py-0.5 rounded-[50px] tracking-[0.08em] uppercase">
+                  B2B WHOLESALE
                 </span>
                 <div className="flex gap-1 sm:gap-2 items-center mt-3 text-[color:var(--text-dark)]">
                   <h3 className="font-bold text-[1rem] sm:text-[1.05rem]">
-                    Free Design Files
+                    Machinery
                   </h3>
                 </div>
                 <p className="text-[0.77rem] sm:text-[0.82rem] text-[#64748b] mt-2 leading-[1.6]">
-                  Access our curated library of free graphic resources.
-                  Perfect for print-ready templates.
+                  Browse industrial machinery at trade pricing.
+                  Configure and order directly online.
                 </p>
                 <button
                   type="button"
-                  onClick={() => router.push('/templates')}
+                  onClick={() => router.push('/machinery')}
                   className="mt-3 sm:mt-4 bg-transparent border-none text-[#1a56db] font-semibold text-[0.8rem] sm:text-[0.82rem] cursor-pointer flex items-center gap-1 p-0 hover:underline"
                 >
-                  Browse Library →
+                  Browse Machinery →
                 </button>
               </div>
             </div>
@@ -281,7 +281,7 @@ export default function HomePage() {
           </h2>
           <p className="text-white/85 text-base mb-6 sm:mb-8 leading-[1.7] text-[0.98rem]">
             Register your company today and get access to wholesale
-            printing rates, free templates, and dedicated support.
+            printing rates, machinery at trade pricing, and dedicated support.
           </p>
           <div className="flex gap-2 sm:gap-4 justify-center flex-wrap">
             {isAuthenticated ? (

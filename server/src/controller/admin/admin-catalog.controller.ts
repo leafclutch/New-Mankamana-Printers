@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../../connect";
 import {
-  invalidateAllCatalogCaches,
   invalidateCatalogCachesForProduct,
   invalidateCatalogCachesForVariant,
   invalidateCatalogPricingForVariant,
@@ -32,36 +31,12 @@ export const listServices = async (req: Request, res: Response) => {
   }
 };
 
-export const createService = async (req: Request, res: Response) => {
-  try {
-    const { name, description, is_active } = req.body;
-    if (!name) {
-      return res.status(400).json({ success: false, message: "name is required" });
-    }
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "");
-    const uniqueSlug = `${slug}-${Date.now()}`;
-    const category = await prisma.productCategory.create({
-      data: { name, slug: uniqueSlug, description: description ?? null, is_active: is_active ?? true },
-    });
-    await invalidateAllCatalogCaches();
-    res.status(201).json({
-      success: true,
-      data: { id: category.id, name: category.name, description: category.description, is_active: category.is_active },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 // ─── PRODUCTS ─────────────────────────────────────────────────────────────────
 
 export const listProducts = async (req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
-      where: { is_active: true },
+      where: { is_active: true, module: "PRINTING" },
       include: {
         variants: {
           take: 1,
@@ -130,6 +105,7 @@ export const createProductUnderService = async (req: Request, res: Response) => 
         product_code,
         name,
         description: description ?? null,
+        module: "PRINTING",
       },
     });
 

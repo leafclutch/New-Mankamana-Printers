@@ -13,7 +13,6 @@ export interface InvoiceData {
   designSurcharge: number;
   finalAmount: number;
   configurations: Array<{ group_label: string; selected_label: string }>;
-  designCode?: string | null;
   notes?: string | null;
   paymentMethod: string;
   acceptedAt: Date;
@@ -75,14 +74,6 @@ export function generateInvoicePdf(data: InvoiceData): Promise<Buffer> {
       doc.strokeColor("#f1f5f9").lineWidth(0.5).moveTo(50, y).lineTo(doc.page.width - 50, y).stroke();
       doc.fillColor("#15803d").fontSize(10).font("Helvetica").text("Discount", 58, y + 8);
       doc.text(`− NPR ${data.discountAmount.toLocaleString("en-NP", { minimumFractionDigits: 2 })}`, doc.page.width - 120, y + 8, { width: 70, align: "right" });
-      y += 28;
-    }
-
-    // ── Design surcharge row ──────────────────────────────────
-    if (data.designSurcharge > 0) {
-      doc.strokeColor("#f1f5f9").lineWidth(0.5).moveTo(50, y).lineTo(doc.page.width - 50, y).stroke();
-      doc.fillColor("#6366f1").fontSize(10).font("Helvetica").text(`Design Surcharge${data.designCode ? ` (${data.designCode})` : ""}`, 58, y + 8);
-      doc.text(`+ NPR ${data.designSurcharge.toLocaleString("en-NP", { minimumFractionDigits: 2 })}`, doc.page.width - 120, y + 8, { width: 70, align: "right" });
       y += 28;
     }
 

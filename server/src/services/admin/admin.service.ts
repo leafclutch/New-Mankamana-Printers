@@ -382,29 +382,8 @@ export const getClientOrdersAdminService = async (clientId: string) => {
       where: { user_id: clientId },
       include: {
         variant: { select: { variant_name: true, product: { select: { name: true } } } },
-        approvedDesign: { select: { designCode: true } },
       },
       orderBy: { created_at: "desc" },
-    })
-  );
-};
-
-// getClientDesignsAdminService: Returns all design submissions by a specific client for admin view
-export const getClientDesignsAdminService = async (clientId: string) => {
-  return withCache(`admin:client-designs:${clientId}`, 60_000, () =>
-    prisma.designSubmission.findMany({
-      where: { clientId },
-      select: {
-        id: true,
-        title: true,
-        status: true,
-        submittedAt: true,
-        fileUrl: true,
-        fileType: true,
-        feedbackMessage: true,
-        approvedDesign: { select: { designCode: true } },
-      },
-      orderBy: { submittedAt: "desc" },
     })
   );
 };

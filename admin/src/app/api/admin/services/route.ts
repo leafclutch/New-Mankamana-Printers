@@ -48,25 +48,3 @@ export async function GET() {
   return toJsonResponse(apiResponse);
 }
 
-export async function POST(request: Request) {
-  const token = await getAuthToken();
-  if (!token) {
-    return NextResponse.json(
-      { message: "Not authenticated." },
-      { status: 401 }
-    );
-  }
-
-  const payload = await request.json().catch(() => null);
-
-  const apiResponse = await fetch(`${API_BASE_URL}/admin/services`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: payload ? JSON.stringify(payload) : undefined,
-  });
-
-  return toJsonResponse(apiResponse);
-}

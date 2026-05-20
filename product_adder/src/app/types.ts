@@ -1,3 +1,5 @@
+export type CatalogModule = "PRINTING" | "MACHINERY";
+
 export interface Service {
   id: string;
   name: string;
@@ -25,6 +27,7 @@ export interface Group {
   id: string;
   name: string;
   group_code: string;
+  module?: CatalogModule;
   image_url?: string | null;
 }
 
@@ -50,8 +53,9 @@ export interface Product {
   name: string;
   product_code: string;
   description: string | null;
-  service_id: string;
+  service_id: string | null;
   group_id: string | null;
+  module?: CatalogModule;
   image_url: string | null;
   preview_images: string[];
   variants: Variant[];
