@@ -10,6 +10,7 @@ import publicRoutes from "./routes/auth/public.routes";
 import userRoutes from "./routes/auth/user.routes";
 import templateRoutes from "./routes/design/template.routes";
 import productOrderRoutes from "./routes/orders/product-order.routes";
+import uploadRoutes from "./routes/upload.routes";
 import { sweepStalePlacedOrders } from "./services/orders/product-order.service";
 import prisma from "./connect";
 import { preWarmCatalogCache } from "./utils/cache-warmup";
@@ -130,7 +131,7 @@ app.use((_req, res, next) => {
 });
 
 app.use("/api/v1", publicRoutes);
-app.use("/api/v1/uploads", require("./routes/upload.routes").default);
+app.use("/api/v1/uploads", uploadRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/auth", authRateLimiter, authRoutes);          // rate-limited
 app.use("/api/v1/admin", adminRoutes);
@@ -196,7 +197,9 @@ if (process.env.VERCEL !== "1") {
         return preWarmCatalogCache();
       })
       .then(() => computePricelist())
-      .catch(() => {}); // non-fatal
+      .catch((err) => {
+        console.error("[Startup] DB warmup/cache prewarm failed (non-fatal):", err);
+      });
     schedulePricelistRefresh();
     console.log(`[Pricelist] Auto refresh scheduled every ${getPricelistRefreshHours()} hour(s)`);
     sweepStalePlacedOrders().catch((err) =>

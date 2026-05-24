@@ -1,7 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import { protect, restrictTo } from "../../middleware/auth.middleware";
-import { createPaymentDetails, getPaymentDetails, updatePaymentDetails, deletePaymentDetails } from "../../controller/wallet/payment-details.controller";
+import { createPaymentDetails, getPaymentDetails, getPaymentDetailsById, updatePaymentDetails, deletePaymentDetails } from "../../controller/wallet/payment-details.controller";
 import {
   getAdminTopupRequests,
   getAdminTopupRequestById,
@@ -10,7 +10,7 @@ import {
   adjustApprovedTopupRequest,
   getTopupProof,
 } from "../../controller/wallet/topup-request.controller";
-import { getAdminTransactions } from "../../controller/wallet/wallet-transaction.controller";
+import { getAdminTransactions, manualWalletTopup } from "../../controller/wallet/wallet-transaction.controller";
 import { getAdminNotifications, markAdminNotificationRead, getAdminClientWalletSummary } from "../../controller/wallet/wallet-notification.controller";
 import rateLimit from "express-rate-limit";
 import { requireIdempotencyKey } from "../../middleware/idempotency.middleware";
@@ -50,6 +50,7 @@ router.use(protect, restrictTo("ADMIN"));
 // req.body is populated (by multer) when the idempotency key is derived — otherwise
 // every multipart save hashes an empty body and gets the same derived key.
 router.get("/payment-details", getPaymentDetails);
+router.get("/payment-details/:id", getPaymentDetailsById);
 router.post("/payment-details", adminWalletCriticalRateLimiter, upload.single("qrImage"), requireIdempotencyKey, createPaymentDetails);
 router.patch("/payment-details/:id", adminWalletCriticalRateLimiter, upload.single("qrImage"), requireIdempotencyKey, updatePaymentDetails);
 router.delete("/payment-details/:id", adminWalletCriticalRateLimiter, deletePaymentDetails);
@@ -64,6 +65,7 @@ router.patch("/topup-requests/:requestId/reject", adminWalletCriticalRateLimiter
 
 // Transaction log: View all financial wallet movements across the platform
 router.get("/transactions", getAdminTransactions);
+router.post("/manual-topup", adminWalletCriticalRateLimiter, requireIdempotencyKey, manualWalletTopup);
 
 // Notifications: Admin-specific alerts and read-status management
 router.get("/notifications", getAdminNotifications);

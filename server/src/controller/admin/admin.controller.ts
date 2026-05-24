@@ -152,9 +152,9 @@ export const getClientOrders = async (req: Request, res: Response, next: NextFun
 export const updateClientProfile = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id as string;
-    const { business_name, owner_name, email, phone_number, address } = req.body;
+    const { business_name, owner_name, email, phone_number, address, pan_vat_no, pan_vat_type } = req.body;
     const result = await adminService.updateClientProfileService(id, {
-      business_name, owner_name, email, phone_number, address,
+      business_name, owner_name, email, phone_number, address, pan_vat_no, pan_vat_type,
     });
     res.status(200).json({ success: true, ...result });
   } catch (error: any) {

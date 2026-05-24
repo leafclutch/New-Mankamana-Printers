@@ -94,6 +94,16 @@ export interface WalletClientSummaryApi {
   totalDebits: number;
 }
 
+export interface AdminClientOptionApi {
+  id: string;
+  client_code?: string | null;
+  phone_number?: string | null;
+  business_name: string;
+  owner_name?: string | null;
+  email?: string | null;
+  status?: string | null;
+}
+
 import { cachedJsonFetch, invalidateCacheKey } from "@/lib/requestCache";
 
 const safeJson = async (response: Response) => {
@@ -134,7 +144,7 @@ export const fetchAdminTopupRequests = async (params?: {
   const url = `/api/admin/wallet/topup-requests${query.toString() ? `?${query}` : ""}`;
   const cacheKey = query.toString() ? `${TOPUP_REQUESTS_CACHE_KEY}:${query}` : TOPUP_REQUESTS_CACHE_KEY;
 
-  const data = await cachedJsonFetch<{ success: boolean; data: WalletTopupListResponseApi; message?: string }>(cacheKey, url, 15_000);
+  const data = await cachedJsonFetch<{ success: boolean; data: WalletTopupListResponseApi; message?: string }>(cacheKey, url, 15_000, { credentials: "same-origin" });
   if (!data?.success) throw new Error(data?.message || "Failed to load top-up requests.");
   return data;
 };
@@ -143,6 +153,7 @@ export const fetchAdminTopupRequestById = async (requestId: string) => {
   const response = await fetch(`/api/admin/wallet/topup-requests/${requestId}`, {
     method: "GET",
     cache: "no-store",
+    credentials: "same-origin",
   });
 
   const data = await safeJson(response);
@@ -162,6 +173,7 @@ export const approveAdminTopupRequest = async (params: {
     `/api/admin/wallet/topup-requests/${params.requestId}/approve`,
     {
       method: "POST",
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
       },
@@ -201,6 +213,7 @@ export const rejectAdminTopupRequest = async (params: {
     `/api/admin/wallet/topup-requests/${params.requestId}/reject`,
     {
       method: "PATCH",
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
       },
@@ -230,6 +243,7 @@ export const adjustAdminTopupRequest = async (params: {
 }) => {
   const response = await fetch(`/api/admin/wallet/topup-requests/${params.requestId}`, {
     method: "PATCH",
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
     },
@@ -280,7 +294,7 @@ export const fetchAdminWalletTransactions = async (params?: {
   const url = `/api/admin/wallet/transactions${query.toString() ? `?${query}` : ""}`;
   const cacheKey = query.toString() ? `${TRANSACTIONS_CACHE_KEY}:${query}` : TRANSACTIONS_CACHE_KEY;
 
-  const data = await cachedJsonFetch<{ success: boolean; data: WalletTransactionResponseApi; message?: string }>(cacheKey, url, 30_000);
+  const data = await cachedJsonFetch<{ success: boolean; data: WalletTransactionResponseApi; message?: string }>(cacheKey, url, 30_000, { credentials: "same-origin" });
   if (!data?.success) throw new Error(data?.message || "Failed to load wallet transactions.");
   return data;
 };
@@ -298,7 +312,7 @@ export interface AdminPaymentDetailsApi {
 }
 
 export const fetchAdminPaymentDetails = async (): Promise<AdminPaymentDetailsApi[]> => {
-  const data = await cachedJsonFetch<{ success: boolean; data: AdminPaymentDetailsApi[] }>(PAYMENT_DETAILS_CACHE_KEY, "/api/admin/wallet/payment-details", 60_000);
+  const data = await cachedJsonFetch<{ success: boolean; data: AdminPaymentDetailsApi[] }>(PAYMENT_DETAILS_CACHE_KEY, "/api/admin/wallet/payment-details", 60_000, { credentials: "same-origin" });
   if (!data?.success) return [];
   return data.data ?? [];
 };
@@ -326,6 +340,7 @@ export const createAdminPaymentDetails = async (payload: {
 
     const response = await fetch(`/api/admin/wallet/payment-details`, {
       method: "POST",
+      credentials: "same-origin",
       body: formData,
     });
     const data = await safeJson(response);
@@ -335,6 +350,7 @@ export const createAdminPaymentDetails = async (payload: {
 
   const response = await fetch(`/api/admin/wallet/payment-details`, {
     method: "POST",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rest),
   });
@@ -344,7 +360,7 @@ export const createAdminPaymentDetails = async (payload: {
 };
 
 export const deleteAdminPaymentDetails = async (id: string) => {
-  const response = await fetch(`/api/admin/wallet/payment-details/${id}`, { method: "DELETE" });
+  const response = await fetch(`/api/admin/wallet/payment-details/${id}`, { method: "DELETE", credentials: "same-origin" });
   const data = await safeJson(response);
   if (!response.ok) throw new Error(data?.message || "Failed to delete payment method.");
   return data as { success: boolean; message: string };
@@ -375,6 +391,7 @@ export const updateAdminPaymentDetails = async (
 
     const response = await fetch(`/api/admin/wallet/payment-details/${id}`, {
       method: "PATCH",
+      credentials: "same-origin",
       body: formData,
     });
     const data = await safeJson(response);
@@ -384,6 +401,7 @@ export const updateAdminPaymentDetails = async (
 
   const response = await fetch(`/api/admin/wallet/payment-details/${id}`, {
     method: "PATCH",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(rest),
   });
@@ -407,10 +425,20 @@ export const fetchAdminWalletNotifications = async (params?: {
     {
       method: "GET",
       cache: "no-store",
+      credentials: "same-origin",
     }
   );
 
   const data = await safeJson(response);
+  if (response.status === 401) {
+    return {
+      success: false,
+      data: {
+        items: [],
+        pagination: { page: params?.page ?? 1, limit: params?.limit ?? 20, totalItems: 0, totalPages: 0 },
+      },
+    } as { success: boolean; data: WalletNotificationResponseApi };
+  }
   if (!response.ok) {
     throw new Error(data?.message || "Failed to load notifications.");
   }
@@ -423,6 +451,7 @@ export const markAdminWalletNotificationRead = async (notificationId: string) =>
     `/api/admin/wallet/notifications/${notificationId}/read`,
     {
       method: "PATCH",
+      credentials: "same-origin",
     }
   );
 
@@ -438,6 +467,7 @@ export const fetchAdminClientWalletSummary = async (clientId: string) => {
   const response = await fetch(`/api/admin/wallet/clients/${clientId}`, {
     method: "GET",
     cache: "no-store",
+    credentials: "same-origin",
   });
 
   const data = await safeJson(response);
@@ -446,4 +476,46 @@ export const fetchAdminClientWalletSummary = async (clientId: string) => {
   }
 
   return data as { success: boolean; data: WalletClientSummaryApi };
+};
+
+export const fetchAdminClientOptions = async (): Promise<AdminClientOptionApi[]> => {
+  const response = await fetch("/api/admin/clients", {
+    method: "GET",
+    cache: "no-store",
+    credentials: "same-origin",
+  });
+  const data = await safeJson(response);
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to load clients.");
+  }
+  return Array.isArray(data?.data) ? data.data : [];
+};
+
+export const manualAdminWalletTopup = async (params: {
+  clientId: string;
+  amount: number;
+  note?: string;
+}) => {
+  const response = await fetch("/api/admin/wallet/manual-topup", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  const data = await safeJson(response);
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.message || "Failed to credit wallet.");
+  }
+  return data as {
+    success: boolean;
+    message: string;
+    data: {
+      walletTransactionId: string;
+      amount: number;
+      currency: string;
+      balanceBefore: number;
+      balanceAfter: number;
+      createdAt: string;
+    };
+  };
 };

@@ -1,5 +1,4 @@
 import prisma from "../../connect";
-import { Decimal } from "@prisma/client/runtime/library";
 import { getOrCreateWalletService, invalidateBalanceCache } from "./wallet-account.service";
 import { sendTopupApproved } from "../../utils/email";
 
@@ -174,7 +173,7 @@ export const approveTopupService = async (
   }
 
   try {
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Re-read inside transaction to guard against concurrent approval
     const request = await tx.walletTopupRequest.findUnique({
       where: { id: requestId },
@@ -257,27 +256,29 @@ export const approveTopupService = async (
       transaction: txn,
       newBalance,
     };
-  }).then(async (result) => {
-    // Bust the cached balance so the next /wallet/balance request returns the new value
-    void invalidateBalanceCache(result.request.clientId);
-
-    // Send approval email to client (non-blocking)
-    const client = await prisma.client.findUnique({
-      where: { id: result.request.clientId },
-      select: { email: true, business_name: true },
-    });
-    if (client) {
-      sendTopupApproved({
-        to: client.email,
-        businessName: client.business_name,
-        approvedAmount,
-        newBalance: result.newBalance,
-        requestId: result.request.id,
-      }).catch((err) => console.error("[Email] Failed to send topup approval email:", err));
-    }
-
-    return result;
   });
+
+  // Bust the cached balance so the next /wallet/balance request returns the new value
+  void invalidateBalanceCache(result.request.clientId).catch((err) =>
+    console.error("[Wallet] Failed to invalidate balance cache after top-up approval:", err)
+  );
+
+  // Send approval email to client (non-blocking)
+  const client = await prisma.client.findUnique({
+    where: { id: result.request.clientId },
+    select: { email: true, business_name: true },
+  });
+  if (client) {
+    sendTopupApproved({
+      to: client.email,
+      businessName: client.business_name,
+      approvedAmount,
+      newBalance: result.newBalance,
+      requestId: result.request.id,
+    }).catch((err) => console.error("[Email] Failed to send topup approval email:", err));
+  }
+
+  return result;
   } catch (err: any) {
     if (err?.code === "P2002") {
       throw new Error("This top-up request has already been approved (concurrent request).");

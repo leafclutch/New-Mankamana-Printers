@@ -10,19 +10,19 @@ import { IoLogoTiktok } from "react-icons/io5";
 const socialLinks = [
     {
         label: "Facebook",
-        href: "https://facebook.com",
+        href: "https://www.facebook.com/share/18fie7yWtz/",
         colorClass: "text-[#1877f3] hover:bg-[#1877f3] hover:text-white",
         icon: <FaFacebookF />
     },
     {
         label: "Instagram",
-        href: "https://instagram.com",
+        href: "https://www.instagram.com/nmprinters2083?igsh=bDdycW83ZWd6azNp",
         colorClass: "text-pink-500 hover:bg-pink-500 hover:text-white",
         icon: <BsInstagram />
     },
     {
         label: "TikTok",
-        href: "https://tiktok.com",
+        href: "https://www.tiktok.com/@sagarkapoor70?_r=1&_t=ZS-96Xokg3iWQu",
         colorClass: "text-black hover:bg-black hover:text-white",
         icon: <IoLogoTiktok />
     },

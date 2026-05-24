@@ -27,6 +27,20 @@ async function toJsonResponse(apiResponse: Response) {
   return NextResponse.json(data, { status: apiResponse.status });
 }
 
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const token = await getAuthToken();
+  if (!token) return NextResponse.json({ message: "Not authenticated." }, { status: 401 });
+
+  const { id } = await params;
+  const apiResponse = await fetch(`${API_BASE_URL}/admin/wallet/payment-details/${id}`, {
+    method: "GET",
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  return toJsonResponse(apiResponse);
+}
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const token = await getAuthToken();
   if (!token) return NextResponse.json({ message: "Not authenticated." }, { status: 401 });

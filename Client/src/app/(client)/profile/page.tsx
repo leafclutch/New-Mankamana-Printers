@@ -2,9 +2,34 @@
 
 import { useState, useEffect } from "react";
 import { useAuthStore, getAuthHeaders } from "@/store/authStore";
-import { notify } from "@/utils/notifications";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8005/api/v1";
+
+type PanVatType = "PAN" | "VAT";
+
+const parsePanVat = (value: string | null | undefined): { panVatType: PanVatType | ""; panVatNo: string } => {
+    const raw = (value || "").trim();
+    if (!raw) return { panVatType: "", panVatNo: "" };
+
+    const encoded = raw.match(/^([A-Za-z]+)::(.+)$/);
+    if (encoded) {
+        const type = encoded[1].toUpperCase();
+        if ((type === "PAN" || type === "VAT") && encoded[2].trim()) {
+            return { panVatType: type as PanVatType, panVatNo: encoded[2].trim() };
+        }
+    }
+
+    const labelled = raw.match(/^(PAN|VAT)\s*[:\-]\s*(.+)$/i);
+    if (labelled) {
+        const type = labelled[1].toUpperCase();
+        if ((type === "PAN" || type === "VAT") && labelled[2].trim()) {
+            return { panVatType: type as PanVatType, panVatNo: labelled[2].trim() };
+        }
+    }
+
+    return { panVatType: "", panVatNo: raw };
+};
+
 
 interface ProfileData {
     id: string;
@@ -14,6 +39,8 @@ interface ProfileData {
     owner_name: string;
     email: string;
     address?: string;
+    pan_vat_type?: PanVatType | null;
+    pan_vat_no?: string | null;
     status: string;
 }
 
@@ -21,13 +48,13 @@ export default function ProfilePage() {
     const { user } = useAuthStore();
     const [profile, setProfile] = useState<ProfileData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [editing, setEditing] = useState(false);
-    const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
         business_name: "",
         owner_name: "",
         email: "",
         address: "",
+        pan_vat_type: "" as PanVatType | "",
+        pan_vat_no: "",
     });
 
     useEffect(() => {
@@ -36,48 +63,26 @@ export default function ProfilePage() {
             .then((data) => {
                 if (data.data) {
                     const p: ProfileData = data.data;
+                    const taxId = parsePanVat(p.pan_vat_no);
                     setProfile(p);
                     setForm({
                         business_name: p.business_name || "",
                         owner_name: p.owner_name || "",
                         email: p.email || "",
                         address: p.address || "",
+                        pan_vat_type: p.pan_vat_type || taxId.panVatType || "",
+                        pan_vat_no: taxId.panVatNo || "",
                     });
                 }
             })
             .finally(() => setLoading(false));
     }, []);
 
-    const handleSave = async () => {
-        setSaving(true);
-        try {
-            const res = await fetch(`${API_BASE}/user/profile`, {
-                method: "PATCH",
-                headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
-                body: JSON.stringify(form),
-            });
-            const data = await res.json();
-            if (!res.ok) { notify.error(data.error?.message || data.message || "Failed to update profile"); return; }
-            setProfile(data.data);
-            setEditing(false);
-            notify.success("Profile updated successfully!");
-        } catch {
-            notify.error("Network error. Please try again.");
-        } finally {
-            setSaving(false);
-        }
-    };
-
     const displayName = profile?.owner_name || user?.ownerName || "C";
     const initials = displayName[0]?.toUpperCase() ?? "C";
     const clientCode = profile?.client_code || user?.clientId;
 
-    const inputCls = (editable: boolean) =>
-        `w-full px-3.5 py-2.5 rounded-lg border text-sm outline-none transition-all ${
-            editable
-                ? "border-slate-200 bg-white focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10"
-                : "border-slate-100 bg-slate-50 text-slate-500 cursor-not-allowed"
-        }`;
+    const inputCls = "w-full px-3.5 py-2.5 rounded-lg border border-slate-100 bg-slate-50 text-sm text-slate-500 cursor-not-allowed outline-none";
 
     return (
         <div className="min-h-[calc(100vh-68px)] bg-[#f8f7f4]">
@@ -91,7 +96,7 @@ export default function ProfilePage() {
                     <div>
                         <p className="text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-400 mb-0.5">B2B Account</p>
                         <h1 className="font-serif text-2xl sm:text-3xl font-black text-white leading-tight">
-                            {profile?.business_name || user?.businessName || "My Profile"}
+                            {profile?.business_name || user?.businessName || ""}
                         </h1>
                         {clientCode && (
                             <p className="text-slate-400 text-xs mt-0.5 font-mono">{clientCode}</p>
@@ -148,39 +153,9 @@ export default function ProfilePage() {
 
                         {/* Right: Details form */}
                         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-50">
-                                <div>
-                                    <h2 className="font-bold text-[#0f172a] text-base">Company Details</h2>
-                                    <p className="text-slate-400 text-xs mt-0.5">Update your business information</p>
-                                </div>
-                                {editing ? (
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => setEditing(false)}
-                                            className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleSave}
-                                            disabled={saving}
-                                            className="px-5 py-2 rounded-lg bg-[#0f172a] text-white text-sm font-bold hover:bg-slate-800 disabled:opacity-60 transition-colors"
-                                        >
-                                            {saving ? "Saving…" : "Save Changes"}
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => setEditing(true)}
-                                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors"
-                                    >
-                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                        Edit
-                                    </button>
-                                )}
+                            <div className="mb-6 pb-4 border-b border-slate-50">
+                                <h2 className="font-bold text-[#0f172a] text-base">Company Details</h2>
+                                <p className="text-slate-400 text-xs mt-0.5">Contact admin to update your business information</p>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -193,19 +168,46 @@ export default function ProfilePage() {
                                         <label htmlFor={`field-${name}`} className="block text-[0.7rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-1.5">{label}</label>
                                         <input
                                             id={`field-${name}`}
-                                            className={inputCls(editing)}
+                                            className={inputCls}
                                             value={form[name]}
                                             onChange={(e) => setForm((p) => ({ ...p, [name]: e.target.value }))}
-                                            disabled={!editing}
+                                            disabled
                                             placeholder={placeholder}
                                         />
                                     </div>
                                 ))}
                                 <div>
+                                    <label htmlFor="field-pan-vat-type" className="block text-[0.7rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-1.5">Tax ID Type</label>
+                                    <select
+                                        id="field-pan-vat-type"
+                                        className={inputCls}
+                                        value={form.pan_vat_type}
+                                        onChange={(e) => setForm((p) => ({ ...p, pan_vat_type: e.target.value as PanVatType | "" }))}
+                                        disabled
+                                    >
+                                        <option value="">Select type</option>
+                                        <option value="PAN">PAN</option>
+                                        <option value="VAT">VAT</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label htmlFor="field-pan-vat-no" className="block text-[0.7rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-1.5">
+                                        {form.pan_vat_type || "PAN/VAT"} No.
+                                    </label>
+                                    <input
+                                        id="field-pan-vat-no"
+                                        className={inputCls}
+                                        value={form.pan_vat_no}
+                                        onChange={(e) => setForm((p) => ({ ...p, pan_vat_no: e.target.value }))}
+                                        disabled
+                                        placeholder="e.g. 123456789"
+                                    />
+                                </div>
+                                <div>
                                     <label htmlFor="field-phone" className="block text-[0.7rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-1.5">Phone Number</label>
                                     <input
                                         id="field-phone"
-                                        className={inputCls(false)}
+                                        className={inputCls}
                                         value={profile?.phone_number || user?.phoneNumber || ""}
                                         disabled
                                         placeholder="—"
@@ -215,10 +217,10 @@ export default function ProfilePage() {
                                     <label htmlFor="field-address" className="block text-[0.7rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-1.5">Business Address</label>
                                     <input
                                         id="field-address"
-                                        className={inputCls(editing)}
+                                        className={inputCls}
                                         value={form.address}
                                         onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
-                                        disabled={!editing}
+                                        disabled
                                         placeholder="e.g. Kathmandu, Nepal"
                                     />
                                 </div>

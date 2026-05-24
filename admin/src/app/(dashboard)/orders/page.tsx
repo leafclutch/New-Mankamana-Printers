@@ -192,7 +192,7 @@ function OrderDetailModal({
           )}
 
           {/* Summary grid */}
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <div className="rounded-lg bg-slate-50 dark:bg-slate-800 px-3 py-2.5 border border-slate-100 dark:border-slate-700">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Amount</p>
               <p className="text-sm font-semibold mt-0.5 text-slate-800 dark:text-slate-200">NPR {Number(order.final_amount).toLocaleString()}</p>
@@ -225,7 +225,7 @@ function OrderDetailModal({
           </div>
 
           {/* Delivery date */}
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 dark:border-slate-700 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 px-4 py-3 dark:border-slate-700">
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-slate-400" />
               <div>
@@ -721,7 +721,7 @@ export default function OrderManagementPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: "Total Orders", value: stats.total, icon: Package, color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" },
             { label: "In Production", value: stats.active, icon: Printer, color: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400" },
@@ -746,15 +746,15 @@ export default function OrderManagementPage() {
         <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
           <CardHeader className="border-b border-slate-100 pb-0 dark:border-slate-800">
             <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <CardTitle className="text-base font-semibold">Orders</CardTitle>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
+                  <div className="relative w-full sm:w-auto">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
                     <input
                       type="text"
                       placeholder="Search orders..."
-                      className="h-9 w-48 rounded-md border border-slate-200 bg-white pl-9 pr-4 text-sm outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] dark:border-slate-700 dark:bg-slate-900 dark:text-white md:w-64"
+                      className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-4 text-sm outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] sm:w-56 dark:border-slate-700 dark:bg-slate-900 dark:text-white md:w-64"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -800,16 +800,16 @@ export default function OrderManagementPage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px] text-left text-sm">
+                <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                     <tr>
-                      <th className="px-5 py-3.5 font-semibold">Order</th>
-                      <th className="px-5 py-3.5 font-semibold">Client</th>
-                      <th className="px-5 py-3.5 font-semibold">Product</th>
-                      <th className="px-5 py-3.5 font-semibold">Amount</th>
-                      <th className="px-5 py-3.5 font-semibold">Status</th>
-                      <th className="px-5 py-3.5 font-semibold">Delivery</th>
-                      <th className="px-5 py-3.5 text-right font-semibold">Action</th>
+                      <th className="px-3 py-3.5 font-semibold sm:px-5">Order</th>
+                      <th className="px-3 py-3.5 font-semibold sm:px-5">Client</th>
+                      <th className="px-3 py-3.5 font-semibold sm:px-5">Product</th>
+                      <th className="px-3 py-3.5 font-semibold sm:px-5">Amount</th>
+                      <th className="px-3 py-3.5 font-semibold sm:px-5">Status</th>
+                      <th className="px-3 py-3.5 font-semibold sm:px-5">Delivery</th>
+                      <th className="px-3 py-3.5 text-right font-semibold sm:px-5">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -832,7 +832,7 @@ export default function OrderManagementPage() {
                             className="group transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/30 cursor-pointer"
                             onClick={() => openDetail(order)}
                           >
-                            <td className="px-5 py-4">
+                            <td className="px-3 py-4 sm:px-5">
                               <p className="font-mono text-xs font-semibold text-slate-900 dark:text-white">
                                 #{order.id.slice(0, 8)}
                               </p>
@@ -849,17 +849,17 @@ export default function OrderManagementPage() {
                               </div>
                             </td>
 
-                            <td className="px-5 py-4">
+                            <td className="px-3 py-4 sm:px-5">
                               <p className="font-medium text-slate-900 dark:text-white">{order.client?.business_name ?? ""}</p>
                               <p className="text-[11px] text-slate-400">{order.client?.phone_number ?? ""}</p>
                             </td>
 
-                            <td className="px-5 py-4 text-slate-600 dark:text-slate-300">
+                            <td className="px-3 py-4 text-slate-600 sm:px-5 dark:text-slate-300">
                               <p className="font-medium">{order.variant?.product?.name ?? ""}</p>
                               <p className="text-[11px] text-slate-400">{order.variant?.variant_name} · Qty {order.quantity}</p>
                             </td>
 
-                            <td className="px-5 py-4">
+                            <td className="px-3 py-4 sm:px-5">
                               <p className="font-semibold text-slate-900 dark:text-white">
                                 NPR {Number(order.final_amount).toLocaleString()}
                               </p>
@@ -872,19 +872,19 @@ export default function OrderManagementPage() {
                               </p>
                             </td>
 
-                            <td className="px-5 py-4">
+                            <td className="px-3 py-4 sm:px-5">
                               <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status]}`}>
                                 {STATUS_LABELS[order.status]}
                               </span>
                             </td>
 
-                            <td className="px-5 py-4 text-xs text-slate-500">
+                            <td className="px-3 py-4 text-xs text-slate-500 sm:px-5">
                               {order.expected_delivery_date
                                 ? new Date(order.expected_delivery_date).toLocaleDateString()
                                 : null}
                             </td>
 
-                            <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-3 py-4 text-right sm:px-5" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1.5">
                                 <Button
                                   size="sm"
@@ -926,7 +926,7 @@ export default function OrderManagementPage() {
               </div>
             )}
             {!loading && (
-              <div className="px-5 py-3 text-right text-xs text-slate-400 border-t border-slate-100 dark:border-slate-800">
+              <div className="border-t border-slate-100 px-3 py-3 text-right text-xs text-slate-400 sm:px-5 dark:border-slate-800">
                 Showing {filteredOrders.length} of {orders.length} orders
               </div>
             )}

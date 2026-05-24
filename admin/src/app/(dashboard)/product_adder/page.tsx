@@ -118,7 +118,7 @@ function ProductAdderContent() {
         </p>
 
         {/* Tab switcher */}
-        <div className="mt-4 flex gap-1 rounded-xl bg-slate-100 dark:bg-slate-800 p-1 w-fit">
+        <div className="mt-4 flex w-full max-w-full gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1 sm:w-fit dark:bg-slate-800">
           <button
             type="button"
             onClick={() => switchTab("printing")}

@@ -32,7 +32,13 @@ export const getPublicTotalVisits = async (_req: Request, res: Response) => {
   try {
     const stats = await getVisitorStatsService();
     res.setHeader("Cache-Control", "public, max-age=60");
-    res.status(200).json({ success: true, data: { total: stats.pageViews.total } });
+    res.status(200).json({
+      success: true,
+      data: {
+        total: stats.uniqueVisitors.total,
+        pageViewsTotal: stats.pageViews.total,
+      },
+    });
   } catch {
     res.status(200).json({ success: true, data: { total: 0 } });
   }

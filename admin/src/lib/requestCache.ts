@@ -44,6 +44,9 @@ export const cachedJsonFetch = async <T>(
     // L3: network
     const res = await fetch(url, init);
     const json: T = await res.json();
+    if (!res.ok) {
+      throw new Error((json as { message?: string })?.message || `Request failed with status ${res.status}`);
+    }
     const expiresAt = Date.now() + ttlMs;
     l1Cache.set(key, { value: json, expiresAt });
     void idbSet(key, json, ttlMs);

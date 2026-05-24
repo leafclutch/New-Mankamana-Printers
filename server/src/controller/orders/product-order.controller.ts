@@ -5,6 +5,7 @@ import { uploadToSupabase, downloadFromSupabase } from "../../utils/file-upload"
 import { withRequestDedupe } from "../../utils/request-dedupe";
 import { generateInvoicePdf } from "../../utils/pdf";
 import prisma from "../../connect";
+import { formatPanVatForDisplay } from "../../utils/pan-vat";
 
 // Converts raw Prisma Decimal fields to numbers for any single order object
 // returned by service calls that don't go through serializeOrder() in the service layer.
@@ -310,7 +311,7 @@ export const downloadOrderInvoice = async (req: Request, res: Response) => {
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        client: { select: { business_name: true, client_code: true, phone_number: true } },
+        client: { select: { business_name: true, owner_name: true, client_code: true, phone_number: true, pan_vat_no: true, address: true, email: true } },
         variant: { include: { product: true } },
         configurations: true,
         statusHistory: { orderBy: { changed_at: "asc" } },
@@ -326,7 +327,11 @@ export const downloadOrderInvoice = async (req: Request, res: Response) => {
     const pdfBuffer = await generateInvoicePdf({
       orderId: order.id,
       businessName: order.client.business_name,
+      customerName: order.client.owner_name || null,
       clientCode: order.client.client_code || "",
+      clientPanVatNo: formatPanVatForDisplay(order.client.pan_vat_no) || null,
+      clientAddress: order.client.address || null,
+      email: order.client.email || null,
       phone: order.client.phone_number,
       productName: order.variant.product.name,
       variantName: order.variant.variant_name,

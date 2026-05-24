@@ -1,3 +1,5 @@
+import { cachedJsonFetch, invalidateCacheKey } from "@/lib/requestCache";
+
 export type RegistrationRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface RegistrationRequestApi {
@@ -6,6 +8,7 @@ export interface RegistrationRequestApi {
   owner_name: string;
   email: string;
   phone_number?: string | null;
+  pan_vat_no?: string | null;
   business_address?: string | null;
   notes?: string | null;
   rejection_reason?: string | null;
@@ -20,6 +23,8 @@ export interface RegistrationRequestUi {
   contactPerson: string;
   email: string;
   phone: string;
+  panVatType?: "PAN" | "VAT";
+  panVatNo?: string;
   date: string;
   status: "Pending" | "Approved" | "Rejected";
   type: string;
@@ -47,14 +52,13 @@ interface ApproveBackendResponse {
   };
 }
 
-const STATUS_MAP: Record<
-  RegistrationRequestStatus,
-  RegistrationRequestUi["status"]
-> = {
+const STATUS_MAP: Record<RegistrationRequestStatus, RegistrationRequestUi["status"]> = {
   PENDING: "Pending",
   APPROVED: "Approved",
   REJECTED: "Rejected",
 };
+
+const REQUESTS_CACHE_KEY = "admin-registration-requests";
 
 const formatDate = (isoDate: string) => {
   const date = new Date(isoDate);
@@ -62,9 +66,30 @@ const formatDate = (isoDate: string) => {
   return date.toISOString().split("T")[0];
 };
 
-import { cachedJsonFetch, invalidateCacheKey } from "@/lib/requestCache";
+const parsePanVat = (value: string | null | undefined): { panVatType: "PAN" | "VAT" | null; panVatNo: string | null } => {
+  const raw = (value || "").trim();
+  if (!raw) return { panVatType: null, panVatNo: null };
 
-const REQUESTS_CACHE_KEY = "admin-registration-requests";
+  const encoded = raw.match(/^([A-Za-z]+)::(.+)$/);
+  if (encoded) {
+    const type = encoded[1].toUpperCase();
+    const no = encoded[2].trim();
+    if ((type === "PAN" || type === "VAT") && no) {
+      return { panVatType: type as "PAN" | "VAT", panVatNo: no };
+    }
+  }
+
+  const labelled = raw.match(/^(PAN|VAT)\s*[:\-]\s*(.+)$/i);
+  if (labelled) {
+    const type = labelled[1].toUpperCase();
+    const no = labelled[2].trim();
+    if ((type === "PAN" || type === "VAT") && no) {
+      return { panVatType: type as "PAN" | "VAT", panVatNo: no };
+    }
+  }
+
+  return { panVatType: null, panVatNo: raw };
+};
 
 const safeJson = async (response: Response) => {
   const raw = await response.text();
@@ -78,25 +103,33 @@ const safeJson = async (response: Response) => {
   }
 };
 
-const mapRequest = (req: RegistrationRequestApi): RegistrationRequestUi => ({
-  id: req.id,
-  companyName: req.business_name,
-  contactPerson: req.owner_name,
-  email: req.email,
-  phone: req.phone_number || "—",
-  date: formatDate(req.createdAt),
-  status: STATUS_MAP[req.status],
-  type: "Business",
-  address: req.business_address ?? undefined,
-  message: req.notes ?? undefined,
-  rejectionReason: req.rejection_reason ?? undefined,
-  createdAt: req.createdAt,
-});
+const mapRequest = (req: RegistrationRequestApi): RegistrationRequestUi => {
+  const taxId = parsePanVat(req.pan_vat_no);
 
-export const fetchRegistrationRequests = async (): Promise<
-  RegistrationRequestUi[]
-> => {
-  const data = await cachedJsonFetch<{ success?: boolean; data?: RegistrationRequestApi[]; message?: string }>(REQUESTS_CACHE_KEY, "/api/admin/registration-requests", 20_000);
+  return {
+    id: req.id,
+    companyName: req.business_name,
+    contactPerson: req.owner_name,
+    email: req.email,
+    phone: req.phone_number || "-",
+    panVatType: taxId.panVatType ?? undefined,
+    panVatNo: taxId.panVatNo ?? undefined,
+    date: formatDate(req.createdAt),
+    status: STATUS_MAP[req.status],
+    type: taxId.panVatType ? `${taxId.panVatType} Registration` : "Business",
+    address: req.business_address ?? undefined,
+    message: req.notes ?? undefined,
+    rejectionReason: req.rejection_reason ?? undefined,
+    createdAt: req.createdAt,
+  };
+};
+
+export const fetchRegistrationRequests = async (): Promise<RegistrationRequestUi[]> => {
+  const data = await cachedJsonFetch<{ success?: boolean; data?: RegistrationRequestApi[]; message?: string }>(
+    REQUESTS_CACHE_KEY,
+    "/api/admin/registration-requests",
+    20_000
+  );
   if (!data?.success && !data?.data) {
     throw new Error(data?.message || "Failed to load registration requests.");
   }

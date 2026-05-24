@@ -85,7 +85,7 @@ VALUES (
         'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/<<category-slug>>/<<product-slug>>/preview-2.jpeg'
         -- add more preview URLs as needed
     ],
-    3,                           -- production_days: estimated fulfilment days (default 3)
+    7,                           -- production_days: estimated fulfilment days (default 7)
     true
 )
 ON CONFLICT (product_code) DO UPDATE

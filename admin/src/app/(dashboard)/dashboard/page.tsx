@@ -294,40 +294,40 @@ export default function DashboardPage() {
               View All
             </Button>
           </div>
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <table className="w-full border-collapse text-left">
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <table className="w-full min-w-[680px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-800/50">
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Order ID</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Client</th>
-                  <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Product</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Amount</th>
-                  <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 sm:px-6">Order ID</th>
+                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 sm:px-6">Client</th>
+                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-slate-500 sm:px-6">Product</th>
+                  <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500 sm:px-6">Amount</th>
+                  <th className="px-4 py-4 text-center text-xs font-bold uppercase tracking-wider text-slate-500 sm:px-6">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {recentOrders.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-6 text-center text-sm text-slate-400">
+                    <td colSpan={5} className="px-4 py-6 text-center text-sm text-slate-400 sm:px-6">
                       No recent orders.
                     </td>
                   </tr>
                 ) : (
                   recentOrders.map((order) => (
                     <tr key={order.id} className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="px-6 py-4 font-mono text-xs font-medium text-slate-900 dark:text-white">
+                      <td className="px-4 py-4 font-mono text-xs font-medium text-slate-900 sm:px-6 dark:text-white">
                         {order.id.slice(0, 8)}...
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                      <td className="px-4 py-4 text-sm text-slate-600 sm:px-6 dark:text-slate-300">
                         {order.client?.business_name ?? ""}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
+                      <td className="px-4 py-4 text-sm text-slate-600 sm:px-6 dark:text-slate-300">
                         {order.variant?.product?.name ?? order.variant?.variant_name ?? ""}
                       </td>
-                      <td className="px-6 py-4 text-right text-sm font-medium text-slate-900 dark:text-white">
+                      <td className="px-4 py-4 text-right text-sm font-medium text-slate-900 sm:px-6 dark:text-white">
                         NPR {Number(order.final_amount).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-4 py-4 text-center sm:px-6">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[order.status] ?? "bg-slate-100 text-slate-600"}`}>
                           {STATUS_LABELS[order.status] ?? order.status}
                         </span>

@@ -418,6 +418,7 @@ export const sendOrderInvoice = async (opts: {
   to: string;
   businessName: string;
   clientCode: string;
+  clientPanVatNo?: string | null;
   phone: string;
   orderId: string;
   productName: string;
@@ -432,7 +433,7 @@ export const sendOrderInvoice = async (opts: {
   paymentMethod: string;
   acceptedAt: Date;
 }) => {
-  const { to, businessName, clientCode, phone, orderId, productName, variantName, quantity,
+  const { to, businessName, clientCode, clientPanVatNo, phone, orderId, productName, variantName, quantity,
     unitPrice, discountAmount, designSurcharge, finalAmount, configurations,
     notes, paymentMethod, acceptedAt } = opts;
 
@@ -447,7 +448,7 @@ export const sendOrderInvoice = async (opts: {
 
   // Generate PDF attachment
   const pdfBuffer = await generateInvoicePdf({
-    orderId, businessName, clientCode, phone, productName, variantName, quantity,
+    orderId, businessName, clientCode, clientPanVatNo, phone, productName, variantName, quantity,
     unitPrice, discountAmount, designSurcharge, finalAmount, configurations,
     notes, paymentMethod, acceptedAt,
   }).catch(() => null);
@@ -475,9 +476,10 @@ export const sendOrderInvoice = async (opts: {
           <div style="display:flex;justify-content:space-between;margin-bottom:28px;gap:20px;">
             <div>
               <p style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px;">Bill To</p>
-              <p style="font-weight:700;font-size:15px;margin:0 0 2px;">${businessName}</p>
-              <p style="color:#64748b;font-size:13px;margin:0 0 2px;">Client Code: <strong>${clientCode}</strong></p>
-              <p style="color:#64748b;font-size:13px;margin:0;">Phone: ${phone}</p>
+               <p style="font-weight:700;font-size:15px;margin:0 0 2px;">${businessName}</p>
+               <p style="color:#64748b;font-size:13px;margin:0 0 2px;">Client Code: <strong>${clientCode}</strong></p>
+               ${clientPanVatNo ? `<p style="color:#64748b;font-size:13px;margin:0 0 2px;">PAN/VAT No.: <strong>${clientPanVatNo}</strong></p>` : ""}
+               <p style="color:#64748b;font-size:13px;margin:0;">Phone: ${phone}</p>
             </div>
             <div style="text-align:right;">
               <p style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;margin:0 0 6px;">Invoice Details</p>

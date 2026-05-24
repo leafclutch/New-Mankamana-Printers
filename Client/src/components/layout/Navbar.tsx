@@ -16,14 +16,11 @@ export default function Navbar() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const profileRef = useRef<HTMLDivElement>(null);
 
-    // Close mobile menu and profile dropdown on route change — adjust during render
-    // to avoid an extra render cycle from setState-in-effect.
-    const [prevPathname, setPrevPathname] = useState(pathname);
-    if (prevPathname !== pathname) {
-        setPrevPathname(pathname);
+    // Close mobile menu and profile dropdown on route change.
+    useEffect(() => {
         setMenuOpen(false);
         setIsProfileOpen(false);
-    }
+    }, [pathname]);
 
     // Close profile dropdown on outside click
     useEffect(() => {
@@ -144,7 +141,7 @@ export default function Navbar() {
                                         {/* User info */}
                                         <div className="px-4 py-3 border-b border-slate-50 bg-slate-50/60">
                                             <p className="text-xs font-bold text-[#0f172a] truncate">
-                                                {user?.businessName || user?.ownerName || "Client"}
+                                                {user?.ownerName || user?.businessName || ""}
                                             </p>
                                             <p className="text-[0.7rem] text-slate-400 truncate mt-0.5">
                                                 {user?.clientId || ""}

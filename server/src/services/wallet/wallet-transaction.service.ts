@@ -1,5 +1,6 @@
 import prisma from "../../connect";
-import { getOrCreateWalletService, invalidateBalanceCache } from "./wallet-account.service";
+import { invalidateBalanceCache } from "./wallet-account.service";
+import { randomUUID } from "crypto";
 
 // getClientTransactionsService: Paginated retrieval of the authenticated client's financial transaction history
 export const getClientTransactionsService = async (params: {
@@ -101,9 +102,79 @@ export const getAdminTransactionsService = async (params: {
   };
 };
 
+export const manualTopupWalletService = async (params: {
+  clientId: string;
+  adminId: string;
+  amount: number;
+  note?: string;
+}) => {
+  const result = await prisma.$transaction(async (tx) => {
+    const client = await tx.client.findUnique({
+      where: { id: params.clientId },
+      select: { id: true, business_name: true, status: true },
+    });
+    if (!client) throw new Error("Client not found");
+
+    let wallet = await tx.walletAccount.findUnique({ where: { clientId: params.clientId } });
+    if (!wallet) {
+      wallet = await tx.walletAccount.create({
+        data: {
+          clientId: params.clientId,
+          currency: "NPR",
+          availableBalance: 0,
+        },
+      });
+    }
+
+    const balanceBefore = Number(wallet.availableBalance);
+    const balanceAfter = Number((balanceBefore + params.amount).toFixed(2));
+    const note = params.note?.trim();
+    const description = note || "Manual top-up by New Mankamana Printers";
+
+    const transaction = await tx.walletTransaction.create({
+      data: {
+        walletId: wallet.id,
+        clientId: params.clientId,
+        type: "CREDIT",
+        source: "ADJUSTMENT",
+        sourceId: `manual-${randomUUID()}`,
+        amount: params.amount,
+        currency: wallet.currency,
+        balanceBefore,
+        balanceAfter,
+        description,
+      },
+    });
+
+    await tx.walletAccount.update({
+      where: { id: wallet.id },
+      data: { availableBalance: balanceAfter },
+    });
+
+    await tx.notification.create({
+      data: {
+        recipientRole: "CLIENT",
+        recipientId: params.clientId,
+        clientId: params.clientId,
+        type: "wallet_manual_topup",
+        title: "Wallet credited",
+        message: `NPR ${params.amount.toLocaleString()} has been credited to your wallet. ${description}`,
+        referenceId: transaction.id,
+      },
+    });
+
+    return { client, transaction, balanceBefore, balanceAfter };
+  });
+
+  void invalidateBalanceCache(params.clientId).catch((err) =>
+    console.error("[Wallet] Failed to invalidate balance cache after manual top-up:", err)
+  );
+  return result;
+};
+
 // deductForOrderService: High-integrity atomic transaction for deducting wallet funds to pay for an order
 export const deductForOrderService = async (orderId: string, clientId: string) => {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. Fetch order
     const order = await tx.order.findUnique({ 
       where: { id: orderId },
@@ -182,8 +253,10 @@ export const deductForOrderService = async (orderId: string, clientId: string) =
       deductedAmount: orderAmount,
       newWalletBalance: newBalance,
     };
-  }).then((result) => {
-    void invalidateBalanceCache(clientId);
-    return result;
   });
+
+  void invalidateBalanceCache(clientId).catch((err) =>
+    console.error("[Wallet] Failed to invalidate balance cache after order deduction:", err)
+  );
+  return result;
 };

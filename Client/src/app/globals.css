@@ -29,10 +29,22 @@
     @apply scroll-smooth;
   }
 
+  html,
+  body {
+    @apply w-full max-w-full overflow-x-hidden;
+  }
+
   body {
     @apply font-sans antialiased;
     color: var(--text-dark);
     background: #f8fafc;
+  }
+
+  img,
+  video,
+  canvas,
+  iframe {
+    @apply max-w-full;
   }
 }
 

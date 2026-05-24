@@ -558,7 +558,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
         }
       }
     } catch {
-      // Verification network failure — don't block checkout
+      // Verification network failure - don't block checkout
     } finally {
       setPriceVerifying(false);
     }
@@ -697,7 +697,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
       <div className="min-h-[calc(100vh-72px)] bg-[#f8f7f4] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-[#0f172a] border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-500 text-sm font-medium">Loading product…</p>
+          <p className="text-slate-500 text-sm font-medium">Loading product...</p>
         </div>
       </div>
     );
@@ -825,7 +825,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
         {selectedVariantId && loadingOptions && (
           <div className="flex items-center gap-2 py-3 text-slate-400 text-sm">
             <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-            Loading options…
+            Loading options...
           </div>
         )}
 
@@ -835,7 +835,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
               <span className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em]">Order Configuration</span>
             </div>
             <div className="px-4 py-4 flex flex-col gap-4 bg-white">
-              {/* Quantity input — 3 modes */}
+              {/* Quantity input - 3 modes */}
               {quantityGroup && hasMultipleQtyChoices ? (
                 <div>
                   <label className={labelCls}>
@@ -863,7 +863,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
                     step={quantityStep}
                     value={quantity}
                     onChange={(e) => { setQuantity(e.target.value); setPricingError(null); }}
-                    className="w-44 px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 text-center focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 text-center focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none sm:w-44"
                   />
                 </div>
               ) : quantityGroup && hasNonNumericQtyGroup ? (
@@ -891,7 +891,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
                     step={1}
                     value={quantity}
                     onChange={(e) => { setQuantity(e.target.value); setPricingError(null); }}
-                    className="w-36 px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 text-center focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none"
+                    className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm text-slate-800 text-center focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none sm:w-36"
                   />
                 </div>
               )}
@@ -927,7 +927,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="Any special instructions…"
+              placeholder="Any special instructions..."
               className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm text-slate-700 resize-none focus:border-[#0f172a] focus:ring-2 focus:ring-[#0f172a]/10 outline-none transition-shadow"
             />
           </div>
@@ -961,12 +961,12 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
                           <span className="text-emerald-600">
                             Discount{pricing.discount_type === "percentage" ? ` (${pricing.discount_value}%)` : ""}
                           </span>
-                          <span className="font-semibold text-emerald-600">− NPR {pricing.discount.toFixed(2)}</span>
+                          <span className="font-semibold text-emerald-600">- NPR {pricing.discount.toFixed(2)}</span>
                         </div>
                       )}
                       <div className="px-4 py-2.5 flex justify-between text-sm">
                         <span className="text-slate-500">Quantity</span>
-                        <span className="font-semibold text-slate-800">× {effectiveQuantity}</span>
+                        <span className="font-semibold text-slate-800">{effectiveQuantity}</span>
                       </div>
                       <div className="px-4 py-3.5 flex justify-between items-center bg-slate-50/60">
                         <span className="font-bold text-slate-900">Total</span>
@@ -991,11 +991,11 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
           </div>
         )}
 
-        <div className="flex gap-3 pt-1">
+        <div className="flex flex-col gap-3 pt-1 sm:flex-row">
           <button
             type="button"
             onClick={() => router.push("/machinery")}
-            className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors"
+            className="w-full px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors sm:w-auto"
           >
             Back
           </button>
@@ -1028,7 +1028,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
             <div>
               <svg className="mx-auto w-7 h-7 text-slate-300 mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
               <p className="text-sm text-slate-400">Click to attach files</p>
-              <p className="text-xs text-slate-300 mt-0.5">Any file type accepted · Multiple files allowed</p>
+              <p className="text-xs text-slate-300 mt-0.5">Any file type accepted - Multiple files allowed</p>
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -1047,10 +1047,10 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
                     {uploadingAttachments ? (
                       <>
                         <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
-                        Uploading…
+                        Uploading...
                       </>
                     ) : attachmentPaths.length === attachmentFiles.length && attachmentPaths.length > 0 ? (
-                      <>{attachmentPaths.length}/{attachmentFiles.length} uploaded ✓</>
+                      <>{attachmentPaths.length}/{attachmentFiles.length} uploaded OK</>
                     ) : (
                       <>{attachmentPaths.length}/{attachmentFiles.length} uploaded</>
                     )}
@@ -1115,7 +1115,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
           <p className="mt-1 text-amber-700">
             Unit price changed from{" "}
             <span className="line-through">NPR {priceChangedInfo.prevUnitPrice.toLocaleString()}</span>
-            {" → "}
+            {" -> "}
             <span className="font-bold">NPR {priceChangedInfo.newUnitPrice.toLocaleString()}</span>.
             New total: <span className="font-bold">NPR {priceChangedInfo.newTotal.toLocaleString()}</span>.
           </p>
@@ -1138,9 +1138,9 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
         </div>
       )}
 
-      <div className="flex gap-3 pt-1">
+      <div className="flex flex-col gap-3 pt-1 sm:flex-row">
         <button type="button" onClick={() => setStep(1)}
-          className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
+          className="w-full px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors sm:w-auto">
           Back
         </button>
         <button
@@ -1149,7 +1149,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
           disabled={attachmentFiles.length === 0 || uploadingAttachments || priceVerifying || !!priceChangedInfo}
           className="flex-1 py-2.5 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
-          {priceVerifying ? "Verifying price…" : uploadingAttachments ? "Uploading files…" : (
+          {priceVerifying ? "Verifying price..." : uploadingAttachments ? "Uploading files..." : (
             <>
               Continue to Payment
               <svg className="inline-block w-4 h-4 ml-1.5 -mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1171,12 +1171,12 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
         <div className="rounded-xl bg-[#0f172a] px-5 py-5">
           <p className="text-[0.72rem] font-bold text-slate-400 uppercase tracking-[0.1em] mb-1">Amount to Pay</p>
           <p className="text-4xl font-extrabold text-white">NPR {total.toFixed(2)}</p>
-          <p className="text-xs text-slate-400 mt-1.5">{product?.name} · Qty {effectiveQuantity}</p>
+          <p className="text-xs text-slate-400 mt-1.5">{product?.name} - Qty {effectiveQuantity}</p>
         </div>
 
         <div>
           <p className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em] mb-2">Payment Method</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
               onClick={() => setPaymentMethod("proof")}
@@ -1241,7 +1241,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
                     ].map(([label, value]) => (
                       <div key={label} className="flex justify-between items-center">
                         <span className="text-slate-400 text-xs">{label}</span>
-                        <span className="font-semibold text-slate-900 text-right max-w-[60%]">{value}</span>
+                        <span className="font-semibold text-slate-900 text-right max-w-[58%] sm:max-w-[60%]">{value}</span>
                       </div>
                     ))}
                     {paymentDetails.note && (
@@ -1253,7 +1253,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
                         <img
                           src={`${API_BASE}/wallet/qr-image?id=${paymentDetails.id}`}
                           alt="QR Code"
-                          className="w-44 h-44 object-contain border border-slate-100 rounded-xl p-2 shadow-sm"
+                          className="h-40 w-full max-w-[11rem] object-contain border border-slate-100 rounded-xl p-2 shadow-sm sm:h-44 sm:w-44"
                           onError={() => setFailedPaymentQrById((prev) => ({ ...prev, [paymentDetails.id]: true }))}
                         />
                       </div>
@@ -1295,7 +1295,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
                     <div className="text-center">
                       <svg className="w-6 h-6 text-slate-400 mx-auto mb-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
                       <p className="text-slate-600 text-sm font-medium">Click to upload screenshot or PDF</p>
-                      <p className="text-slate-400 text-xs mt-0.5">PNG, JPG, PDF · max 10 MB</p>
+                      <p className="text-slate-400 text-xs mt-0.5">PNG, JPG, PDF - max 10 MB</p>
                     </div>
                   )}
                 </label>
@@ -1309,7 +1309,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
             <div className="flex items-center justify-between mb-3">
               <span className="text-[0.72rem] font-bold text-slate-500 uppercase tracking-[0.08em]">Wallet Balance</span>
               <span className={`text-xl font-extrabold ${walletSufficient ? "text-emerald-700" : "text-red-600"}`}>
-                {walletBalance !== null ? `NPR ${walletBalance.toFixed(2)}` : "Loading…"}
+                {walletBalance !== null ? `NPR ${walletBalance.toFixed(2)}` : "Loading..."}
               </span>
             </div>
             <div className="flex items-center justify-between text-sm border-t border-slate-100 pt-3">
@@ -1325,16 +1325,16 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
               ) : (
                 <div className="mt-3 text-xs text-red-600 font-medium">
                   Insufficient balance. You need NPR {(total - walletBalance).toFixed(2)} more.{" "}
-                  <a href="/wallet/topup" className="underline font-bold">Top up →</a>
+                  <a href="/wallet/topup" className="underline font-bold">Top up {"->"}</a>
                 </div>
               )
             )}
           </div>
         )}
 
-        <div className="flex gap-3 pt-1">
+        <div className="flex flex-col gap-3 pt-1 sm:flex-row">
           <button type="button" onClick={() => setStep(2)}
-            className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
+            className="w-full px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors sm:w-auto">
             Back
           </button>
           <button
@@ -1371,11 +1371,11 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
           <div className="bg-white divide-y divide-slate-50 text-sm">
             <div className="px-4 py-2.5 flex justify-between">
               <span className="text-slate-400">Product</span>
-              <span className="font-semibold text-slate-800 text-right max-w-[60%]">{product.name}</span>
+              <span className="font-semibold text-slate-800 text-right max-w-[58%] sm:max-w-[60%]">{product.name}</span>
             </div>
             <div className="px-4 py-2.5 flex justify-between">
               <span className="text-slate-400">Variant</span>
-              <span className="font-semibold text-slate-800 text-right max-w-[60%]">
+              <span className="font-semibold text-slate-800 text-right max-w-[58%] sm:max-w-[60%]">
                 {variants.find((v) => v.id === selectedVariantId)?.variant_name || ""}
               </span>
             </div>
@@ -1419,7 +1419,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
             {paymentMethod === "proof" && proofFile && (
               <div className="px-4 py-2.5 flex justify-between">
                 <span className="text-slate-400">Proof</span>
-                <span className="font-semibold text-slate-800 truncate max-w-[60%]">{proofFile.name}</span>
+                <span className="font-semibold text-slate-800 truncate max-w-[58%] sm:max-w-[60%]">{proofFile.name}</span>
               </div>
             )}
             <div className="px-4 py-3.5 flex justify-between items-center bg-slate-50/60">
@@ -1429,9 +1429,9 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
           </div>
         </div>
 
-        <div className="flex gap-3 pt-1">
+        <div className="flex flex-col gap-3 pt-1 sm:flex-row">
           <button type="button" onClick={() => setStep(3)}
-            className="px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors">
+            className="w-full px-5 py-2.5 border border-slate-200 text-slate-600 text-sm font-semibold rounded-lg hover:bg-slate-50 transition-colors sm:w-auto">
             Back
           </button>
           <button
@@ -1440,7 +1440,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
             disabled={submitting || uploadingProof}
             className="flex-[2] py-3 bg-[#0f172a] text-white text-sm font-bold rounded-lg hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {uploadingProof ? "Uploading proof…" : submitting ? "Placing order…" : "Place Order"}
+            {uploadingProof ? "Uploading proof..." : submitting ? "Placing order..." : "Place Order"}
           </button>
         </div>
       </div>
@@ -1452,7 +1452,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
       {/* Header */}
       <div className="relative overflow-hidden bg-[#0f172a] px-6 py-10 sm:py-12">
         <div className="hero-grid-overlay pointer-events-none absolute inset-0" />
-        <div className="relative max-w-2xl mx-auto">
+        <div className="relative max-w-3xl mx-auto">
           <button
             type="button"
             onClick={() => router.push("/machinery")}
@@ -1476,7 +1476,7 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto px-4 py-8">
         <StepBar step={step} />
         <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sm:p-6">
           {step === 1 && renderStep1()}
@@ -1488,3 +1488,4 @@ export default function MachineryOrderPage({ params }: { params: Promise<{ produ
     </div>
   );
 }
+

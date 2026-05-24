@@ -26,14 +26,17 @@ import {
   deleteAdminPaymentDetails,
   updateAdminPaymentDetails,
   fetchAdminClientWalletSummary,
+  fetchAdminClientOptions,
   fetchAdminTopupRequestById,
   fetchAdminTopupRequests,
   fetchAdminWalletNotifications,
   fetchAdminWalletTransactions,
   markAdminWalletNotificationRead,
+  manualAdminWalletTopup,
   rejectAdminTopupRequest,
   invalidateWalletCache,
   invalidatePaymentDetailsCache,
+  type AdminClientOptionApi,
   type AdminPaymentDetailsApi,
   type WalletClientSummaryApi,
   type WalletNotificationApi,
@@ -51,6 +54,7 @@ import {
   XCircle,
   Bell,
   Wallet,
+  PlusCircle,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -136,6 +140,12 @@ export default function PaymentsPage() {
   const [clientSummary, setClientSummary] =
     useState<WalletClientSummaryApi | null>(null);
   const [clientSummaryLoading, setClientSummaryLoading] = useState(false);
+  const [clients, setClients] = useState<AdminClientOptionApi[]>([]);
+  const [clientSearch, setClientSearch] = useState("");
+  const [manualTopupClientId, setManualTopupClientId] = useState("");
+  const [manualTopupAmount, setManualTopupAmount] = useState("");
+  const [manualTopupNote, setManualTopupNote] = useState("");
+  const [manualTopupLoading, setManualTopupLoading] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -145,7 +155,13 @@ export default function PaymentsPage() {
         await Promise.all([
           fetchAdminTopupRequests({ page: 1, limit: 50 }),
           fetchAdminWalletTransactions({ page: 1, limit: 50 }),
-          fetchAdminWalletNotifications({ page: 1, limit: 20 }),
+          fetchAdminWalletNotifications({ page: 1, limit: 20 }).catch(() => ({
+            success: false,
+            data: {
+              items: [],
+              pagination: { page: 1, limit: 20, totalItems: 0, totalPages: 0 },
+            },
+          })),
         ]);
 
       setTopupRequests(topupsResponse.data.items || []);
@@ -164,7 +180,7 @@ export default function PaymentsPage() {
   const loadPaymentDetails = useCallback(async () => {
     setPaymentFormLoading(true);
     try {
-      const res = await fetch("/api/admin/wallet/payment-details", { cache: "no-store" });
+      const res = await fetch("/api/admin/wallet/payment-details", { cache: "no-store", credentials: "same-origin" });
       if (!res.ok) return;
       const json = await res.json();
       const list: AdminPaymentDetailsApi[] = Array.isArray(json?.data) ? json.data : [];
@@ -179,6 +195,7 @@ export default function PaymentsPage() {
   useEffect(() => {
     void loadData();
     void loadPaymentDetails();
+    fetchAdminClientOptions().then(setClients).catch(() => {});
     const id = setInterval(() => void loadData(), 15_000);
     return () => clearInterval(id);
   }, [loadData, loadPaymentDetails]);
@@ -214,6 +231,30 @@ export default function PaymentsPage() {
         .includes(term)
     );
   }, [searchTerm, topupRequests]);
+
+  const filteredClients = useMemo(() => {
+    const term = clientSearch.trim().toLowerCase();
+    const list = clients.filter((client) => client.status !== "inactive");
+    if (!term) return list.slice(0, 8);
+    return list.filter((client) =>
+      [
+        client.business_name,
+        client.owner_name,
+        client.phone_number,
+        client.client_code,
+        client.email,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(term)
+    ).slice(0, 8);
+  }, [clients, clientSearch]);
+
+  const selectedManualTopupClient = useMemo(
+    () => clients.find((client) => client.id === manualTopupClientId) ?? null,
+    [clients, manualTopupClientId]
+  );
 
   const pendingCount = topupRequests.filter(
     (t) => t.status === "PENDING_REVIEW"
@@ -500,6 +541,48 @@ export default function PaymentsPage() {
     }
   };
 
+  const handleManualTopup = async () => {
+    const amount = Number(manualTopupAmount);
+    if (!manualTopupClientId) {
+      toast({ title: "Select a client", description: "Choose the client wallet to credit.", variant: "destructive" });
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast({ title: "Invalid amount", description: "Enter a positive top-up amount.", variant: "destructive" });
+      return;
+    }
+
+    setManualTopupLoading(true);
+    try {
+      const result = await manualAdminWalletTopup({
+        clientId: manualTopupClientId,
+        amount,
+        note: manualTopupNote.trim() || undefined,
+      });
+      invalidateWalletCache();
+      setManualTopupAmount("");
+      setManualTopupNote("");
+      setClientLookupId(manualTopupClientId);
+      setClientSummary(null);
+      toast({
+        title: "Wallet credited",
+        description: `New balance: ${formatCurrency(result.data.balanceAfter, result.data.currency)}`,
+        variant: "success",
+      });
+      await loadData();
+      const summary = await fetchAdminClientWalletSummary(manualTopupClientId);
+      setClientSummary(summary.data);
+    } catch (err) {
+      toast({
+        title: "Credit failed",
+        description: err instanceof Error ? err.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setManualTopupLoading(false);
+    }
+  };
+
   const handleMarkNotificationRead = async (notificationId: string) => {
     try {
       await markAdminWalletNotificationRead(notificationId);
@@ -532,7 +615,7 @@ export default function PaymentsPage() {
           </p>
         </div>
         <Button
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
           onClick={() => void loadData()}
           disabled={isLoading}
         >
@@ -620,6 +703,9 @@ export default function PaymentsPage() {
                       src={`${API_BASE}/wallet/qr-image?id=${m.id}`}
                       alt="QR"
                       className="h-20 w-20 object-contain rounded border border-slate-100 bg-slate-50 p-1 shrink-0"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
                     />
                   )}
                   <div className="min-w-0 flex-1">
@@ -711,10 +797,13 @@ export default function PaymentsPage() {
                   <div className="flex items-center gap-4 p-3 rounded-lg border border-blue-200 bg-blue-50">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={`${API_BASE}/wallet/qr-image?id=${editingPaymentMethod.id}`}
-                      alt="Current QR"
-                      className="h-20 w-20 object-contain rounded border border-blue-200 bg-white p-1 shrink-0"
-                    />
+                        src={`${API_BASE}/wallet/qr-image?id=${editingPaymentMethod.id}`}
+                        alt="Current QR"
+                        className="h-20 w-20 object-contain rounded border border-blue-200 bg-white p-1 shrink-0"
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                      />
                     <div className="flex flex-col gap-1.5">
                       <p className="text-sm font-medium text-blue-700">Current QR image</p>
                       <div className="flex gap-2">
@@ -774,6 +863,97 @@ export default function PaymentsPage() {
         </CardContent>
       </Card>
 
+      <Card className="border-slate-200/80 shadow-sm dark:border-slate-800">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <PlusCircle className="h-4 w-4" />
+            Manual Wallet Top-Up
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+            <div className="space-y-2">
+              <Label>Search Client</Label>
+              <Input
+                value={clientSearch}
+                onChange={(event) => setClientSearch(event.target.value)}
+                placeholder="Business, owner, phone, client code"
+              />
+              <div className="max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+                {filteredClients.length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-slate-400">No clients found.</div>
+                ) : (
+                  filteredClients.map((client) => (
+                    <button
+                      key={client.id}
+                      type="button"
+                      onClick={() => {
+                        setManualTopupClientId(client.id);
+                        setClientLookupId(client.id);
+                      }}
+                      className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-slate-50 dark:hover:bg-slate-900 ${
+                        manualTopupClientId === client.id ? "bg-blue-50 dark:bg-blue-950/30" : ""
+                      }`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-slate-900 dark:text-white">
+                          {client.business_name}
+                        </span>
+                        <span className="block truncate text-xs text-slate-500">
+                          {client.client_code || client.phone_number || client.id}
+                        </span>
+                      </span>
+                      {manualTopupClientId === client.id ? (
+                        <CheckCircle className="h-4 w-4 shrink-0 text-emerald-500" />
+                      ) : null}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900">
+                <p className="text-xs uppercase text-slate-400">Selected Client</p>
+                <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+                  {selectedManualTopupClient?.business_name || "None selected"}
+                </p>
+                {selectedManualTopupClient ? (
+                  <p className="text-xs text-slate-500">{selectedManualTopupClient.id}</p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label>Top-Up Amount</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  step="1"
+                  value={manualTopupAmount}
+                  onChange={(event) => setManualTopupAmount(event.target.value)}
+                  placeholder="5000"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Note / Reason</Label>
+                <Input
+                  value={manualTopupNote}
+                  onChange={(event) => setManualTopupNote(event.target.value)}
+                  placeholder="Counter cash deposit"
+                />
+              </div>
+              <Button
+                className="w-full gap-2"
+                onClick={() => void handleManualTopup()}
+                disabled={manualTopupLoading}
+              >
+                <Wallet className="h-4 w-4" />
+                {manualTopupLoading ? "Crediting..." : "Credit Wallet Directly"}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader className="border-b border-slate-100 dark:border-slate-800">
           <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -793,7 +973,7 @@ export default function PaymentsPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[840px] text-left text-sm">
               <thead className="border-b border-slate-100 dark:border-slate-800">
                 <tr className="bg-slate-50/80 dark:bg-slate-800/40">
                   {[
@@ -892,17 +1072,17 @@ export default function PaymentsPage() {
               Wallet Transactions
             </CardTitle>
             <div className="flex flex-wrap gap-2">
-              <Input className="h-9 w-40" placeholder="Client ID" />
-              <Input className="h-9 w-32" placeholder="Type" />
-              <Input className="h-9 w-32" placeholder="Source" />
-              <Input className="h-9 w-36" type="date" />
-              <Input className="h-9 w-36" type="date" />
+              <Input className="h-9 w-full sm:w-40" placeholder="Client ID" />
+              <Input className="h-9 w-full sm:w-32" placeholder="Type" />
+              <Input className="h-9 w-full sm:w-32" placeholder="Source" />
+              <Input className="h-9 w-full sm:w-36" type="date" />
+              <Input className="h-9 w-full sm:w-36" type="date" />
             </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-slate-100 dark:border-slate-800">
                 <tr className="bg-slate-50/80 dark:bg-slate-800/40">
                   {[
@@ -1094,7 +1274,7 @@ export default function PaymentsPage() {
       </div>
 
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="w-[min(64rem,calc(100vw-1.5rem))] max-w-4xl">
           <DialogHeader>
             <DialogTitle>Top-up Request Review</DialogTitle>
             <DialogDescription>
@@ -1108,7 +1288,7 @@ export default function PaymentsPage() {
           ) : selectedTopup ? (
             <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
                   <div>
                     <p className="text-xs uppercase text-slate-400">Client</p>
                     <p className="font-semibold text-slate-900 dark:text-white">

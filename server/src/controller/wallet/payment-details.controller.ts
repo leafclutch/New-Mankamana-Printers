@@ -11,26 +11,42 @@ import { createPaymentDetailsSchema, updatePaymentDetailsSchema } from "../../va
 import { uploadToSupabasePath, deleteFromSupabase, getPublicUrlForPath, downloadFromSupabase } from "../../utils/file-upload";
 
 function resolveQrUrl(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  if (raw.startsWith("http")) return raw;
-  return getPublicUrlForPath(raw);
+  const value = raw?.trim();
+  if (!value) return null;
+  if (value.includes("..") || value.toLowerCase() === "invalid") return null;
+  if (value.startsWith("http")) return value;
+  return getPublicUrlForPath(value);
+}
+
+function paymentDetailsToApi(d: {
+  id: string;
+  companyName: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  branch: string | null;
+  paymentId: string | null;
+  qrImageUrl: string | null;
+  note: string | null;
+}) {
+  return {
+    id: d.id,
+    companyName: d.companyName,
+    bankName: d.bankName,
+    accountName: d.accountName,
+    accountNumber: d.accountNumber,
+    branch: d.branch,
+    paymentId: d.paymentId,
+    qrImageUrl: resolveQrUrl(d.qrImageUrl),
+    note: d.note,
+  };
 }
 
 // getPaymentDetails: Returns all active payment methods as an array
 export const getPaymentDetails = async (_req: Request, res: Response) => {
   try {
     const all = await getAllActivePaymentDetailsService();
-    const data = all.map((d) => ({
-      id: d.id,
-      companyName: d.companyName,
-      bankName: d.bankName,
-      accountName: d.accountName,
-      accountNumber: d.accountNumber,
-      branch: d.branch,
-      paymentId: d.paymentId,
-      qrImageUrl: resolveQrUrl(d.qrImageUrl),
-      note: d.note,
-    }));
+    const data = all.map(paymentDetailsToApi);
 
     res.setHeader("Cache-Control", "private, max-age=60");
     return res.status(200).json({ success: true, data });
@@ -40,26 +56,52 @@ export const getPaymentDetails = async (_req: Request, res: Response) => {
   }
 };
 
+// getPaymentDetailsById: Admin-only detail fetch for edit/update flows
+export const getPaymentDetailsById = async (req: Request, res: Response) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) return res.status(400).json({ success: false, message: "id required" });
+
+    const details = await getPaymentDetailByIdService(id);
+    if (!details) return res.status(404).json({ success: false, message: "Payment method not found" });
+
+    res.setHeader("Cache-Control", "private, max-age=60");
+    return res.status(200).json({ success: true, data: paymentDetailsToApi(details) });
+  } catch (error) {
+    console.error("Error fetching payment detail:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 // getQrImage: Proxy endpoint, accepts optional ?id= to select which QR to serve
 export const getQrImage = async (req: Request, res: Response) => {
   try {
-    const id = req.query.id as string | undefined;
+    const id = typeof req.query.id === "string" ? req.query.id.trim() : undefined;
     const details = id
       ? await getPaymentDetailByIdService(id)
       : await getActivePaymentDetailsService();
 
-    if (!details?.qrImageUrl) return res.status(404).end();
+    const qrPath = details?.qrImageUrl?.trim();
+    if (!qrPath) return res.status(404).json({ success: false, message: "QR image not found" });
 
-    const qrPath = details.qrImageUrl;
     if (qrPath.startsWith("http")) return res.redirect(302, qrPath);
+    if (qrPath.includes("..") || qrPath.toLowerCase() === "invalid") {
+      return res.status(404).json({ success: false, message: "QR image not found" });
+    }
 
-    const { buffer, mimeType } = await downloadFromSupabase(qrPath);
-    res.setHeader("Content-Type", mimeType);
-    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
-    return res.send(buffer);
+    try {
+      const { buffer, mimeType } = await downloadFromSupabase(qrPath);
+      res.setHeader("Content-Type", mimeType);
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+      return res.send(buffer);
+    } catch (downloadError) {
+      console.warn("QR image not available:", { id: details?.id, qrPath, downloadError });
+      return res.status(404).json({ success: false, message: "QR image not found" });
+    }
   } catch (error) {
     console.error("Error proxying QR image:", error);
-    return res.status(500).end();
+    return res.status(500).json({ success: false, message: "Unable to load QR image" });
   }
 };
 

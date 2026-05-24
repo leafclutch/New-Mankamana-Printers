@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import { randomBytes } from "crypto";
 import { sendClientCredentials, sendPasswordReset, sendClientDeactivated, sendClientProfileUpdated } from "../../utils/email";
 import { withCache, invalidateCacheKey, invalidateCacheByPrefix } from "../../utils/cache";
+import { formatPanVatForDisplay, normalizePanVatNoForStorage, parsePanVatFromStored } from "../../utils/pan-vat";
 
 // getRegistrationRequestsService: Logic to fetch registration requests with optional status and search filtering
 export const getRegistrationRequestsService = async (filters: { status?: string; search?: string } = {}) => {
@@ -39,8 +40,12 @@ export const createRegistrationRequestService = async (data: {
   email: string;
   phone_number: string;
   business_address?: string;
+  pan_vat_type?: string;
+  pan_vat_no?: string;
   notes?: string;
 }) => {
+  const normalizedPanVatNo = normalizePanVatNoForStorage(data.pan_vat_no, data.pan_vat_type);
+
   // Check if already an active client with this phone
   const existingClient = await prisma.client.findUnique({
     where: { phone_number: data.phone_number }
@@ -66,6 +71,17 @@ export const createRegistrationRequestService = async (data: {
       throw new AppError("A registration request for this phone number is already pending review.", 400);
     }
     if (existingRequest.status === "APPROVED") {
+      // Orphan check: approved request but client was deleted — reset to PENDING for re-approval
+      const orphanCheck = await prisma.client.findUnique({ where: { phone_number: data.phone_number } });
+      if (!orphanCheck) {
+        await prisma.registrationRequest.update({
+          where: { id: existingRequest.id },
+          data: { status: "PENDING" },
+        });
+        // Fall through to create a new request below won't work since phone is unique on the request table,
+        // so just return the reset request as if it were newly submitted
+        return existingRequest;
+      }
       throw new AppError("This phone number has already been approved. Please log in with your credentials.", 400);
     }
   }
@@ -78,12 +94,23 @@ export const createRegistrationRequestService = async (data: {
     }
   });
   if (existingByBusiness) {
+    // Same orphan check for business name
+    const orphanCheck = await prisma.client.findUnique({ where: { phone_number: existingByBusiness.phone_number } });
+    if (!orphanCheck) {
+      await prisma.registrationRequest.update({
+        where: { id: existingByBusiness.id },
+        data: { status: "PENDING" },
+      });
+      return existingByBusiness;
+    }
     throw new AppError("A registration request for this business name already exists.", 400);
   }
 
+  const { pan_vat_type, pan_vat_no, ...rest } = data;
   const newRequest = await prisma.registrationRequest.create({
     data: {
-      ...data,
+      ...rest,
+      pan_vat_no: normalizedPanVatNo,
       status: "PENDING"
     },
   });
@@ -112,7 +139,7 @@ export const getRegistrationRequestByIdService = async (request_id: string) => {
 };
 
 // approveRegistrationRequestService: Handles the atomic transition of a request to a Client account, including password generation
-export const approveRegistrationRequestService = async (request_id: string, admin_id: string) => {
+export const approveRegistrationRequestService = async (request_id: string, _adminId: string) => {
   const request = await prisma.registrationRequest.findUnique({
     where: { id: request_id },
   });
@@ -140,6 +167,7 @@ export const approveRegistrationRequestService = async (request_id: string, admi
         owner_name: request.owner_name,
         email: request.email,
         address: request.business_address,
+        pan_vat_no: normalizePanVatNoForStorage(request.pan_vat_no, undefined),
         status: "active"
       }
     });
@@ -162,8 +190,12 @@ export const approveRegistrationRequestService = async (request_id: string, admi
     return { newClient, updatedRequest };
   });
 
-  void invalidateCacheKey("admin:clients:list");
-  void invalidateCacheByPrefix("admin:reg-requests:");
+  void invalidateCacheKey("admin:clients:list").catch((err) =>
+    console.error("[Cache] Failed to invalidate admin client list cache:", err)
+  );
+  void invalidateCacheByPrefix("admin:reg-requests:").catch((err) =>
+    console.error("[Cache] Failed to invalidate registration requests cache:", err)
+  );
 
   // Send credentials to client via email (non-blocking — failure doesn't roll back approval)
   sendClientCredentials({
@@ -185,7 +217,7 @@ export const approveRegistrationRequestService = async (request_id: string, admi
 };
 
 // rejectRegistrationRequestService: Updates a request status to REJECTED and saves the admin's reason
-export const rejectRegistrationRequestService = async (request_id: string, admin_id: string, reason: string) => {
+export const rejectRegistrationRequestService = async (request_id: string, _adminId: string, reason: string) => {
   const request = await prisma.registrationRequest.findUnique({
     where: { id: request_id },
   });
@@ -201,7 +233,9 @@ export const rejectRegistrationRequestService = async (request_id: string, admin
     },
   });
 
-  void invalidateCacheByPrefix("admin:reg-requests:");
+  void invalidateCacheByPrefix("admin:reg-requests:").catch((err) =>
+    console.error("[Cache] Failed to invalidate registration requests cache:", err)
+  );
   return { message: "Registration request rejected" };
 };
 
@@ -220,6 +254,7 @@ export const getClientsService = async () => {
         owner_name: true,
         email: true,
         address: true,
+        pan_vat_no: true,
         status: true,
         createdAt: true,
       },
@@ -241,6 +276,7 @@ export const getClientByIdService = async (id: string) => {
         owner_name: true,
         email: true,
         address: true,
+        pan_vat_no: true,
         status: true,
         createdAt: true,
       },
@@ -259,6 +295,8 @@ export const updateClientProfileService = async (
     email: string;
     phone_number: string;
     address: string;
+    pan_vat_no: string;
+    pan_vat_type: string;
   }>
 ) => {
   const client = await prisma.client.findUnique({ where: { id: clientId } });
@@ -271,18 +309,41 @@ export const updateClientProfileService = async (
     email: "Email Address",
     phone_number: "Phone Number",
     address: "Address",
+    pan_vat_no: "PAN/VAT No.",
   };
 
   const changes: Array<{ field: string; oldValue: string; newValue: string }> = [];
-  const data: Record<string, string> = {};
+  const data: Record<string, string | null> = {};
+
+  const hasPanVatNo = Object.prototype.hasOwnProperty.call(updates, "pan_vat_no");
+  const hasPanVatType = Object.prototype.hasOwnProperty.call(updates, "pan_vat_type");
+  if (hasPanVatNo || hasPanVatType) {
+    const currentTaxId = parsePanVatFromStored(client.pan_vat_no);
+    const normalizedPanVatNo = normalizePanVatNoForStorage(
+      hasPanVatNo ? updates.pan_vat_no : currentTaxId.panVatNo,
+      hasPanVatType ? updates.pan_vat_type : currentTaxId.panVatType
+    );
+
+    const oldStored = String(client.pan_vat_no ?? "").trim();
+    const newStored = normalizedPanVatNo ?? "";
+    if (newStored !== oldStored) {
+      changes.push({
+        field: "PAN/VAT No.",
+        oldValue: formatPanVatForDisplay(oldStored) || "-",
+        newValue: formatPanVatForDisplay(normalizedPanVatNo) || "-",
+      });
+      data.pan_vat_no = normalizedPanVatNo;
+    }
+  }
 
   for (const [key, newVal] of Object.entries(updates)) {
+    if (key === "pan_vat_no" || key === "pan_vat_type") continue;
     if (newVal === undefined || newVal === null) continue;
     const trimmed = String(newVal).trim();
     if (!trimmed) continue;
     const oldVal = String((client as any)[key] ?? "").trim();
     if (trimmed !== oldVal) {
-      changes.push({ field: FIELD_LABELS[key] ?? key, oldValue: oldVal || "—", newValue: trimmed });
+      changes.push({ field: FIELD_LABELS[key] ?? key, oldValue: oldVal || "-", newValue: trimmed });
       data[key] = trimmed;
     }
   }
@@ -296,12 +357,16 @@ export const updateClientProfileService = async (
     data,
     select: {
       id: true, client_code: true, phone_number: true, business_name: true,
-      owner_name: true, email: true, address: true, status: true, createdAt: true,
+      owner_name: true, email: true, address: true, pan_vat_no: true, status: true, createdAt: true,
     },
   });
 
-  void invalidateCacheKey("admin:clients:list");
-  void invalidateCacheKey(`admin:client:${clientId}`);
+  void invalidateCacheKey("admin:clients:list").catch((err) =>
+    console.error("[Cache] Failed to invalidate admin client list cache:", err)
+  );
+  void invalidateCacheKey("admin:client:" + clientId).catch((err) =>
+    console.error("[Cache] Failed to invalidate admin client cache for " + clientId + ":", err)
+  );
 
   // Send notification email (non-blocking)
   sendClientProfileUpdated({
@@ -357,8 +422,12 @@ export const toggleClientStatusService = async (clientId: string, reason?: strin
     data: { status: newStatus },
   });
 
-  void invalidateCacheKey("admin:clients:list");
-  void invalidateCacheKey(`admin:client:${clientId}`);
+  void invalidateCacheKey("admin:clients:list").catch((err) =>
+    console.error("[Cache] Failed to invalidate admin client list cache:", err)
+  );
+  void invalidateCacheKey(`admin:client:${clientId}`).catch((err) =>
+    console.error(`[Cache] Failed to invalidate admin client cache for ${clientId}:`, err)
+  );
 
   if (newStatus === "inactive") {
     sendClientDeactivated({

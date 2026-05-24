@@ -33,7 +33,7 @@ export default function TopUpPage() {
     const [note, setNote] = useState("");
     const [proofFile, setProofFile] = useState<File | null>(null);
     const [submitting, setSubmitting] = useState(false);
-    const [failedQrById, setFailedQrById] = useState<Record<string, true>>({});
+    const [failedQrById, setFailedQrById] = useState<Record<string, "proxy" | "fallback">>({});
 
     useEffect(() => {
         fetchJsonCached<{ success: boolean; data: PaymentDetail | PaymentDetail[] }>(
@@ -120,7 +120,7 @@ export default function TopUpPage() {
                 {loadingDetails ? (
                     <div className="bg-white rounded-2xl border border-slate-100 p-6 animate-pulse">
                         <div className="h-4 w-32 bg-slate-100 rounded mb-4" />
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                             {[1,2,3,4].map(i => <div key={i} className="h-10 bg-slate-50 rounded-lg" />)}
                         </div>
                     </div>
@@ -156,15 +156,15 @@ export default function TopUpPage() {
                                         <p className="text-xs text-amber-700">{pd.note}</p>
                                     </div>
                                 )}
-                                {pd.qrImageUrl && !failedQrById[pd.id] ? (
+                                {pd.qrImageUrl && failedQrById[pd.id] !== "fallback" ? (
                                     <div className="mt-4 flex flex-col items-center gap-2">
                                         <p className="text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-400">Scan to Pay</p>
                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                         <img
-                                            src={`${API_BASE}/wallet/qr-image?id=${encodeURIComponent(pd.id)}`}
+                                            src={failedQrById[pd.id] === "proxy" ? pd.qrImageUrl : `${API_BASE}/wallet/qr-image?id=${encodeURIComponent(pd.id)}`}
                                             alt="QR Code"
                                             className="w-44 h-44 object-contain rounded-xl border border-slate-100 shadow-sm p-2"
-                                            onError={() => setFailedQrById((prev) => ({ ...prev, [pd.id]: true }))}
+                                            onError={() => setFailedQrById((prev) => ({ ...prev, [pd.id]: prev[pd.id] === "proxy" ? "fallback" : "proxy" }))}
                                         />
                                     </div>
                                 ) : (

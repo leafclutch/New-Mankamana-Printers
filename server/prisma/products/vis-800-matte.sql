@@ -31,7 +31,7 @@ VALUES (
     '800 GSM matte with UV/Foil options and optional die-cut variant',
     NULL,
     ARRAY[]::text[],
-    3,
+    7,
     true
 )
 ON CONFLICT (product_code) DO UPDATE

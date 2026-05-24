@@ -369,7 +369,7 @@ export default function PricingPage() {
       </div>
 
       {/* Tab switcher */}
-      <div className="flex gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900 w-fit">
+      <div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1 sm:w-fit dark:border-slate-800 dark:bg-slate-900">
         <button
           type="button"
           onClick={() => setTab("printing")}
@@ -469,7 +469,7 @@ export default function PricingPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                     <tr>
                       <th className="px-4 py-4 font-semibold">Configuration</th>
@@ -502,11 +502,11 @@ export default function PricingPage() {
                             <td className="px-4 py-3">
                               <Input type="number" min={0} value={edit.unit_price}
                                 onChange={(e) => handlePrintingFieldChange(row.id, "unit_price", e.target.value)}
-                                className="h-8 w-32 text-sm" />
+                                className="h-8 w-full text-sm sm:w-32" />
                             </td>
                             <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <select aria-label="Discount type" className={`${selectCls} w-28`}
+                              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                                <select aria-label="Discount type" className={`${selectCls} w-full sm:w-28`}
                                   value={edit.discount_type || ""}
                                   onChange={(e) => handlePrintingFieldChange(row.id, "discount_type", e.target.value)}>
                                   <option value="">None</option>
@@ -516,7 +516,7 @@ export default function PricingPage() {
                                 <Input type="number" min={0} value={edit.discount_value}
                                   disabled={!edit.discount_type}
                                   onChange={(e) => handlePrintingFieldChange(row.id, "discount_value", e.target.value)}
-                                  className="h-8 w-20 text-sm disabled:opacity-40" placeholder="0" />
+                                  className="h-8 w-full text-sm disabled:opacity-40 sm:w-20" placeholder="0" />
                               </div>
                             </td>
                             <td className="px-4 py-3 text-center">
@@ -594,7 +594,7 @@ export default function PricingPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm">
                   <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                     <tr>
                       <th className="px-4 py-4 font-semibold">Configuration</th>
@@ -629,11 +629,11 @@ export default function PricingPage() {
                             <td className="px-4 py-3">
                               <Input type="number" min={0} value={edit.unit_price}
                                 onChange={(e) => handleMachineryFieldChange(row.id, "unit_price", e.target.value)}
-                                className="h-8 w-32 text-sm" />
+                                className="h-8 w-full text-sm sm:w-32" />
                             </td>
                             <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <select aria-label="Discount type" className={`${selectCls} w-28`}
+                              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                                <select aria-label="Discount type" className={`${selectCls} w-full sm:w-28`}
                                   value={edit.discount_type || ""}
                                   onChange={(e) => handleMachineryFieldChange(row.id, "discount_type", e.target.value)}>
                                   <option value="">None</option>
@@ -643,7 +643,7 @@ export default function PricingPage() {
                                 <Input type="number" min={0} value={edit.discount_value}
                                   disabled={!edit.discount_type}
                                   onChange={(e) => handleMachineryFieldChange(row.id, "discount_value", e.target.value)}
-                                  className="h-8 w-20 text-sm disabled:opacity-40" placeholder="0" />
+                                  className="h-8 w-full text-sm disabled:opacity-40 sm:w-20" placeholder="0" />
                               </div>
                             </td>
                             <td className="px-4 py-3 text-center">

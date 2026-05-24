@@ -226,7 +226,7 @@ export default function PriceListPage() {
                     </div>
                 ) : (
                     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                        <div className="grid grid-cols-[2fr_1fr_auto] gap-4 px-5 py-3 bg-[#0f172a] text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-400">
+                        <div className="grid grid-cols-[minmax(0,2fr)_auto] gap-3 px-5 py-3 bg-[#0f172a] text-[0.68rem] font-bold uppercase tracking-[0.1em] text-slate-400 sm:grid-cols-[2fr_1fr_auto] sm:gap-4">
                             <span>Product</span>
                             <span className="hidden sm:block">Group</span>
                             <span className="text-right">Price</span>
@@ -246,7 +246,7 @@ export default function PriceListPage() {
                                     <Link
                                         key={row.id}
                                         href={row.module === "MACHINERY" ? `/machinery/${row.id}` : `/services/${row.id}`}
-                                        className="grid grid-cols-[2fr_1fr_auto] gap-4 px-5 py-3.5 items-center border-t border-slate-50 hover:bg-amber-50/40 transition-colors"
+                                        className="grid grid-cols-[minmax(0,2fr)_auto] gap-3 px-5 py-3.5 items-center border-t border-slate-50 transition-colors hover:bg-amber-50/40 sm:grid-cols-[2fr_1fr_auto] sm:gap-4"
                                     >
                                         <div className="min-w-0">
                                             <p className="font-semibold text-sm text-[#0f172a] leading-tight truncate">{row.name}</p>

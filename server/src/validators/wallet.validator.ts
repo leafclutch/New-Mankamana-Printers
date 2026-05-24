@@ -34,6 +34,12 @@ export const adjustTopupSchema = z.object({
   reason: z.string().min(5, "Reason is required").max(1000),
 }).strict();
 
+export const manualWalletTopupSchema = z.object({
+  clientId: z.string().uuid("clientId must be a valid client id"),
+  amount: z.coerce.number().positive("Amount must be greater than 0").max(1_000_000, "Amount is too large"),
+  note: z.string().trim().max(500).optional(),
+}).strict();
+
 // -- Company payment details --
 // createPaymentDetailsSchema: Validates platform-wide banking and QR payment information
 export const createPaymentDetailsSchema = z.object({

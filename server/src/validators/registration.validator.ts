@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+const panVatTypeSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.toUpperCase())
+  .refine((value) => value === "PAN" || value === "VAT", "Please select PAN or VAT.");
+
 // createRegistrationRequestSchema: Validates the initial sign-up data submitted by a guest business
 export const createRegistrationRequestSchema = z.object({
   business_name: z.string().min(2, "Business name is required"),
@@ -13,6 +19,12 @@ export const createRegistrationRequestSchema = z.object({
   phone_number: z
     .string()
     .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
+  pan_vat_type: panVatTypeSchema.optional(),
+  pan_vat_no: z
+    .string()
+    .trim()
+    .max(50, "PAN/VAT number is too long")
+    .optional(),
   business_address: z.string().optional(),
   notes: z.string().optional(),
 });

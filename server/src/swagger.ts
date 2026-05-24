@@ -26,4 +26,7 @@ const endpointsFiles = ['./src/index.ts'];
 
 swaggerAutogen(outputFile, endpointsFiles, doc).then(() => {
     console.log('Swagger documentation generated successfully');
+}).catch((error: unknown) => {
+    console.error("Failed to generate Swagger documentation:", error);
+    process.exitCode = 1;
 });

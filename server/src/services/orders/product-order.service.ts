@@ -3,6 +3,7 @@ import { getVariantPricingCombinationFresh, calculateOrderAmount, normalizeSelec
 import { sendOrderPlaced, sendOrderStatusUpdate, sendOrderInvoice } from "../../utils/email";
 import { withCache, invalidateCacheKey } from "../../utils/cache";
 import { moveInSupabase, downloadFromSupabase } from "../../utils/file-upload";
+import { formatPanVatForDisplay } from "../../utils/pan-vat";
 
 const ORDER_LIST_TTL_MS = 60_000;  // client order list: 1 min per caching guide
 const ADMIN_ORDER_LIST_TTL_MS = 30_000; // admin order list: 30 s for faster refresh
@@ -47,27 +48,9 @@ const getLifecycleStatus = (status: string): "pending" | "accepted" | "cancelled
   return "accepted";
 };
 
-// Lifecycle now requires explicit admin acceptance.
-const AUTO_PROCESSING_DELAY_MS = 0;
-
-async function autoAdvanceToProcessing(_orderId: string): Promise<void> {
-  return;
-}
-
-// sweepStalePlacedOrders: On server startup, advance any ORDER_PLACED orders older than the delay
-// (handles the case where the server restarted before the scheduled setTimeout fired)
+// Legacy auto-transition is intentionally disabled: admin must explicitly accept orders.
 export async function sweepStalePlacedOrders(): Promise<void> {
-  const threshold = new Date(Date.now() - AUTO_PROCESSING_DELAY_MS);
-  const staleOrders = await prisma.order.findMany({
-    where: { status: "ORDER_PLACED", created_at: { lt: threshold } },
-    select: { id: true },
-  });
-  for (const { id } of staleOrders) {
-    await autoAdvanceToProcessing(id);
-  }
-  if (staleOrders.length > 0) {
-    console.log(`[AutoTransition] Advanced ${staleOrders.length} stale order(s) → ORDER_PROCESSING on startup`);
-  }
+  return;
 }
 
 // createProductOrderService: Core logic for placing a new order, resolving pricing and saving configurations
@@ -271,8 +254,12 @@ export const createProductOrderService = async (data: {
   }).catch((err) => console.error(`[Email] Order placed notification failed for ${newOrder.id}:`, err));
 
   // Invalidate caches so next list requests see the new order
-  void invalidateClientOrdersCache(newOrder.user_id);
-  void invalidateAdminOrdersCache();
+  void invalidateClientOrdersCache(newOrder.user_id).catch((err) =>
+    console.error(`[Cache] Failed to invalidate client order cache for ${newOrder.user_id}:`, err)
+  );
+  void invalidateAdminOrdersCache().catch((err) =>
+    console.error("[Cache] Failed to invalidate admin order cache:", err)
+  );
 
   return newOrder;
 };
@@ -520,7 +507,7 @@ export const updateOrderStatusService = async (
         pricing_snapshot: true,
         configurations: { select: { group_label: true, selected_label: true } },
         variant: { select: { variant_name: true, product: { select: { name: true } } } },
-        client: { select: { email: true, business_name: true, phone_number: true, client_code: true } },
+        client: { select: { email: true, business_name: true, phone_number: true, client_code: true, pan_vat_no: true } },
       },
     }).then((o) => {
       if (!o) return;
@@ -528,6 +515,7 @@ export const updateOrderStatusService = async (
         to: o.client.email,
         businessName: o.client.business_name,
         clientCode: o.client.client_code || "",
+        clientPanVatNo: formatPanVatForDisplay(o.client.pan_vat_no) || null,
         phone: o.client.phone_number,
         orderId: o.id,
         productName: o.variant.product.name,
@@ -546,8 +534,12 @@ export const updateOrderStatusService = async (
   }
 
   // Invalidate list caches after any status change
-  void invalidateClientOrdersCache(result.order.user_id);
-  void invalidateAdminOrdersCache();
+  void invalidateClientOrdersCache(result.order.user_id).catch((err) =>
+    console.error(`[Cache] Failed to invalidate client order cache for ${result.order.user_id}:`, err)
+  );
+  void invalidateAdminOrdersCache().catch((err) =>
+    console.error("[Cache] Failed to invalidate admin order cache:", err)
+  );
 
   return result;
 };
@@ -562,3 +554,4 @@ export const setOrderDeliveryDateService = async (orderId: string, expectedDeliv
     data: { expected_delivery_date: new Date(expectedDeliveryDate), updated_at: new Date() },
   });
 };
+

@@ -65,7 +65,7 @@ async function upsertProduct(
       category_id: categoryId,
       image_url: imageUrl,
       description: opts?.description ?? null,
-      production_days: opts?.productionDays ?? 3,
+      production_days: opts?.productionDays ?? 7,
     },
   });
 }

@@ -188,7 +188,7 @@ export default function CatalogPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="group-code">Group Code</Label>
                 <Input id="group-code" placeholder="CHD-001" value={newGroupCode} onChange={(e) => setNewGroupCode(e.target.value)} />
@@ -265,7 +265,7 @@ export default function CatalogPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                 <tr>
                   <th className="px-6 py-4 font-semibold">Group</th>
@@ -346,7 +346,7 @@ export default function CatalogPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[520px] text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                 <tr>
                   <th className="px-6 py-4 font-semibold">Product</th>

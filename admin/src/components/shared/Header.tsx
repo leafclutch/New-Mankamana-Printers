@@ -62,7 +62,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
   }, [notifOpen]);
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white px-6 dark:border-slate-800 dark:bg-slate-900">
+    <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-slate-200 bg-white px-3 py-2 sm:px-4 lg:flex-nowrap lg:gap-3 lg:px-6 dark:border-slate-800 dark:bg-slate-900">
       {/* Mobile hamburger */}
       <button
         type="button"
@@ -74,7 +74,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
       </button>
 
       {/* Search */}
-      <div className="flex w-full max-w-sm items-center">
+      <div className="order-3 flex w-full basis-full items-center sm:order-2 sm:basis-auto sm:max-w-sm lg:order-none lg:basis-auto">
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -86,7 +86,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-1">
+      <div className="order-2 ml-auto flex items-center gap-1 sm:order-3 lg:ml-0">
         {/* Theme toggle */}
         <button
           type="button"
@@ -118,7 +118,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           </button>
 
           {notifOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 rounded-xl border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 z-50">
+            <div className="absolute right-0 top-full z-50 mt-2 w-[min(18rem,calc(100vw-1.5rem))] rounded-xl border border-slate-200 bg-white shadow-lg sm:w-72 dark:border-slate-700 dark:bg-slate-900">
               <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 dark:border-slate-800">
                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Notifications</span>
                 <button
@@ -161,7 +161,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           )}
         </div>
 
-        <div className="mx-2 h-5 w-px bg-slate-200 dark:bg-slate-700" />
+        <div className="mx-1 hidden h-5 w-px bg-slate-200 sm:block dark:bg-slate-700" />
 
         {/* User */}
         <button
@@ -172,7 +172,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-[#0061FF]/10 text-[11px] font-bold text-[#0061FF]">
             AD
           </div>
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">Admin</span>
+          <span className="hidden text-xs font-medium text-slate-700 sm:inline dark:text-slate-300">Admin</span>
           <ChevronDown className="h-3.5 w-3.5 text-slate-400 transition-transform group-hover:text-slate-600" />
         </button>
       </div>

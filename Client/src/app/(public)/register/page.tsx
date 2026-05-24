@@ -14,6 +14,8 @@ interface FormData {
     contactPerson: string;
     phone: string;
     email: string;
+    panVatType: "PAN" | "VAT" | "";
+    panVatNo: string;
     address: string;
     printingNeeds: string;
 }
@@ -28,7 +30,7 @@ const benefits = [
 export default function RegisterPage() {
     const [form, setForm] = useState<FormData>({
         companyName: "", contactPerson: "", phone: "",
-        email: "", address: "", printingNeeds: "",
+        email: "", panVatType: "", panVatNo: "", address: "", printingNeeds: "",
     });
     const [errors, setErrors] = useState<Partial<FormData>>({});
     const [submitted, setSubmitted] = useState(false);
@@ -42,12 +44,13 @@ export default function RegisterPage() {
         else if (!/^\d{10}$/.test(form.phone)) e.phone = "Phone number must be exactly 10 digits";
         if (!form.email.trim()) e.email = "Email is required";
         else if (!/^[a-zA-Z0-9._%+]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(form.email)) e.email = "Enter a valid email address";
+        if (form.panVatNo.trim() && !form.panVatType) e.panVatType = "Please select PAN or VAT type";
         if (!form.address.trim()) e.address = "Business address is required";
         setErrors(e);
         return Object.keys(e).length === 0;
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setForm((prev) => ({ ...prev, [name]: value }));
         if (errors[name as keyof FormData]) {
@@ -69,6 +72,8 @@ export default function RegisterPage() {
                     owner_name: form.contactPerson,
                     phone_number: form.phone,
                     email: form.email,
+                    pan_vat_type: form.panVatType || undefined,
+                    pan_vat_no: form.panVatNo.trim() || undefined,
                     business_address: form.address,
                     notes: form.printingNeeds || undefined,
                 }),
@@ -234,6 +239,37 @@ export default function RegisterPage() {
                                                 style={{ borderColor: errors.email ? "#ef4444" : undefined }}
                                             />
                                             {errors.email && <span className="text-[#ef4444] text-[0.72rem] mt-1">{errors.email}</span>}
+                                        </div>
+                                    </div>
+
+                                    {/* PAN/VAT */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                        <div className="form-group">
+                                            <label className="form-label">Tax ID Type</label>
+                                            <select
+                                                name="panVatType"
+                                                value={form.panVatType}
+                                                onChange={handleChange}
+                                                className="form-input"
+                                                style={{ borderColor: errors.panVatType ? "#ef4444" : undefined }}
+                                            >
+                                                <option value="">Select type</option>
+                                                <option value="PAN">PAN</option>
+                                                <option value="VAT">VAT</option>
+                                            </select>
+                                            {errors.panVatType && <span className="text-[#ef4444] text-[0.72rem] mt-1">{errors.panVatType}</span>}
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label">{form.panVatType || "PAN/VAT"} No.</label>
+                                            <input
+                                                name="panVatNo"
+                                                value={form.panVatNo}
+                                                onChange={handleChange}
+                                                placeholder="123456789"
+                                                className="form-input"
+                                                style={{ borderColor: errors.panVatNo ? "#ef4444" : undefined }}
+                                            />
+                                            {errors.panVatNo && <span className="text-[#ef4444] text-[0.72rem] mt-1">{errors.panVatNo}</span>}
                                         </div>
                                     </div>
 

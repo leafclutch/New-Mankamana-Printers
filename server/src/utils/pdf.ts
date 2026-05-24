@@ -3,7 +3,12 @@ import PDFDocument from "pdfkit";
 export interface InvoiceData {
   orderId: string;
   businessName: string;
+  customerName?: string | null;
   clientCode: string;
+  clientPanVatNo?: string | null;
+  clientAddress?: string | null;
+  deliveryAddress?: string | null;
+  email?: string | null;
   phone: string;
   productName: string;
   variantName: string;
@@ -18,116 +23,257 @@ export interface InvoiceData {
   acceptedAt: Date;
 }
 
+const COMPANY_NAME       = "New Mankamana Printers";
+const COMPANY_NAME_L1    = "NEW MANKAMANA";
+const COMPANY_NAME_L2    = "Printers";
+const COMPANY_PAN        = "992762089";
+const COMPANY_TAGLINE    = "Providing premium quality printing services across Nepal since 1995.\nYour trusted partner for corporate branding and wholesale print solutions.";
+const COMPANY_ADDRESS    = "Traffic Chowk, (Jagriti Path), Butwal, Rupandehi, Nepal";
+const COMPANY_PHONES     = [
+  "+977 9804458995 (Office)",
+  "+977 9705396330 (Office)",
+];
+const COMPANY_EMAIL      = "nmprinters2083@gmail.com";
+const COMPANY_WEBSITE    = "https://www.mankamanaprinters.com.np/";
+
+const money = (v: number) =>
+  `NPR ${v.toLocaleString("en-NP", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 export function generateInvoicePdf(data: InvoiceData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50, size: "A4" });
+    const doc = new PDFDocument({ margin: 36, size: "A4" });
+    // Prevent PDFKit from ever adding a second page.
+    doc.addPage = (() => doc) as typeof doc.addPage;
+
     const chunks: Buffer[] = [];
     doc.on("data", (c: Buffer) => chunks.push(c));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("end",  () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
     const invoiceNumber = `INV-${data.orderId.slice(0, 8).toUpperCase()}`;
-    const acceptedStr = data.acceptedAt.toLocaleDateString("en-NP", { dateStyle: "long" });
-    const baseTotal = Number((data.unitPrice * data.quantity).toFixed(2));
+    const acceptedStr   = data.acceptedAt.toLocaleDateString("en-NP", { dateStyle: "long" });
+    const baseTotal     = Number((data.unitPrice * data.quantity).toFixed(2));
 
-    // ── Header ────────────────────────────────────────────────
-    doc.rect(0, 0, doc.page.width, 80).fill("#0f172a");
-    doc.fillColor("#ffffff").fontSize(18).font("Helvetica-Bold").text("New Mankamana Printers", 50, 25);
-    doc.fillColor("#94a3b8").fontSize(10).font("Helvetica").text("Invoice", 50, 50);
-    doc.fillColor("#fbbf24").fontSize(14).font("Helvetica-Bold").text(invoiceNumber, doc.page.width - 180, 25, { width: 130, align: "right" });
-    doc.fillColor("#94a3b8").fontSize(9).font("Helvetica").text(`Accepted: ${acceptedStr}`, doc.page.width - 180, 48, { width: 130, align: "right" });
+    const LM       = 36;                          // left margin
+    const RM       = doc.page.width - 36;         // right edge
+    const tableW   = doc.page.width - 72;         // usable width
+    const footerY  = doc.page.height - 55;        // footer separator position
 
-    let y = 100;
+    let y = LM;
 
-    // ── Bill To / Invoice Details ─────────────────────────────
-    doc.fillColor("#94a3b8").fontSize(8).font("Helvetica-Bold").text("BILL TO", 50, y);
-    doc.fillColor("#94a3b8").fontSize(8).font("Helvetica-Bold").text("INVOICE DETAILS", 320, y);
-    y += 14;
-    doc.fillColor("#1e293b").fontSize(12).font("Helvetica-Bold").text(data.businessName, 50, y);
-    doc.fillColor("#64748b").fontSize(9).font("Helvetica").text(`Client Code: ${data.clientCode}`, 50, y + 16);
-    doc.fillColor("#64748b").fontSize(9).text(`Phone: ${data.phone}`, 50, y + 28);
-    doc.fillColor("#64748b").fontSize(9).font("Helvetica").text(`Order: #${data.orderId.slice(0, 8).toUpperCase()}`, 320, y);
-    doc.fillColor("#64748b").fontSize(9).text(`Payment: ${data.paymentMethod}`, 320, y + 14);
-    y += 55;
+    doc.fillColor("#000000");
 
-    // ── Table header ──────────────────────────────────────────
-    doc.rect(50, y, doc.page.width - 100, 22).fill("#f8fafc");
-    doc.strokeColor("#e2e8f0").lineWidth(1).rect(50, y, doc.page.width - 100, 22).stroke();
-    doc.fillColor("#94a3b8").fontSize(8).font("Helvetica-Bold");
-    doc.text("DESCRIPTION", 58, y + 7);
-    doc.text("UNIT PRICE", 300, y + 7);
-    doc.text("QTY", 390, y + 7);
-    doc.text("AMOUNT", doc.page.width - 120, y + 7, { width: 70, align: "right" });
-    y += 22;
+    // ── HEADER ─────────────────────────────────────────────────────────────
+    // Left block: company name + tagline
+    doc.font("Helvetica-Bold").fontSize(19).text(COMPANY_NAME_L1, LM, y);
+    doc.font("Helvetica-Bold").fontSize(14).text(COMPANY_NAME_L2, LM, y + 23);
+    const taglineY = y + 42;
+    doc.font("Helvetica").fontSize(7).fillColor("#444444")
+      .text(COMPANY_TAGLINE, LM, taglineY, { width: 265, lineGap: 1 });
+    const leftBottom = taglineY + doc.heightOfString(COMPANY_TAGLINE, { width: 265, lineGap: 1 });
 
-    // ── Product row ───────────────────────────────────────────
-    doc.strokeColor("#f1f5f9").lineWidth(0.5).moveTo(50, y).lineTo(doc.page.width - 50, y).stroke();
-    doc.fillColor("#1e293b").fontSize(10).font("Helvetica-Bold").text(data.productName, 58, y + 8);
-    doc.fillColor("#64748b").fontSize(9).font("Helvetica").text(data.variantName, 58, y + 20);
-    doc.fillColor("#1e293b").fontSize(10).font("Helvetica").text(`NPR ${data.unitPrice.toLocaleString("en-NP", { minimumFractionDigits: 2 })}`, 300, y + 8);
-    doc.text(String(data.quantity.toLocaleString()), 390, y + 8);
-    doc.font("Helvetica-Bold").text(`NPR ${baseTotal.toLocaleString("en-NP", { minimumFractionDigits: 2 })}`, doc.page.width - 120, y + 8, { width: 70, align: "right" });
-    y += 36;
+    // Right block: contact details
+    const CX = 335;
+    const CW = RM - CX;
+    doc.fillColor("#000000");
+    doc.font("Helvetica-Bold").fontSize(8).text("Head Office", CX, y, { width: CW });
+    const contactBlockY = y + 11;
+    const contactBlock = [
+      COMPANY_ADDRESS,
+      ...COMPANY_PHONES,
+      COMPANY_EMAIL,
+      COMPANY_WEBSITE,
+    ].join("\n");
+    doc.font("Helvetica").fontSize(7.5)
+      .text(contactBlock, CX, contactBlockY, { width: CW, lineGap: 1 });
+    const rightBottom = contactBlockY + doc.heightOfString(contactBlock, { width: CW, lineGap: 1 });
 
-    // ── Discount row ──────────────────────────────────────────
-    if (data.discountAmount > 0) {
-      doc.strokeColor("#f1f5f9").lineWidth(0.5).moveTo(50, y).lineTo(doc.page.width - 50, y).stroke();
-      doc.fillColor("#15803d").fontSize(10).font("Helvetica").text("Discount", 58, y + 8);
-      doc.text(`− NPR ${data.discountAmount.toLocaleString("en-NP", { minimumFractionDigits: 2 })}`, doc.page.width - 120, y + 8, { width: 70, align: "right" });
-      y += 28;
-    }
+    y = Math.max(leftBottom, rightBottom) + 10;
 
-    // ── Total row ─────────────────────────────────────────────
-    doc.rect(50, y, doc.page.width - 100, 30).fill("#0f172a");
-    doc.fillColor("#e2e8f0").fontSize(10).font("Helvetica-Bold").text("TOTAL AMOUNT", 58, y + 9);
-    doc.fillColor("#fbbf24").fontSize(14).font("Helvetica-Bold").text(`NPR ${data.finalAmount.toLocaleString("en-NP", { minimumFractionDigits: 2 })}`, doc.page.width - 120, y + 8, { width: 70, align: "right" });
-    y += 45;
-
-    // ── Print specs ───────────────────────────────────────────
-    if (data.configurations.length > 0) {
-      doc.rect(50, y, doc.page.width - 100, 18).fill("#f8fafc");
-      doc.strokeColor("#e2e8f0").lineWidth(0.5).rect(50, y, doc.page.width - 100, 18).stroke();
-      doc.fillColor("#94a3b8").fontSize(8).font("Helvetica-Bold").text("PRINT SPECIFICATIONS", 58, y + 5);
-      y += 18;
-      for (const c of data.configurations) {
-        doc.strokeColor("#f1f5f9").lineWidth(0.3).moveTo(50, y).lineTo(doc.page.width - 50, y).stroke();
-        doc.fillColor("#64748b").fontSize(9).font("Helvetica").text(c.group_label, 58, y + 5);
-        doc.fillColor("#1e293b").font("Helvetica-Bold").text(c.selected_label, 250, y + 5);
-        y += 20;
-      }
-      y += 5;
-    }
-
-    // ── Notes ─────────────────────────────────────────────────
-    if (data.notes) {
-      doc.rect(50, y, doc.page.width - 100, 40).fill("#fffbeb").stroke();
-      doc.fillColor("#d97706").fontSize(8).font("Helvetica-Bold").text("REMARKS", 58, y + 5);
-      doc.fillColor("#78350f").fontSize(9).font("Helvetica").text(data.notes, 58, y + 17, { width: doc.page.width - 120 });
-      y += 50;
-    }
-
-    // ── Terms & Conditions ────────────────────────────────────
+    // Header separator (thick)
+    doc.moveTo(LM, y).lineTo(RM, y).strokeColor("#000000").lineWidth(1.5).stroke();
     y += 8;
-    doc.rect(50, y, doc.page.width - 100, 16).fill("#f8fafc");
-    doc.strokeColor("#e2e8f0").lineWidth(0.5).rect(50, y, doc.page.width - 100, 16).stroke();
-    doc.fillColor("#94a3b8").fontSize(7).font("Helvetica-Bold").text("TERMS & CONDITIONS", 58, y + 4.5);
-    y += 16;
-    const tcLines = [
-      "1. B2B only — orders accepted from registered printing presses and trade partners. Full legal responsibility for content rests with the submitting party.",
-      "2. Exact colour matching between separate print runs is not guaranteed without a saved Job Profile.",
-      "3. Liability ceases upon dispatch. Risk of loss or damage transfers to the Client or nominated delivery agent once the order leaves our premises.",
-      "4. Maximum liability shall not exceed the invoice value of the disputed order. No liability for indirect losses or consequential damages.",
-      "5. All disputes are subject to the exclusive jurisdiction of the competent courts of Rupandehi District, Nepal.",
+
+    // ── INVOICE TITLE ──────────────────────────────────────────────────────
+    doc.fillColor("#000000");
+    doc.font("Helvetica-Bold").fontSize(13).text("TAX INVOICE", LM, y);
+    doc.font("Helvetica").fontSize(8.5)
+      .text(invoiceNumber,       RM - 200, y,      { width: 200, align: "right" })
+      .text(`Date: ${acceptedStr}`, RM - 200, y + 13, { width: 200, align: "right" });
+
+    y += 32;
+    doc.moveTo(LM, y).lineTo(RM, y).strokeColor("#000000").lineWidth(0.5).stroke();
+    y += 10;
+
+    // ── BILL TO / ORDER DETAILS ────────────────────────────────────────────
+    const billToX  = LM;
+    const orderX   = 320;
+    const billToW  = 260;
+    const orderW   = RM - orderX;
+
+    doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#666666")
+      .text("BILL TO", billToX, y)
+      .text("ORDER DETAILS", orderX, y);
+    y += 12;
+
+    // Business name (large)
+    doc.font("Helvetica-Bold").fontSize(11).fillColor("#000000")
+      .text(data.businessName, billToX, y, { width: billToW });
+    const nameH = doc.heightOfString(data.businessName, { width: billToW });
+    let clientY = y + nameH + 4;
+
+    // Contact person if different from business name
+    if (data.customerName && data.customerName !== data.businessName) {
+      doc.font("Helvetica").fontSize(8.5).fillColor("#333333")
+        .text(data.customerName, billToX, clientY, { width: billToW });
+      clientY += 12;
+    }
+
+    // Remaining client detail rows
+    type DetailRow = [string, string];
+    const detailRows: DetailRow[] = [];
+    if (data.clientCode)     detailRows.push(["Client Code", data.clientCode]);
+    if (data.clientAddress)  detailRows.push(["Address", data.clientAddress]);
+    if (data.deliveryAddress && data.deliveryAddress !== data.clientAddress)
+                             detailRows.push(["Delivery", data.deliveryAddress]);
+    if (data.phone)          detailRows.push(["Phone", data.phone]);
+    if (data.email)          detailRows.push(["Email", data.email]);
+    if (data.clientPanVatNo) detailRows.push(["PAN/VAT No.", data.clientPanVatNo]);
+
+    const LABEL_W = 64;
+    const VALUE_X = billToX + LABEL_W + 4;
+    const VALUE_W = billToW - LABEL_W - 4;
+
+    doc.font("Helvetica").fontSize(8);
+    for (const [label, value] of detailRows) {
+      const rowH = Math.max(11, doc.heightOfString(value, { width: VALUE_W }));
+      doc.fillColor("#888888").text(`${label}:`, billToX, clientY, { width: LABEL_W });
+      doc.fillColor("#000000").text(value, VALUE_X, clientY, { width: VALUE_W, lineGap: 0 });
+      clientY += rowH + 2;
+    }
+
+    // Order details column
+    const orderRows: DetailRow[] = [
+      ["Invoice No.", invoiceNumber],
+      ["Order No.", `#${data.orderId.slice(0, 8).toUpperCase()}`],
+      ["Date", acceptedStr],
+      ["Payment", data.paymentMethod],
     ];
-    doc.fillColor("#94a3b8").fontSize(7).font("Helvetica");
+    let orderY = y;
+    doc.font("Helvetica").fontSize(8);
+    for (const [label, value] of orderRows) {
+      doc.fillColor("#888888").text(`${label}:`, orderX, orderY, { width: 62 });
+      doc.fillColor("#000000").text(value, orderX + 66, orderY, { width: orderW - 66 });
+      orderY += 13;
+    }
+
+    y = Math.max(clientY, orderY) + 10;
+
+    // ── ITEM TABLE ─────────────────────────────────────────────────────────
+    const ROW_H = 22;
+
+    // Header row (shaded)
+    doc.rect(LM, y, tableW, ROW_H).fillColor("#eeeeee").strokeColor("#000000").lineWidth(1).fillAndStroke();
+    doc.fillColor("#000000").font("Helvetica-Bold").fontSize(8);
+    doc.text("DESCRIPTION", LM + 8,      y + 7);
+    doc.text("UNIT PRICE",  300,          y + 7);
+    doc.text("QTY",         390,          y + 7);
+    doc.text("AMOUNT",      RM - 90, y + 7, { width: 90, align: "right" });
+    y += ROW_H;
+
+    // Product row
+    doc.rect(LM, y, tableW, 40).strokeColor("#000000").lineWidth(1).stroke();
+    doc.fillColor("#000000").font("Helvetica-Bold").fontSize(9.5)
+      .text(data.productName, LM + 8, y + 6, { width: 220 });
+    doc.font("Helvetica").fontSize(8.5)
+      .text(data.variantName, LM + 8, y + 19, { width: 220 })
+      .text(money(data.unitPrice),                 300,    y + 6)
+      .text(String(data.quantity.toLocaleString()), 390,    y + 6);
+    doc.font("Helvetica-Bold")
+      .text(money(baseTotal), RM - 90, y + 6, { width: 90, align: "right" });
+    y += 40;
+
+    // Discount row (optional)
+    if (data.discountAmount > 0) {
+      doc.rect(LM, y, tableW, 24).strokeColor("#000000").lineWidth(1).stroke();
+      doc.font("Helvetica").fontSize(9).fillColor("#000000").text("Discount", LM + 8, y + 7);
+      doc.text(`- ${money(data.discountAmount)}`, RM - 100, y + 7, { width: 100, align: "right" });
+      y += 24;
+    }
+
+    // Total row (shaded)
+    doc.rect(LM, y, tableW, 30).fillColor("#f5f5f5").strokeColor("#000000").lineWidth(1).fillAndStroke();
+    doc.fillColor("#000000").font("Helvetica-Bold").fontSize(10).text("TOTAL AMOUNT", LM + 8, y + 9);
+    doc.fontSize(12).text(money(data.finalAmount), RM - 120, y + 8, { width: 120, align: "right" });
+    y += 42;
+
+    // ── PRINT SPECIFICATIONS ───────────────────────────────────────────────
+    if (data.configurations.length > 0) {
+      doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#000000").text("PRINT SPECIFICATIONS", LM, y);
+      y += 13;
+      for (const c of data.configurations) {
+        if (y + 19 > footerY - 75) break;
+        doc.rect(LM, y, tableW, 19).strokeColor("#000000").lineWidth(0.5).stroke();
+        doc.font("Helvetica").fontSize(8.5).fillColor("#000000")
+          .text(c.group_label,   LM + 8, y + 5, { width: 180 });
+        doc.font("Helvetica-Bold")
+          .text(c.selected_label, 250,    y + 5, { width: 280 });
+        y += 19;
+      }
+      y += 8;
+    }
+
+    // ── REMARKS ────────────────────────────────────────────────────────────
+    if (data.notes) {
+      const noteH = Math.min(44, Math.max(26,
+        doc.heightOfString(data.notes, { width: tableW - 16 }) + 12));
+      if (y + noteH + 13 < footerY - 58) {
+        doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#000000").text("REMARKS", LM, y);
+        y += 12;
+        doc.rect(LM, y, tableW, noteH).strokeColor("#000000").lineWidth(0.5).stroke();
+        doc.font("Helvetica").fontSize(8.5)
+          .text(data.notes, LM + 8, y + 6, { width: tableW - 16, height: noteH - 12 });
+        y += noteH + 10;
+      }
+    }
+
+    // ── TERMS & CONDITIONS ─────────────────────────────────────────────────
+    if (y > footerY - 68) y = footerY - 68;
+    doc.font("Helvetica-Bold").fontSize(7.5).fillColor("#000000").text("TERMS & CONDITIONS", LM, y);
+    y += 11;
+    const tcLines = [
+      "1. B2B orders only. Submitted content remains the client's legal responsibility.",
+      "2. Exact colour matching between separate print runs is not guaranteed.",
+      "3. Risk transfers to the client or nominated delivery agent after dispatch.",
+      "4. Maximum liability is limited to the invoice value of the disputed order.",
+    ];
+    doc.font("Helvetica").fontSize(6.5).fillColor("#000000");
     for (const line of tcLines) {
-      doc.text(line, 58, y, { width: doc.page.width - 116 });
+      if (y + doc.currentLineHeight() > footerY - 6) break;
+      doc.text(line, LM, y, { width: tableW, lineGap: 0 });
       y += doc.currentLineHeight() + 2;
     }
-    y += 6;
 
-    // ── Footer ────────────────────────────────────────────────
-    doc.fillColor("#94a3b8").fontSize(9).font("Helvetica").text("New Mankamana Printers — Professional Printing Services", 50, y + 10, { align: "center", width: doc.page.width - 100 });
+    // ── FOOTER ─────────────────────────────────────────────────────────────
+    doc.moveTo(LM, footerY).lineTo(RM, footerY).strokeColor("#000000").lineWidth(1).stroke();
+    doc.font("Helvetica-Bold").fontSize(8.5).fillColor("#000000")
+      .text(COMPANY_NAME, LM, footerY + 7, { width: tableW, align: "center" });
+    doc.font("Helvetica").fontSize(7.2)
+      .text(
+        `PAN/VAT: ${COMPANY_PAN}`,
+        LM, footerY + 20,
+        { width: tableW, align: "center" },
+      );
+    doc.text(
+      `Head Office: ${COMPANY_ADDRESS}`,
+      LM, footerY + 30,
+      { width: tableW, align: "center" },
+    );
+    doc.text(
+      `Contact: ${COMPANY_PHONES.join(" | ")}  |  Email: ${COMPANY_EMAIL}  |  Web: ${COMPANY_WEBSITE}`,
+      LM, footerY + 40,
+      { width: tableW, align: "center" },
+    );
 
     doc.end();
   });

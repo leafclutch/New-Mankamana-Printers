@@ -19,6 +19,7 @@ interface Client {
   phone_number: string;
   email: string;
   address?: string | null;
+  pan_vat_no?: string | null;
   status: string;
   createdAt?: string;
 }
@@ -39,6 +40,31 @@ interface ClientOrder {
 
 interface ApiResponse<T> { success?: boolean; data: T }
 type ClientListResponse = Client[] | ApiResponse<Client[]>
+
+type PanVatType = "PAN" | "VAT";
+
+const parsePanVat = (value: string | null | undefined): { panVatType: PanVatType | ""; panVatNo: string } => {
+  const raw = (value || "").trim();
+  if (!raw) return { panVatType: "", panVatNo: "" };
+
+  const encoded = raw.match(/^([A-Za-z]+)::(.+)$/);
+  if (encoded) {
+    const type = encoded[1].toUpperCase();
+    if ((type === "PAN" || type === "VAT") && encoded[2].trim()) {
+      return { panVatType: type as PanVatType, panVatNo: encoded[2].trim() };
+    }
+  }
+
+  const labelled = raw.match(/^(PAN|VAT)\s*[:\-]\s*(.+)$/i);
+  if (labelled) {
+    const type = labelled[1].toUpperCase();
+    if ((type === "PAN" || type === "VAT") && labelled[2].trim()) {
+      return { panVatType: type as PanVatType, panVatNo: labelled[2].trim() };
+    }
+  }
+
+  return { panVatType: "", panVatNo: raw };
+};
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
   ORDER_PLACED: "Placed",
@@ -64,7 +90,7 @@ export default function ClientsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editForm, setEditForm] = useState({
-    business_name: "", owner_name: "", email: "", phone_number: "", address: "",
+    business_name: "", owner_name: "", email: "", phone_number: "", address: "", pan_vat_type: "" as PanVatType | "", pan_vat_no: "",
   });
 
   const handleResetPassword = async (client: Client) => {
@@ -118,21 +144,35 @@ export default function ClientsPage() {
 
   const handleUpdateClient = async () => {
     if (!selectedClient) return;
+    if (editForm.pan_vat_no.trim() && !editForm.pan_vat_type) {
+      toast({ title: "Missing Tax ID Type", description: "Please select PAN or VAT.", variant: "destructive" });
+      return;
+    }
     setSavingEdit(true);
     try {
+      // Send raw pan_vat_no (not pre-encoded) — backend normalizes into "TYPE::number" storage format
+      const payload = {
+        business_name: editForm.business_name,
+        owner_name: editForm.owner_name,
+        email: editForm.email,
+        phone_number: editForm.phone_number,
+        address: editForm.address,
+        pan_vat_type: editForm.pan_vat_type || undefined,
+        pan_vat_no: editForm.pan_vat_no.trim() || undefined,
+      };
       const res = await fetch(`/api/admin/clients/${selectedClient.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.message || "Failed to update client");
       const updated: Client = json.data;
-      invalidateCacheKey("admin-clients-list");
       setSelectedClient(updated);
       setClients((prev) => prev.map((c) => c.id === updated.id ? updated : c));
       setIsEditing(false);
       toast({ title: "Client Updated", description: "Profile saved and client notified by email." });
+      await fetchClients(true);
     } catch (err) {
       toast({ title: "Update Failed", description: err instanceof Error ? err.message : "Failed to update client", variant: "destructive" });
     } finally {
@@ -201,7 +241,7 @@ export default function ClientsPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <CardTitle className="text-lg font-semibold">Client List</CardTitle>
             <div className="flex items-center gap-2">
-              <div className="relative w-full md:w-72">
+              <div className="relative w-full sm:w-72">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                 <input
                   className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-4 text-sm outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] dark:border-slate-700 dark:bg-slate-900 dark:text-white"
@@ -221,7 +261,7 @@ export default function ClientsPage() {
             <div className="px-6 py-12 text-center text-sm text-slate-500">Loading clients...</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
+              <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                   <tr>
                     <th className="px-6 py-4 font-semibold">Client</th>
@@ -268,7 +308,7 @@ export default function ClientsPage() {
                           </Badge>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex flex-wrap items-center justify-end gap-2">
                             <span className="text-xs text-slate-400">
                               {client.createdAt ? new Date(client.createdAt).toLocaleDateString() : ""}
                             </span>
@@ -339,7 +379,7 @@ export default function ClientsPage() {
 
       {/* Client detail dialog */}
       <Dialog open={!!selectedClient} onOpenChange={() => setSelectedClient(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[min(42rem,calc(100vw-1.5rem))] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-[#0061FF]" />
@@ -369,7 +409,7 @@ export default function ClientsPage() {
             <>
               {detailTab === "info" && selectedClient && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800">
                       <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Client Code</p>
                       <p className="mt-1 font-mono text-sm font-bold text-[#0061FF]">
@@ -397,12 +437,15 @@ export default function ClientsPage() {
                           size="sm"
                           className="h-7 gap-1.5 text-xs"
                           onClick={() => {
+                            const taxId = parsePanVat(selectedClient.pan_vat_no);
                             setEditForm({
                               business_name: selectedClient.business_name,
                               owner_name: selectedClient.owner_name,
                               email: selectedClient.email,
                               phone_number: selectedClient.phone_number,
                               address: selectedClient.address ?? "",
+                              pan_vat_type: taxId.panVatType,
+                              pan_vat_no: taxId.panVatNo,
                             });
                             setIsEditing(true);
                           }}
@@ -435,7 +478,6 @@ export default function ClientsPage() {
                           { key: "owner_name", label: "Owner Name", icon: User },
                           { key: "email", label: "Email Address", icon: Mail },
                           { key: "phone_number", label: "Phone Number", icon: Phone },
-                          { key: "address", label: "Address", icon: MapPin },
                         ] as const).map(({ key, label, icon: Icon }) => (
                           <div key={key}>
                             <label htmlFor={`edit-${key}`} className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
@@ -452,6 +494,49 @@ export default function ClientsPage() {
                             />
                           </div>
                         ))}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <label htmlFor="edit-pan-vat-type" className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                              <Building2 className="h-3 w-3" /> Tax ID Type
+                            </label>
+                            <select
+                              id="edit-pan-vat-type"
+                              value={editForm.pan_vat_type}
+                              onChange={(e) => setEditForm((prev) => ({ ...prev, pan_vat_type: e.target.value as PanVatType | "" }))}
+                              className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                            >
+                              <option value="">Select type</option>
+                              <option value="PAN">PAN</option>
+                              <option value="VAT">VAT</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label htmlFor="edit-pan-vat-no" className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                              <Building2 className="h-3 w-3" /> {(editForm.pan_vat_type || "PAN/VAT")} No.
+                            </label>
+                            <input
+                              id="edit-pan-vat-no"
+                              type="text"
+                              value={editForm.pan_vat_no}
+                              onChange={(e) => setEditForm((prev) => ({ ...prev, pan_vat_no: e.target.value }))}
+                              placeholder="Tax ID number"
+                              className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label htmlFor="edit-address" className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                            <MapPin className="h-3 w-3" /> Address
+                          </label>
+                          <input
+                            id="edit-address"
+                            type="text"
+                            value={editForm.address}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, address: e.target.value }))}
+                            placeholder="Address"
+                            className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-[#0061FF] focus:ring-1 focus:ring-[#0061FF] dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                          />
+                        </div>
                         <p className="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1.5 border border-amber-100">
                           The client will receive an email listing all changes made.
                         </p>
@@ -462,6 +547,12 @@ export default function ClientsPage() {
                           { icon: User, label: "Owner", value: selectedClient.owner_name },
                           { icon: Phone, label: "Phone", value: selectedClient.phone_number },
                           { icon: Mail, label: "Email", value: selectedClient.email },
+                          ...(() => {
+                            const taxId = parsePanVat(selectedClient.pan_vat_no);
+                            return taxId.panVatNo
+                              ? [{ icon: Building2, label: `${taxId.panVatType || "PAN/VAT"} No.`, value: taxId.panVatNo }]
+                              : [];
+                          })(),
                           ...(selectedClient.address ? [{ icon: MapPin, label: "Address", value: selectedClient.address }] : []),
                           { icon: Building2, label: "Joined", value: selectedClient.createdAt ? new Date(selectedClient.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }) : "" },
                         ].map(({ icon: Icon, label, value }) => (

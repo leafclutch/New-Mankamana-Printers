@@ -320,7 +320,7 @@ export default function RegistrationRequestsPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+            <table className="w-full min-w-[780px] text-left text-sm">
               <thead className="border-b border-slate-100 dark:border-slate-800">
                 <tr className="bg-slate-50/80 dark:bg-slate-800/40">
                   {[
@@ -455,7 +455,7 @@ export default function RegistrationRequestsPage() {
 
       {/* Review Dialog */}
       <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
-        <DialogContent className="max-w-lg md:max-w-2xl max-h-[90vh] md:max-h-none overflow-hidden md:overflow-visible flex flex-col">
+        <DialogContent className="max-h-[90vh] w-[min(42rem,calc(100vw-1.5rem))] overflow-hidden md:max-h-none md:overflow-visible md:max-w-2xl flex flex-col">
           <DialogHeader className="shrink-0">
             <DialogTitle>Review Registration</DialogTitle>
             <DialogDescription>
@@ -504,6 +504,15 @@ export default function RegistrationRequestsPage() {
                   </span>
                   <span className="ml-auto font-semibold text-slate-900 dark:text-white">
                     {selectedRequest.phone}
+                  </span>
+                </div>
+                <div className="flex items-center">
+                  <Building2 className="mr-3 h-4 w-4 text-slate-400" />
+                  <span className="font-medium text-slate-600 dark:text-slate-400">
+                    {(selectedRequest.panVatType || "PAN/VAT")} No.:
+                  </span>
+                  <span className="ml-auto font-semibold text-slate-900 dark:text-white">
+                    {selectedRequest.panVatNo || "-"}
                   </span>
                 </div>
                 <div className="flex items-center">

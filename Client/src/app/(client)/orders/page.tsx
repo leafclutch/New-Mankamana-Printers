@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAuthHeaders } from "@/store/authStore";
+import { useAuthStore, getAuthHeaders } from "@/store/authStore";
 import { fetchJsonCached } from "@/utils/requestCache";
 import { getStatusColor, getStatusLabel, formatDate, formatCurrency } from "@/utils/helpers";
 import { notify } from "@/utils/notifications";
@@ -63,6 +63,7 @@ interface ApiOrder {
     expected_delivery_date?: string | null;
     payment_proof_url?: string | null;
     payment_proof_file_name?: string | null;
+    payment_proof_mime_type?: string | null;
     configurations?: OrderConfig[];
     variant: {
         variant_name: string;
@@ -71,6 +72,64 @@ interface ApiOrder {
     approvedDesign?: { designCode: string } | null;
     statusHistory?: StatusHistoryEntry[];
     attachment_urls?: string[] | null;
+}
+
+function AuthenticatedFileButton({
+    url,
+    filename,
+    label,
+    isImage = false,
+}: {
+    url: string;
+    filename: string;
+    label: string;
+    isImage?: boolean;
+}) {
+    const [objectUrl, setObjectUrl] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        return () => {
+            if (objectUrl) URL.revokeObjectURL(objectUrl);
+        };
+    }, [objectUrl]);
+
+    const loadFile = async () => {
+        if (objectUrl) {
+            window.open(objectUrl, "_blank", "noopener,noreferrer");
+            return;
+        }
+        setLoading(true);
+        try {
+            const res = await fetch(url, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error("Unable to load file");
+            const blob = await res.blob();
+            const nextUrl = URL.createObjectURL(blob);
+            setObjectUrl(nextUrl);
+            window.open(nextUrl, "_blank", "noopener,noreferrer");
+        } catch {
+            notify.error("Unable to open file. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={loadFile}
+            disabled={loading}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors disabled:opacity-60"
+        >
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${isImage ? "bg-blue-50 text-blue-500" : "bg-slate-100 text-slate-600"}`}>
+                {filename.split(".").pop()?.toUpperCase() || "FILE"}
+            </div>
+            <span className="flex-1 text-sm text-slate-600 truncate">{label}</span>
+            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+        </button>
+    );
 }
 
 function OrderProgressBar({ status }: { status: string }) {
@@ -185,7 +244,7 @@ function OrderDetailModal({ order, onClose, onCancel, cancelling }: {
                     )}
 
                     {/* Key info grid */}
-                    <div className="grid grid-cols-2 gap-2.5">
+                    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                         {[
                             { label: "Amount", value: formatCurrency(order.final_amount) },
                             { label: "Quantity", value: order.quantity.toLocaleString() },
@@ -278,19 +337,13 @@ function OrderDetailModal({ order, onClose, onCancel, cancelling }: {
                                     const ext = filename.split(".").pop()?.toLowerCase() || "";
                                     const isPdf = ext === "pdf";
                                     return (
-                                        <a
+                                        <AuthenticatedFileButton
                                             key={path}
-                                            href={`${API_BASE}/orders/${order.id}/attachments/${idx}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
-                                        >
-                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold ${isPdf ? "bg-red-100 text-red-600" : "bg-blue-50 text-blue-500"}`}>
-                                                {ext.toUpperCase() || "?"}
-                                            </div>
-                                            <span className="flex-1 text-sm text-slate-600 truncate">{filename}</span>
-                                            <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                                        </a>
+                                            url={`${API_BASE}/orders/${order.id}/attachments/${idx}`}
+                                            filename={filename}
+                                            label={filename}
+                                            isImage={!isPdf}
+                                        />
                                     );
                                 })}
                             </div>
@@ -301,23 +354,14 @@ function OrderDetailModal({ order, onClose, onCancel, cancelling }: {
                     {order.payment_proof_url && (
                         <div>
                             <p className="text-[0.65rem] font-bold uppercase tracking-[0.08em] text-slate-400 mb-2">Payment Proof</p>
-                            <a
-                                href={`${API_BASE}/orders/${order.id}/payment-proof`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 hover:bg-slate-50 transition-colors"
-                            >
-                                <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                                    <svg className="w-4 h-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-semibold text-[#0f172a] truncate">
-                                        {order.payment_proof_file_name || "View payment proof"}
-                                    </p>
-                                    <p className="text-[10px] text-slate-400">Click to open</p>
-                                </div>
-                                <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                            </a>
+                            <div className="rounded-xl border border-slate-200 overflow-hidden">
+                                <AuthenticatedFileButton
+                                    url={`${API_BASE}/orders/${order.id}/payment-proof`}
+                                    filename={order.payment_proof_file_name || "payment-proof"}
+                                    label={order.payment_proof_file_name || "View payment proof"}
+                                    isImage={Boolean(order.payment_proof_mime_type?.startsWith("image/"))}
+                                />
+                            </div>
                         </div>
                     )}
 
@@ -339,6 +383,7 @@ function OrderDetailModal({ order, onClose, onCancel, cancelling }: {
 }
 
 export default function OrdersPage() {
+    const { user } = useAuthStore();
     const queryClient = useQueryClient();
     const [statusFilter, setStatusFilter] = useState("ALL");
     const [search, setSearch] = useState("");
@@ -378,6 +423,7 @@ export default function OrdersPage() {
                         attachment_urls: d.data.attachment_urls ?? prev.attachment_urls,
                         payment_proof_url: d.data.payment_proof_url ?? prev.payment_proof_url,
                         payment_proof_file_name: d.data.payment_proof_file_name ?? prev.payment_proof_file_name,
+                        payment_proof_mime_type: d.data.payment_proof_mime_type ?? prev.payment_proof_mime_type,
                     } : null);
                 }
             })
@@ -443,7 +489,7 @@ export default function OrdersPage() {
                             B2B Account
                         </span>
                         <h1 className="font-serif text-3xl sm:text-4xl font-black text-white leading-tight">
-                            Order History
+                            {user?.businessName ? `${user.businessName}'s Orders` : "Order History"}
                         </h1>
                         <p className="mt-1.5 text-slate-400 text-sm">Track and manage all your printing orders.</p>
                     </div>
@@ -460,7 +506,7 @@ export default function OrdersPage() {
             <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
                 {/* Stats strip */}
                 {!loading && orders.length > 0 && (
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-6">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 mb-6">
                         {[
                             { label: "Total", count: orders.length, cls: "bg-white border border-slate-100 text-slate-700" },
                             { label: "Active", count: orders.filter(o => ["ORDER_PLACED","ORDER_PROCESSING","ORDER_PREPARED"].includes(o.status)).length, cls: "bg-[#0f172a]/5 border border-[#0f172a]/10 text-[#0f172a]" },

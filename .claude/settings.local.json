@@ -25,7 +25,16 @@
       "Bash(powershell -Command ' *)",
       "Bash(grep -r \"\\\\${API_BASE}\\\\|API_BASE\\\\s*+\" \"U:\\\\Leafclutch\\\\printing press\\\\code\\\\Manakamana-Printing-E-commerce-platform/Client/src\")",
       "Bash(awk '{print $NF}')",
-      "Bash(Select-Object Name)"
+      "Bash(Select-Object Name)",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const u = process.env.DATABASE_URL || ''; console.log\\('Protocol:', u.split\\('://'\\)[0] || 'not set'\\);\")",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const u = process.env.DIRECT_URL || ''; console.log\\('DIRECT Protocol:', u.split\\('://'\\)[0] || 'not set'\\);\")",
+      "Bash(node -e \"const p = require\\('./node_modules/@prisma/client/package.json'\\); console.log\\('client version:', p.version\\);\")",
+      "Bash(node -e \"try { const g = require\\('./node_modules/.prisma/client/index.js'\\); console.log\\('generated client ok'\\); } catch\\(e\\) { console.log\\('generated client error:', e.message.slice\\(0,200\\)\\); }\")",
+      "Bash(node -e 'require\\('\\\\''dotenv'\\\\''\\).config\\(\\); const { PrismaClient } = require\\('\\\\''@prisma/client'\\\\''\\); const p = new PrismaClient\\(\\); p.$queryRawUnsafe\\('\\\\''SELECT 1'\\\\''\\).then\\(r => { console.log\\('\\\\''DB OK:'\\\\'', r\\); p.$disconnect\\(\\); }\\).catch\\(e => { console.log\\('\\\\''Error code:'\\\\'', e.code\\); console.log\\('\\\\''Error msg:'\\\\'', e.message\\); p.$disconnect\\(\\); }\\);')",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); const u = process.env.DATABASE_URL || ''; console.log\\('First 30 chars:', u.slice\\(0,30\\)\\); console.log\\('Starts with postgresql://', u.startsWith\\('postgresql://'\\)\\); console.log\\('Starts with prisma://', u.startsWith\\('prisma://'\\)\\);\")",
+      "Bash(cat nodemon.json)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(JSON.stringify\\(p.nodemonConfig||p.scripts,null,2\\)\\);\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const content=fs.readFileSync\\('./node_modules/@prisma/client/runtime/library.js','utf8'\\); const idx=content.indexOf\\('P6001'\\); console.log\\('P6001 context:', content.slice\\(Math.max\\(0,idx-200\\), idx+300\\)\\);\")"
     ]
   },
   "disabledMcpjsonServers": [

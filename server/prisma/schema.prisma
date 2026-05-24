@@ -95,6 +95,7 @@ model RegistrationRequest {
   email            String
   phone_number     String  @unique
   business_address String?
+  pan_vat_no       String?
   notes            String?
 
   status           RegistrationStatus @default(PENDING)
@@ -119,6 +120,7 @@ model Client {
   owner_name    String
   email         String
   address       String?
+  pan_vat_no    String?
 
   status String @default("active")
 
@@ -269,7 +271,7 @@ model Product {
   description     String?       @db.Text
   image_url       String?       @db.Text
   preview_images  String[]      @default([])
-  production_days Int           @default(3)
+  production_days Int           @default(7)
   is_active       Boolean       @default(true)
   module          ProductModule @default(PRINTING)
   created_at      DateTime      @default(now())

@@ -28,7 +28,7 @@ VALUES (
         'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/visiting-card/800-gsm-matte-texture/preview-1.jpeg',
         'https://hvvdnlsrwpenyulgfgsz.supabase.co/storage/v1/object/public/product-assets/visiting-card/800-gsm-matte-texture/preview-2.jpeg'
     ],
-    3,
+    7,
     true
 )
 ON CONFLICT (product_code) DO UPDATE
