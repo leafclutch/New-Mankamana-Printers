@@ -447,10 +447,10 @@ export default function PaymentsPage() {
   };
 
   const handleSavePaymentMethod = async () => {
-    if (!paymentForm.companyName || !paymentForm.bankName || !paymentForm.accountName || !paymentForm.accountNumber) {
+    if (!paymentForm.companyName) {
       toast({
-        title: "Missing required fields",
-        description: "Company, bank name, account name, and account number are required.",
+        title: "Missing required field",
+        description: "Label / Company Name is required.",
         variant: "destructive",
       });
       return;
@@ -850,7 +850,7 @@ export default function PaymentsPage() {
                   )}
                   <Button
                     onClick={handleSavePaymentMethod}
-                    disabled={savingPaymentMethod || !paymentForm.companyName || !paymentForm.bankName || !paymentForm.accountName || !paymentForm.accountNumber}
+                    disabled={savingPaymentMethod || !paymentForm.companyName}
                   >
                     {savingPaymentMethod
                       ? (editingPaymentId ? "Saving..." : "Adding...")
