@@ -44,9 +44,9 @@ export const manualWalletTopupSchema = z.object({
 // createPaymentDetailsSchema: Validates platform-wide banking and QR payment information
 export const createPaymentDetailsSchema = z.object({
   companyName: z.string().min(1),
-  bankName: z.string().min(1),
-  accountName: z.string().min(1),
-  accountNumber: z.string().min(1),
+  bankName: z.string().nullish().transform((v) => v ?? undefined),
+  accountName: z.string().nullish().transform((v) => v ?? undefined),
+  accountNumber: z.string().nullish().transform((v) => v ?? undefined),
   branch: z.string().nullish().transform((v) => v ?? undefined),
   paymentId: z.string().nullish().transform((v) => v ?? undefined),
   qrImageUrl: z.string().nullish().transform((v) => v ?? undefined),
@@ -56,9 +56,9 @@ export const createPaymentDetailsSchema = z.object({
 
 export const updatePaymentDetailsSchema = z.object({
   companyName: z.string().trim().min(1),
-  bankName: z.string().trim().min(1),
-  accountName: z.string().trim().min(1),
-  accountNumber: z.string().trim().min(1),
+  bankName: z.string().trim().nullish().transform((v) => v ?? undefined),
+  accountName: z.string().trim().nullish().transform((v) => v ?? undefined),
+  accountNumber: z.string().trim().nullish().transform((v) => v ?? undefined),
   branch: z.string().nullish().transform((v) => {
     if (typeof v !== "string") return undefined;
     const trimmed = v.trim();

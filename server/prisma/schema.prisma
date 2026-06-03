@@ -487,9 +487,9 @@ model OrderConfiguration {
 model CompanyPaymentDetail {
   id            String  @id @default(uuid())
   companyName   String
-  bankName      String
-  accountName   String
-  accountNumber String
+  bankName      String?
+  accountName   String?
+  accountNumber String?
   branch        String?
   paymentId     String?
   qrImageUrl    String?

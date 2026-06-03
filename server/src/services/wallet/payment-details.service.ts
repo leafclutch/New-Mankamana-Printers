@@ -2,9 +2,9 @@ import prisma from "../../connect";
 
 export const createPaymentDetailsService = async (data: {
   companyName: string;
-  bankName: string;
-  accountName: string;
-  accountNumber: string;
+  bankName?: string;
+  accountName?: string;
+  accountNumber?: string;
   branch?: string;
   paymentId?: string;
   qrImageUrl?: string;
@@ -50,9 +50,9 @@ export const updatePaymentDetailsService = async (
   id: string,
   data: {
     companyName: string;
-    bankName: string;
-    accountName: string;
-    accountNumber: string;
+    bankName?: string;
+    accountName?: string;
+    accountNumber?: string;
     branch?: string | null;
     paymentId?: string | null;
     qrImageUrl?: string | null;
